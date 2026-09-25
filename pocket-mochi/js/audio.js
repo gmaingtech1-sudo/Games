@@ -123,8 +123,7 @@
     setSound(on) { soundOn = !!on; if (on) ensure(); },
     setVibe(on) { vibeOn = !!on; },
     buzz(pattern) {
-      if (!vibeOn || !navigator.vibrate) return;
-      try { navigator.vibrate(pattern); } catch (e) { /* ignore */ }
+      if (vibeOn) PM.host.haptic(pattern);
     },
   };
 })(window.PM = window.PM || {});

@@ -5,7 +5,6 @@
   const M = PM.model;
   const A = PM.audio;
   const $ = (id) => document.getElementById(id);
-  const SAVE_KEY = 'pocket-mochi-save-v1';
   const NAMES = ['Mochi', 'Daifuku', 'Pudding', 'Boba', 'Noodle', 'Peach', 'Sesame', 'Kiwi', 'Dumpling',
     'Tofu', 'Sprout', 'Biscuit', 'Yuzu', 'Taro', 'Pebble', 'Marshy', 'Bean', 'Gumdrop', 'Nori', 'Puff'];
 
@@ -58,9 +57,11 @@
 
   /* ---------------- storage ---------------- */
 
+  // PM.host decides where saves live: localStorage in a browser, the phone's
+  // app storage inside the Expo app.
   function load() {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
+      const raw = PM.host.loadSave();
       return raw ? M.revive(JSON.parse(raw)) : null;
     } catch (e) {
       return null;
@@ -68,12 +69,11 @@
   }
 
   function save() {
-    if (!s) return;
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch (e) { /* storage may be blocked */ }
+    if (s) PM.host.writeSave(JSON.stringify(s));
   }
 
   function wipe() {
-    try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
+    PM.host.clearSave();
   }
 
   /* ---------------- helpers ---------------- */
@@ -159,6 +159,7 @@
   /* ---------------- UI ---------------- */
 
   function updateUI() {
+    PM.host.setOverlay(!els.scrim.hidden || !els.tray.hidden || (!!s && mode !== 'home'));
     if (!s) return;
     els.name.textContent = s.name;
     els.stage.textContent = s.hatched ? `${M.stage(s).label} · Day ${M.ageDays(s)}` : 'Egg · ready to hatch';
@@ -700,6 +701,7 @@
     el.hidden = false;
     const focusable = el.querySelector('button');
     if (focusable) focusable.focus({ preventScroll: true });
+    updateUI();
   }
 
   function closeSheets() {
@@ -707,6 +709,17 @@
     els.shopSheet.hidden = true;
     els.settingsSheet.hidden = true;
     disarmReset();
+    updateUI();
+  }
+
+  // Android back button: close whatever is on top instead of leaving the app.
+  function handleBack() {
+    if (!els.scrim.hidden) closeSheets();
+    else if (mode === 'game') endGame();
+    else if (mode === 'gameover') leaveGame();
+    else if (mode === 'wash') exitWash(true);
+    else if (!els.tray.hidden) closeTray();
+    updateUI();
   }
 
   function openShop(tab) {
@@ -1217,10 +1230,22 @@
       else { lastFrame = performance.now(); tickModel(); dailyGift(); }
     });
     window.addEventListener('pagehide', save);
+
+    // iOS only lets sound start from certain gestures, so try on each of them.
+    ['touchend', 'click', 'keydown'].forEach((ev) => document.addEventListener(ev, () => A.unlock(), { passive: true }));
+
+    PM.host.on('back', handleBack);
+    PM.host.on('pause', save);
+    PM.host.on('resume', () => {
+      if (!s) return;
+      lastFrame = performance.now();
+      tickModel();
+      dailyGift();
+    });
   }
 
   function registerServiceWorker() {
-    if (!('serviceWorker' in navigator) || window.top !== window) return;
+    if (PM.host.native || !('serviceWorker' in navigator) || window.top !== window) return;
     if (location.protocol !== 'https:' && location.hostname !== 'localhost') return;
     navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is optional */ });
   }

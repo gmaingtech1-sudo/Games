@@ -1,10 +1,11 @@
 /* Pocket Mochi — offline support. Serves the cached game instantly and
    refreshes the cache in the background, so updates land on the next launch. */
-const CACHE = 'pocket-mochi-v1';
+const CACHE = 'pocket-mochi-v2';
 const SHELL = [
   './',
   'index.html',
   'css/style.css',
+  'js/host.js',
   'js/audio.js',
   'js/art.js',
   'js/pet.js',

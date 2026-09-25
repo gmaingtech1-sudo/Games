@@ -2,7 +2,7 @@
 
 A virtual pet made for phones. You adopt an egg, hatch it with a few taps, and then look after a squishy mochi creature: feed it, pet it, wash it, put it to bed and play mini-games with it. Its needs keep changing while the app is closed, so check in during the day.
 
-It's plain HTML, CSS and JavaScript. There's no build step and nothing to install.
+It's plain HTML, CSS and JavaScript. There's no build step and nothing to install. There's also an Expo Go version of it in [`../pocket-mochi-expo`](../pocket-mochi-expo).
 
 ## Playing
 
@@ -51,6 +51,7 @@ Then open <http://localhost:8000>. To try it on your phone, connect it to the sa
 | --- | --- |
 | `index.html` | Layout: top bar, need meters, the room canvas, action dock, shop/settings sheets, adopt screen |
 | `css/style.css` | All styling. Mobile-first, respects safe areas (notches) and reduced-motion settings |
+| `js/host.js` | Where saves and vibration go: the browser, or the Expo app when running inside it |
 | `js/audio.js` | Sound effects synthesized with WebAudio (no audio files), plus vibration |
 | `js/art.js` | Canvas drawings: the room, snacks, hats, poop, particles |
 | `js/pet.js` | The care model (needs, growth, poop, sickness, offline catch-up) and the animated pet renderer |
@@ -59,6 +60,8 @@ Then open <http://localhost:8000>. To try it on your phone, connect it to the sa
 | `sw.js`, `manifest.webmanifest`, `icons/` | Installable app + offline support |
 
 Progress is saved in the browser's `localStorage`, so each phone/browser has its own pet.
+
+If you change the game, run `npm run bundle-game` in `../pocket-mochi-expo` so the Expo app gets the change too.
 
 ### Tuning
 
