@@ -46,6 +46,7 @@
       best: 0,
       gift: '',
       hints: {},
+      room: 'living',
       settings: { sound: true, vibe: true },
     };
   }
@@ -63,6 +64,10 @@
     s.hints = raw.hints || {};
     if (!PM.PET_COLORS[s.color]) s.color = 'pink';
     if (!PM.SPECIES[s.species]) s.species = 'mochi';
+    // Saves from before the house had rooms: everything starts in the living room.
+    if (!PM.rooms.has(s.room)) s.room = 'living';
+    s.poops.forEach((p) => { if (!PM.rooms.has(p.room)) p.room = 'living'; });
+    if (s.asleep) s.room = 'bedroom';
     return s;
   }
 
@@ -84,7 +89,7 @@
     let best = 0.5;
     for (let tries = 0; tries < 12; tries++) {
       const x = 0.14 + Math.random() * 0.72;
-      if (s.poops.every((p) => Math.abs(p.x - x) > 0.12)) return x;
+      if (s.poops.every((p) => p.room !== s.room || Math.abs(p.x - x) > 0.12)) return x;
       best = x;
     }
     return best;
@@ -106,7 +111,7 @@
       if (s.digest >= 40 && s.digestT >= 0.35 && s.poops.length < MAX_POOPS) {
         s.digest -= 40;
         s.digestT = 0;
-        s.poops.push({ id: Math.random().toString(36).slice(2), x: pickPoopX(s) });
+        s.poops.push({ id: Math.random().toString(36).slice(2), x: pickPoopX(s), room: s.room });
         ev.push('poop');
       }
     }
@@ -126,6 +131,7 @@
       ev.push('woke');
     } else if (!s.asleep && s.stats.energy <= 0) {
       s.asleep = true;
+      s.room = 'bedroom';
       ev.push('fell-asleep');
     }
   }
@@ -313,7 +319,7 @@
     wobbleEgg() { this.eggV += (Math.random() < 0.5 ? -1 : 1) * 7; }
 
     update(dt, env) {
-      // env: { W, groundY, size, busy, canWander, stageScale }
+      // env: { W, size, canWander, stageScale, zone: [min, max] as fractions of W }
       this.t += dt;
       if (this.x === null) this.x = env.W / 2;
       if (this.scale === null) this.scale = env.stageScale;
@@ -341,7 +347,8 @@
       if (env.canWander) {
         this.wander -= dt;
         if (this.wander <= 0) {
-          this.targetX = env.W * (0.3 + Math.random() * 0.4);
+          const z = env.zone || [0.3, 0.7];
+          this.targetX = env.W * (z[0] + Math.random() * (z[1] - z[0]));
           this.wander = 3 + Math.random() * 5;
         }
       } else {

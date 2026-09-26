@@ -15,8 +15,8 @@
     heal: $('btn-heal'), toast: $('toast'), tray: $('tray'), trayItems: $('tray-items'),
     hud: $('game-hud'), hudScore: $('hud-score'), hudLives: $('hud-lives'), tip: $('game-tip'),
     over: $('gameover'), dock: document.querySelector('.dock'),
-    feed: $('act-feed'), play: $('act-play'), wash: $('act-wash'), sleep: $('act-sleep'),
-    sleepLabel: $('sleep-label'), shop: $('act-shop'),
+    roomButtons: Array.from(document.querySelectorAll('.dock .act')),
+    prev: $('room-prev'), next: $('room-next'), roomAction: $('room-action'), shop: $('btn-shop'),
     scrim: $('scrim'), shopSheet: $('sheet-shop'), settingsSheet: $('sheet-settings'),
     shopGrid: $('shop-grid'), shopCoins: $('shop-coins'),
     adopt: $('adopt'), preview: $('preview'),
@@ -31,13 +31,18 @@
   const game = new PM.StarCatch();
 
   let s = null;             // the saved pet
-  let mode = 'home';        // home | wash | game | gameover
+  let mode = 'home';        // home | game | gameover
   let W = 1;
   let H = 1;
   let dpr = 1;
-  let bg = null;
-  let layout = { floorY: 0, groundY: 0 };
-  let ground = null;        // where the pet stands; rises onto the snack tray when it is open
+  const bgCache = {};       // room id -> { canvas, layout }
+  let layout = { floorY: 0, groundY: 0, poopY: 0, zone: [0.3, 0.7] };
+  let shownRoom = null;     // the room the screen is currently set up for
+  let trans = null;         // slide between rooms: { snap, dir, t }
+  let ball = null;          // the playroom ball
+  let duckHop = 0;
+  let duckV = 0;
+  let ground = null;        // where the pet stands: the floor, the tub, the bed, or on top of the snack tray
   let night = isNight();
   let pointer = null;       // finger on the canvas
   let drag = null;          // snack being dragged from the tray
@@ -129,7 +134,11 @@
     let hsh = 0;
     for (let i = 0; i < p.id.length; i++) hsh = (hsh * 31 + p.id.charCodeAt(i)) | 0;
     const size = Math.max(26, Math.min(44, W * 0.085));
-    return { x: p.x * W, y: layout.groundY + 4 + (Math.abs(hsh) % 3) * 6, size };
+    return { x: p.x * W, y: layout.poopY + (Math.abs(hsh) % 3) * 6, size };
+  }
+
+  function poopsHere() {
+    return s.poops.filter((p) => p.room === s.room);
   }
 
   /* ---------------- canvas setup ---------------- */
@@ -142,24 +151,45 @@
     els.canvas.width = Math.round(W * dpr);
     els.canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    buildBackground();
+    resetBackgrounds();
     ground = null;
+    if (ball) {
+      ball.x = Math.min(ball.x, W - ball.r);
+      ball.y = Math.min(ball.y, layout.groundY - ball.r + 4);
+    }
     if (game.running || mode === 'gameover') game.resize(W, H);
   }
 
-  function buildBackground() {
-    bg = document.createElement('canvas');
-    bg.width = els.canvas.width;
-    bg.height = els.canvas.height;
-    const g = bg.getContext('2d');
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    layout = PM.art.drawRoom(g, W, H, night);
+  // Each room's static picture is drawn once and reused every frame.
+  function roomBg(id) {
+    let c = bgCache[id];
+    if (!c) {
+      const canvas = document.createElement('canvas');
+      canvas.width = els.canvas.width;
+      canvas.height = els.canvas.height;
+      const g = canvas.getContext('2d');
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c = bgCache[id] = { canvas, layout: PM.rooms.draw(id, g, W, H, night) };
+    }
+    return c;
+  }
+
+  // Throw the pictures away after a resize, or when day turns to night.
+  function resetBackgrounds() {
+    Object.keys(bgCache).forEach((k) => delete bgCache[k]);
+    if (s) layout = roomBg(s.room).layout;
   }
 
   /* ---------------- UI ---------------- */
 
+  // True when Android's back button should close something instead of leaving.
+  function overlayOpen() {
+    if (!els.scrim.hidden || !els.tray.hidden) return true;
+    return !!s && (mode !== 'home' || (s.room !== 'living' && !s.asleep));
+  }
+
   function updateUI() {
-    PM.host.setOverlay(!els.scrim.hidden || !els.tray.hidden || (!!s && mode !== 'home'));
+    PM.host.setOverlay(overlayOpen());
     if (!s) return;
     els.name.textContent = s.name;
     els.stage.textContent = s.hatched ? `${M.stage(s).label} · Day ${M.ageDays(s)}` : 'Egg · ready to hatch';
@@ -170,22 +200,45 @@
       m.el.classList.toggle('low', s.hatched && v < 25);
       m.el.setAttribute('aria-label', `${m.label} ${v}%`);
     }
-    const sleeping = s.asleep;
-    els.sleep.classList.toggle('waking', sleeping);
-    els.sleepLabel.textContent = sleeping ? 'Wake' : 'Sleep';
-    const blocked = !s.hatched || sleeping;
-    [els.feed, els.play, els.wash].forEach((b) => b.classList.toggle('dim', blocked));
-    els.sleep.classList.toggle('dim', !s.hatched);
-    els.feed.classList.toggle('on', !els.tray.hidden);
-    els.wash.classList.toggle('on', mode === 'wash');
-    const showHeal = s.hatched && s.sick && mode === 'home';
+    // the house map
+    const inGame = mode !== 'home';
+    const stuck = inGame || !s.hatched || s.asleep;
+    const ids = PM.rooms.ids;
+    const i = ids.indexOf(s.room);
+    els.roomButtons.forEach((b) => {
+      const id = b.dataset.room;
+      const here = id === s.room;
+      b.classList.toggle('on', here);
+      b.classList.toggle('dim', stuck && !here);
+      b.classList.toggle('has-poop', s.poops.some((p) => p.room === id));
+      b.setAttribute('aria-label', `${PM.rooms.name(id)}${here ? ' (you are here)' : ''}`);
+    });
+    els.prev.hidden = stuck || i <= 0;
+    els.next.hidden = stuck || i >= ids.length - 1;
+    if (i > 0) els.prev.setAttribute('aria-label', `Go to the ${PM.rooms.name(ids[i - 1]).toLowerCase()}`);
+    if (i < ids.length - 1) els.next.setAttribute('aria-label', `Go to the ${PM.rooms.name(ids[i + 1]).toLowerCase()}`);
+
+    // each room's own button
+    let action = null;
+    if (!inGame && s.hatched) {
+      if (s.room === 'kitchen' && els.tray.hidden && !s.asleep) action = 'Open the fridge';
+      else if (s.room === 'bedroom') action = s.asleep ? 'Wake up' : 'Lights off';
+      else if (s.room === 'playroom') action = 'Play Star Catch';
+    }
+    els.roomAction.hidden = !action;
+    if (action && els.roomAction.textContent !== action) els.roomAction.textContent = action;
+    els.roomAction.classList.toggle('warm', s.asleep);
+
+    const bathing = !inGame && s.hatched && s.room === 'bathroom';
+    els.banner.hidden = !bathing;
+    els.room.classList.toggle('wash', bathing);
+    const showHeal = s.hatched && s.sick && !inGame;
     els.heal.hidden = !showHeal;
     els.room.classList.toggle('has-heal', showHeal);
-    els.room.classList.toggle('has-banner', !els.banner.hidden);
-    els.room.classList.toggle('playing', mode === 'game' || mode === 'gameover');
-    const locked = mode === 'game' || mode === 'gameover';
-    els.dock.style.pointerEvents = locked ? 'none' : '';
-    els.dock.style.opacity = locked ? '0.45' : '';
+    els.room.classList.toggle('has-banner', bathing);
+    els.room.classList.toggle('playing', inGame);
+    els.dock.style.pointerEvents = inGame ? 'none' : '';
+    els.dock.style.opacity = inGame ? '0.45' : '';
   }
 
   /* ---------------- snack tray + feeding ---------------- */
@@ -230,7 +283,6 @@
   }
 
   function openTray() {
-    exitWash(false);
     renderTray();
     els.tray.hidden = false;
     els.tray.querySelector('#tray-title').textContent = `Drag a snack onto ${s.name}`;
@@ -346,43 +398,38 @@
     }
   }
 
-  /* ---------------- washing ---------------- */
+  /* ---------------- bathroom ---------------- */
 
-  function enterWash() {
-    closeTray();
-    mode = 'wash';
+  // The shower rinses the foam off; a proper scrub first earns XP and sparkles.
+  function rinse() {
+    const L = layout;
+    A.play('splash');
+    fx.drops(L.tub.cx - L.tub.rx * 0.55, L.shower.x + 24, L.shower.y + 6, 50);
+    pet.setExpr('surprise', 0.6);
+    const scrubbed = washGain > 30;
     washGain = 0;
-    els.bannerText.textContent = `Scrub ${s.name} with your finger`;
-    els.bannerBtn.textContent = 'Rinse';
-    els.banner.hidden = false;
-    els.room.classList.add('wash');
-    pet.targetX = null;
-    updateUI();
-  }
-
-  function exitWash(rinse) {
-    if (mode !== 'wash') return;
-    mode = 'home';
-    els.banner.hidden = true;
-    els.room.classList.remove('wash');
-    if (rinse && washGain > 30) {
-      A.play('splash');
-      fx.drops(W, H, 46);
+    setTimeout(() => {
+      if (!s) return;
       pet.rinse();
-      pet.setExpr('surprise', 0.6);
-      setTimeout(() => {
-        if (!s) return;
-        fx.sparkles(pet.geo.x, pet.geo.cy, 14, pet.geo.w);
-        A.play('sparkle');
-        pet.setExpr('yum', 1.2);
-        pet.hop(220);
-      }, 650);
+      if (!scrubbed) return;
+      fx.sparkles(pet.geo.x, pet.geo.cy, 14, pet.geo.w);
+      A.play('sparkle');
+      pet.setExpr('yum', 1.2);
+      pet.hop(220);
+    }, 450);
+    if (scrubbed) {
       gainXP(6);
       save();
-    } else {
-      pet.rinse();
+    } else if (!pet.foam.length) {
+      toast(`Scrub ${s.name} with your finger first, then rinse.`);
     }
-    updateUI();
+  }
+
+  // Leaving the bathroom mid-wash rinses quietly.
+  function finishBath() {
+    if (washGain > 30) gainXP(6);
+    washGain = 0;
+    pet.rinse();
   }
 
   function scrub(p, dist) {
@@ -424,7 +471,7 @@
     if (s.asleep) {
       pet.squish(1.2);
       A.play('tap');
-      toast(`Zzz... tap Wake to wake ${s.name} up.`);
+      toast(`Zzz... tap the lamp or Wake up to wake ${s.name}.`);
       return;
     }
     const now = performance.now();
@@ -474,6 +521,9 @@
     setTimeout(() => {
       if (s && mode === 'home') hint('stroke', `Stroke ${s.name} with your finger to pet it.`);
     }, 2900);
+    setTimeout(() => {
+      if (s && mode === 'home') hint('house', 'Tap the rooms at the bottom, or swipe, to explore the house.', 3600);
+    }, 7000);
     save();
     updateUI();
   }
@@ -484,7 +534,7 @@
       else toast('Tap the egg to help it hatch!');
       return;
     }
-    for (const poop of s.poops) {
+    for (const poop of poopsHere()) {
       const pp = poopPos(poop);
       if (Math.hypot(p.x - pp.x, p.y - (pp.y - pp.size * 0.4)) < pp.size * 0.85) {
         M.cleanPoop(s, poop.id);
@@ -501,10 +551,42 @@
       tapPet();
       return;
     }
+    const prop = PM.rooms.hitProp(s.room, layout, p.x, p.y);
+    if (prop) {
+      useProp(prop);
+      return;
+    }
     // Tap the floor and your pet hops over to that spot.
-    if (!s.asleep && !s.sick && p.y > layout.floorY) {
-      pet.targetX = p.x;
+    if (!s.asleep && !s.sick && s.room !== 'bathroom' && p.y > layout.floorY) {
+      pet.targetX = Math.max(W * 0.12, Math.min(W * 0.88, p.x));
       pet.wander = 5;
+    }
+  }
+
+  function useProp(prop) {
+    switch (prop) {
+      case 'fridge':
+        A.play('click');
+        if (els.tray.hidden && !s.asleep) openTray();
+        break;
+      case 'lamp':
+        onSleep();
+        break;
+      case 'arcade':
+        startGame();
+        break;
+      case 'shower':
+        rinse();
+        break;
+      case 'duck':
+        duckV = 300;
+        A.play('squeak');
+        A.buzz(8);
+        pet.setExpr('giggle', 0.6);
+        s.stats.fun = M.clamp(s.stats.fun + 0.5);
+        break;
+      default:
+        break;
     }
   }
 
@@ -520,12 +602,22 @@
       try { els.canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       return;
     }
-    if (mode === 'gameover' || pointer) return;
+    if (mode === 'gameover' || pointer || trans) return;
     try { els.canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-    pointer = { id: e.pointerId, x: p.x, y: p.y, t0: performance.now(), moved: 0, onPet: s.hatched && pet.hit(p.x, p.y, 10) };
+    const onBall = !!ball && s.room === 'playroom' && Math.hypot(p.x - ball.x, p.y - ball.y) < ball.r + 18;
+    pointer = {
+      id: e.pointerId, x: p.x, y: p.y, sx: p.x, sy: p.y, t0: performance.now(), moved: 0,
+      onBall, onPet: !onBall && s.hatched && pet.hit(p.x, p.y, 10),
+    };
+    if (onBall) {
+      ball.held = { vx: 0, vy: 0, t: performance.now() };
+      ball.vx = 0;
+      ball.vy = 0;
+      return;
+    }
     pet.lookAt = p;
     lookClear = 0;
-    if (mode === 'wash' && pet.hit(p.x, p.y)) scrub(p, 0);
+    if (s.room === 'bathroom' && s.hatched && pet.hit(p.x, p.y)) scrub(p, 0);
   }
 
   function onMove(e) {
@@ -540,14 +632,29 @@
       return;
     }
     const d = Math.hypot(p.x - pointer.x, p.y - pointer.y);
+    if (pointer.onBall && ball && ball.held) {
+      // carry the ball, remembering how fast the finger moves for the throw
+      const now = performance.now();
+      const secs = Math.max(0.008, (now - ball.held.t) / 1000);
+      ball.held.vx = ball.held.vx * 0.4 + ((p.x - pointer.x) / secs) * 0.6;
+      ball.held.vy = ball.held.vy * 0.4 + ((p.y - pointer.y) / secs) * 0.6;
+      ball.held.t = now;
+      ball.x = Math.max(ball.r, Math.min(W - ball.r, p.x));
+      ball.y = Math.max(ball.r, Math.min(layout.groundY - ball.r + 4, p.y));
+    }
     pointer.moved += d;
     pointer.x = p.x;
     pointer.y = p.y;
+    if (pointer.onBall) return;
     pet.lookAt = p;
-    if (mode === 'wash') {
-      if (pet.hit(p.x, p.y, 6)) scrub(p, d);
+    if (s.room === 'bathroom') {
+      if (s.hatched && pet.hit(p.x, p.y, 6)) {
+        scrub(p, d);
+        pointer.acted = true;
+      }
     } else if (s.hatched && !s.asleep && pointer.onPet && pet.hit(p.x, p.y, 16)) {
       stroke(p, d);
+      pointer.acted = true;
     }
   }
 
@@ -556,12 +663,115 @@
     if (mode === 'game') { pointer = null; return; }
     if (!pointer || e.pointerId !== pointer.id) return;
     const p = toRoom(e);
-    const quick = pointer.moved < 12 && performance.now() - pointer.t0 < 400;
-    const wasWash = mode === 'wash';
+    const P = pointer;
     pointer = null;
     lookClear = 1.2;
-    if (e.type === 'pointerup' && quick && !wasWash) handleTap(p);
-    if (wasWash && quick && !pet.hit(p.x, p.y)) hint('wash', `Rub your finger over ${s.name} to scrub.`);
+    const elapsed = performance.now() - P.t0;
+    const quick = P.moved < 12 && elapsed < 400;
+    if (P.onBall) {
+      if (ball) throwBall(e.type === 'pointerup' && quick);
+      return;
+    }
+    if (e.type !== 'pointerup') return;
+    // A quick sideways swipe that didn't pet or scrub moves to the next room.
+    const dx = p.x - P.sx;
+    const dy = p.y - P.sy;
+    if (!P.onPet && !P.acted && Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5 && elapsed < 700) {
+      stepRoom(dx < 0 ? 1 : -1);
+      return;
+    }
+    if (quick) handleTap(p);
+  }
+
+  /* ---------------- the playroom ball ---------------- */
+
+  function ensureBall() {
+    if (ball) return;
+    const r = Math.max(14, Math.min(24, W * 0.05));
+    ball = { x: W * 0.62, y: layout.groundY - r + 4, vx: 0, vy: 0, r, rot: 0, held: null, cd: 0 };
+  }
+
+  function throwBall(tapped) {
+    const h = ball.held || { vx: 0, vy: 0 };
+    ball.held = null;
+    const cap = 1700;
+    if (tapped) {
+      ball.vx = (Math.random() - 0.5) * 360;
+      ball.vy = -560;
+    } else {
+      ball.vx = Math.max(-cap, Math.min(cap, h.vx));
+      ball.vy = Math.max(-cap, Math.min(cap, h.vy));
+    }
+    A.play('boing');
+  }
+
+  function updateBall(dt, busy, mood) {
+    const b = ball;
+    const floor = layout.groundY - b.r + 4;
+    b.cd -= dt;
+    if (!b.held) {
+      b.vy += 1500 * dt;
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      if (b.y >= floor) {
+        b.y = floor;
+        if (b.vy > 140) {
+          if (b.vy > 320) A.play('thump');
+          b.vy = -b.vy * 0.6;
+        } else {
+          b.vy = 0;
+        }
+        b.vx *= Math.exp(-2.2 * dt);
+        if (Math.abs(b.vx) < 4) b.vx = 0;
+      }
+      if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.7; }
+      if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.7; }
+      if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.5; }
+      b.rot += (b.vx * dt) / b.r;
+    }
+    if (!s.hatched || s.asleep) return;
+
+    // bonk: the ball bounces off the pet
+    const g = pet.geo;
+    const ax = g.w * 0.5 + b.r * 0.8;
+    const ay = g.h * 0.5 + b.r * 0.8;
+    const dx = (b.x - g.x) / ax;
+    const dy = (b.y - g.cy) / ay;
+    const d = Math.hypot(dx, dy);
+    if (!b.held && d < 1) {
+      const nx = dx / (d || 1);
+      const ny = dy / (d || 1);
+      b.x = Math.max(b.r, Math.min(W - b.r, g.x + nx * ax));
+      b.y = Math.min(floor, g.cy + ny * ay);
+      b.vx = nx * 320 + pet.vx * 0.5 + (Math.random() - 0.5) * 80;
+      b.vy = Math.min(-b.vy * 0.3, -420 - Math.random() * 180);
+      if (b.cd <= 0) {
+        b.cd = 0.4;
+        A.play('boing');
+        A.buzz(8);
+        pet.setExpr('giggle', 0.5);
+        pet.squish(1.2);
+        s.stats.fun = M.clamp(s.stats.fun + 1.5);
+        gainXP(0.3);
+        fx.sparkles(b.x, b.y, 5, b.r);
+      }
+    }
+
+    // watch the ball, and chase it once it settles
+    if (!pointer || pointer.onBall) pet.lookAt = { x: b.x, y: b.y };
+    const reach = petSize() * 0.3;
+    const chase = !busy && !b.held && !s.sick && mood !== 'tired' && pet.jump === 0 &&
+      b.y >= floor - 2 && Math.abs(b.vx) < 90 && b.x > reach && b.x < W - reach;
+    if (chase) {
+      const gap = b.x - pet.x;
+      if (Math.abs(gap) > g.w * 0.45) {
+        pet.targetX = b.x - Math.sign(gap) * g.w * 0.3;
+        pet.wander = 2.5;
+      } else if (b.cd <= 0 && Math.random() < dt * 2.5) {
+        pet.vx = Math.sign(gap || 1) * 60;
+        pet.hop(300);
+      }
+    }
   }
 
   /* ---------------- buttons ---------------- */
@@ -571,27 +781,12 @@
     return false;
   }
 
-  function onFeed() {
-    A.play('click');
-    if (needsPet()) return;
-    if (!els.tray.hidden) { closeTray(); return; }
-    if (s.asleep) { toast(`Shh... ${s.name} is sleeping.`); return; }
-    openTray();
-  }
-
-  function onWash() {
-    A.play('click');
-    if (needsPet()) return;
-    if (mode === 'wash') { exitWash(true); return; }
-    if (s.asleep) { toast(`Shh... ${s.name} is sleeping.`); return; }
-    enterWash();
-  }
-
   function onSleep() {
-    if (needsPet()) return;
+    if (needsPet() || s.room !== 'bedroom') return;
     A.play('lights');
     if (s.asleep) {
       s.asleep = false;
+      pet.hop(280); // hops out of bed
       if (s.stats.energy < 50) {
         pet.setExpr('grumpy', 2.2);
         toast(`${s.name} is still sleepy...`);
@@ -601,12 +796,11 @@
         toast(`Good morning, ${s.name}!`);
       }
     } else {
-      closeTray();
-      exitWash(false);
       s.asleep = true;
       A.play('yawn');
       pet.setExpr('yawn', 1.3);
       pet.targetX = null;
+      pet.hop(300); // hops into bed
       toast(`Good night, ${s.name}. Energy refills while asleep.`);
     }
     save();
@@ -625,6 +819,89 @@
     updateUI();
   }
 
+  /* ---------------- rooms ---------------- */
+
+  function goRoom(id) {
+    if (!s || id === s.room || mode !== 'home' || trans) return;
+    if (!s.hatched) {
+      toast('Hatch the egg first, then explore the house!');
+      A.play('no');
+      return;
+    }
+    if (s.asleep) {
+      toast(`Shh... ${s.name} is sleeping. Tap Wake up first.`);
+      A.play('no');
+      return;
+    }
+    // Keep a picture of the room we're leaving so the new one can slide in.
+    const snap = document.createElement('canvas');
+    snap.width = els.canvas.width;
+    snap.height = els.canvas.height;
+    snap.getContext('2d').drawImage(els.canvas, 0, 0);
+    const ids = PM.rooms.ids;
+    trans = { snap, dir: ids.indexOf(id) > ids.indexOf(s.room) ? 1 : -1, t: 0 };
+    s.room = id;
+    A.play('swoosh');
+    syncRoom();
+    save();
+  }
+
+  function stepRoom(dir) {
+    const ids = PM.rooms.ids;
+    const next = ids[ids.indexOf(s.room) + dir];
+    if (next) goRoom(next);
+  }
+
+  // Set the screen up for s.room: after moving, loading a save, or when the
+  // pet dozes off by itself and goes to bed.
+  function syncRoom() {
+    if (shownRoom === s.room) return;
+    const from = shownRoom;
+    shownRoom = s.room;
+    if (from === 'kitchen') closeTray();
+    if (from === 'bathroom') finishBath();
+    fly = null;
+    fx.list = [];
+    layout = roomBg(s.room).layout;
+    pet.x = W * (layout.zone[0] + layout.zone[1]) / 2;
+    pet.targetX = null;
+    pet.jump = 0;
+    pet.jumpV = 0;
+    pet.vx = 0;
+    pet.lookAt = null;
+    ground = null;
+    enterRoom(s.room, from !== null);
+    updateUI();
+  }
+
+  function enterRoom(id, arrived) {
+    if (!s.hatched) return;
+    if (id === 'kitchen' && !s.asleep) openTray();
+    if (id === 'bathroom') {
+      washGain = 0;
+      els.bannerText.textContent = `Scrub ${s.name} with your finger`;
+      hint('wash', `Rub your finger over ${s.name} to scrub, then tap Rinse.`);
+    }
+    if (id === 'bedroom' && !s.asleep) hint('bed', `Tap the lamp to put ${s.name} to bed.`);
+    if (id === 'playroom') {
+      ensureBall();
+      hint('ball', `Flick the ball and ${s.name} will chase it. The arcade plays Star Catch.`, 3800);
+    }
+    if (arrived && (id === 'living' || id === 'playroom' || (id === 'bedroom' && !s.asleep))) pet.hop(240);
+  }
+
+  function onRoomAction() {
+    if (!s) return;
+    if (s.room === 'kitchen') {
+      A.play('click');
+      openTray();
+    } else if (s.room === 'bedroom') {
+      onSleep();
+    } else if (s.room === 'playroom') {
+      startGame();
+    }
+  }
+
   /* ---------------- mini-game ---------------- */
 
   function renderLives() {
@@ -641,7 +918,6 @@
     if (s.sick) { toast(`${s.name} feels sick. Give medicine first.`); return; }
     if (s.stats.energy < 12) { toast(`${s.name} is too tired to play. Try a nap.`); return; }
     closeTray();
-    exitWash(false);
     els.over.hidden = true;
     mode = 'game';
     game.start(W, H);
@@ -712,13 +988,14 @@
     updateUI();
   }
 
-  // Android back button: close whatever is on top instead of leaving the app.
+  // Android back button: close whatever is on top, then head back to the
+  // living room, and only then leave the app.
   function handleBack() {
     if (!els.scrim.hidden) closeSheets();
     else if (mode === 'game') endGame();
     else if (mode === 'gameover') leaveGame();
-    else if (mode === 'wash') exitWash(true);
     else if (!els.tray.hidden) closeTray();
+    else if (s && s.room !== 'living' && !s.asleep) goRoom('living');
     updateUI();
   }
 
@@ -825,6 +1102,9 @@
     closeSheets();
     closeTray();
     mode = 'home';
+    shownRoom = null;
+    trans = null;
+    ball = null;
     els.over.hidden = true;
     els.hud.hidden = true;
     els.banner.hidden = true;
@@ -848,6 +1128,7 @@
       else if (ev.includes('poop')) msg = `Welcome back! ${s.name} made a mess while you were away.`;
       else if (ev.includes('woke')) msg = `${s.name} woke up rested while you were away.`;
       toast(msg, 3600);
+      syncRoom();
       save();
       updateUI();
       return;
@@ -860,7 +1141,11 @@
       hint('poop', 'Uh oh! Tap the poop to clean it up.');
     }
     if (ev.includes('woke')) { toast(`${s.name} woke up feeling rested!`); pet.hop(240); }
-    if (ev.includes('fell-asleep')) toast(`${s.name} was so tired it fell asleep.`);
+    if (ev.includes('fell-asleep')) {
+      closeTray();
+      toast(`${s.name} got so sleepy it went to bed.`);
+    }
+    syncRoom();
     save();
     updateUI();
   }
@@ -898,23 +1183,45 @@
     ctx.restore();
   }
 
-  function drawHome() {
-    ctx.drawImage(bg, 0, 0, W, H);
-    for (const p of s.poops) {
-      const pp = poopPos(p);
-      PM.art.drawPoop(ctx, pp.x, pp.y, pp.size);
+  function currentGround() {
+    return ground === null ? layout.groundY : ground;
+  }
+
+  function drawScene() {
+    const L = layout;
+    const g0 = currentGround();
+    ctx.drawImage(roomBg(s.room).canvas, 0, 0, W, H);
+    PM.rooms.drawLive(s.room, ctx, L, pet.t);
+
+    // Poop behind the pet's feet is drawn first, poop in front of it last.
+    const poops = poopsHere().map(poopPos);
+    poops.filter((pp) => pp.y < g0).forEach((pp) => PM.art.drawPoop(ctx, pp.x, pp.y, pp.size));
+    const showBall = ball && s.room === 'playroom';
+    if (showBall) {
+      const lift = Math.max(0, L.groundY - (ball.y + ball.r));
+      const k = 1 / (1 + lift / 80);
+      ctx.beginPath();
+      ctx.ellipse(ball.x, L.groundY + 3, ball.r * 0.9 * k, ball.r * 0.28 * k, 0, 0, PM.art.TAU);
+      ctx.fillStyle = 'rgba(34,36,61,0.2)';
+      ctx.fill();
     }
-    const mood = M.mood(s);
+
     pet.draw(ctx, {
-      species: s.species, color: s.color, hat: s.hat, size: petSize(), groundY: ground === null ? layout.groundY : ground,
-      clean: s.stats.clean, sick: s.sick, mood, taps: s.eggTaps,
+      species: s.species, color: s.color, hat: s.hat, size: petSize(), groundY: g0,
+      clean: s.stats.clean, sick: s.sick, mood: M.mood(s), taps: s.eggTaps,
     });
     if (eating) {
       const g = pet.geo;
       const k = 1 - eating.bites * 0.3;
       if (k > 0.05) PM.art.drawFood(ctx, eating.type, g.x, g.mouthY + g.h * 0.08, petSize() * 0.3 * k);
     }
-    const busy = eating || fly || drag || mode === 'wash' || (pointer && pointer.onPet);
+    PM.rooms.drawFront(s.room, ctx, L, {
+      asleep: s.asleep, petX: pet.geo.x, petGround: g0, petW: pet.geo.w, petH: pet.geo.h, t: pet.t, duckHop,
+    });
+    poops.filter((pp) => pp.y >= g0).forEach((pp) => PM.art.drawPoop(ctx, pp.x, pp.y, pp.size));
+    if (showBall) PM.rooms.drawBall(ctx, ball.x, ball.y, ball.r, ball.rot);
+
+    const busy = eating || fly || drag || s.room === 'bathroom' || (pointer && pointer.onPet);
     if (!busy && s.hatched) pet.drawThought(ctx, M.need(s), pet.t);
     if (fly) {
       const k = Math.min(1, fly.t / 0.38);
@@ -927,23 +1234,58 @@
       const hp = heldFoodPos(drag);
       PM.art.drawFood(ctx, drag.type, hp.x, hp.y, Math.max(46, petSize() * 0.32), Math.sin(pet.t * 8) * 0.12);
     }
-    if (mode === 'wash' && pointer) drawSponge(pointer.x, pointer.y);
+    if (s.room === 'bathroom' && s.hatched && pointer && !pointer.onBall) drawSponge(pointer.x, pointer.y);
     if (s.asleep) {
       ctx.fillStyle = 'rgba(14, 16, 44, 0.62)';
       ctx.fillRect(0, 0, W, H);
+      PM.rooms.drawNight(s.room, ctx, L);
     }
     fx.draw(ctx);
   }
 
+  // Rooms slide sideways when you move between them.
+  function drawHome(dt) {
+    if (!trans) {
+      drawScene();
+      return;
+    }
+    trans.t = Math.min(1, trans.t + dt / 0.34);
+    const t = trans.t;
+    const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    ctx.save();
+    ctx.translate(W * (1 - e) * trans.dir, 0);
+    drawScene();
+    ctx.restore();
+    ctx.drawImage(trans.snap, -W * e * trans.dir, 0, W, H);
+    if (t >= 1) trans = null;
+  }
+
+  // Where the pet should stand in this room right now.
+  function groundTarget() {
+    if (s.room === 'bedroom' && s.asleep) return layout.bed.y;
+    if (s.room === 'bathroom' && s.hatched) {
+      const tub = layout.tub;
+      const h = petSize() * (pet.scale || M.stage(s).scale) * 0.86;
+      return Math.min(tub.bottom - 8, tub.rimY + tub.ry + h * 0.2);
+    }
+    let g = layout.groundY;
+    if (!els.tray.hidden) g = Math.min(g, els.tray.offsetTop - 4);
+    return g;
+  }
+
   function updateHome(dt) {
-    let target = layout.groundY;
-    if (!els.tray.hidden) target = Math.min(target, els.tray.offsetTop - 4);
+    const target = groundTarget();
     ground = ground === null ? target : ground + (target - ground) * Math.min(1, dt * 9);
     const mood = M.mood(s);
-    const busy = !!(eating || drag || fly || mode === 'wash' || (pointer && pointer.onPet));
+    const busy = !!(eating || drag || fly || (pointer && pointer.onPet));
+    const bathing = s.room === 'bathroom' && s.hatched;
+    const inBed = s.room === 'bedroom' && s.asleep;
+    // In the tub and in bed the pet stays put.
+    if (bathing) pet.x += (layout.tub.cx - pet.x) * Math.min(1, dt * 6);
+    if (inBed) pet.x += (layout.bed.x - pet.x) * Math.min(1, dt * 6);
     pet.update(dt, {
-      W, size: petSize(), stageScale: s.hatched ? M.stage(s).scale : 1,
-      canWander: s.hatched && !s.asleep && !s.sick && mood !== 'tired' && !busy,
+      W, size: petSize(), stageScale: s.hatched ? M.stage(s).scale : 1, zone: layout.zone,
+      canWander: s.hatched && !s.asleep && !s.sick && mood !== 'tired' && !busy && !bathing,
     });
 
     if (drag) {
@@ -969,6 +1311,10 @@
       }
     }
     updateEating(dt);
+    if (ball && s.room === 'playroom') updateBall(dt, busy, mood);
+    duckV -= 1500 * dt;
+    duckHop = Math.max(0, duckHop + duckV * dt);
+    if (duckHop === 0 && duckV < 0) duckV = 0;
     fx.update(dt);
 
     timers.purr -= dt;
@@ -982,8 +1328,9 @@
     if (timers.stink <= 0) {
       timers.stink = 0.45;
       if (s.hatched && s.stats.clean < 25) fx.stink(pet.geo.x + (Math.random() - 0.5) * pet.geo.w * 0.8, pet.geo.top + 10);
-      if (s.poops.length && Math.random() < 0.6) {
-        const pp = poopPos(s.poops[Math.floor(Math.random() * s.poops.length)]);
+      const here = poopsHere();
+      if (here.length && Math.random() < 0.6) {
+        const pp = poopPos(here[Math.floor(Math.random() * here.length)]);
         fx.stink(pp.x + (Math.random() - 0.5) * pp.size * 0.5, pp.y - pp.size * 0.9);
       }
     }
@@ -1009,7 +1356,7 @@
     if (timers.night <= 0) {
       timers.night = 30;
       const n = isNight();
-      if (n !== night) { night = n; buildBackground(); }
+      if (n !== night) { night = n; resetBackgrounds(); }
     }
 
     if (mode === 'game' || mode === 'gameover') {
@@ -1026,7 +1373,7 @@
       game.draw(ctx, s);
     } else {
       updateHome(dt);
-      drawHome();
+      drawHome(dt);
     }
 
     timers.save -= dt;
@@ -1153,9 +1500,19 @@
     A.setVibe(s.settings.vibe);
     $('set-sound').checked = s.settings.sound;
     $('set-vibe').checked = s.settings.vibe;
+    shownRoom = null;
+    trans = null;
+    ball = null;
     resize();
+    syncRoom();
     dailyGift();
     updateUI();
+    // Pets from before the house get told about it once.
+    if (s.hatched && !s.hints.house) {
+      setTimeout(() => {
+        if (s && mode === 'home') hint('house', `${s.name} has a whole house now! Tap the rooms below or swipe to explore.`, 4200);
+      }, 3200);
+    }
   }
 
   function wire() {
@@ -1168,14 +1525,19 @@
     document.addEventListener('gesturestart', (e) => e.preventDefault());
     document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
 
-    els.feed.addEventListener('click', onFeed);
-    els.play.addEventListener('click', startGame);
-    els.wash.addEventListener('click', onWash);
-    els.sleep.addEventListener('click', onSleep);
+    els.roomButtons.forEach((b) => b.addEventListener('click', () => {
+      A.play('click');
+      if (!s) return;
+      if (b.dataset.room !== s.room) goRoom(b.dataset.room);
+      else if (s.room === 'kitchen' && els.tray.hidden && s.hatched && !s.asleep) openTray();
+    }));
+    els.prev.addEventListener('click', () => { A.play('click'); stepRoom(-1); });
+    els.next.addEventListener('click', () => { A.play('click'); stepRoom(1); });
+    els.roomAction.addEventListener('click', onRoomAction);
     els.shop.addEventListener('click', () => { A.play('click'); if (s) openShop(); });
     $('btn-settings').addEventListener('click', () => { A.play('click'); if (s) openSheet(els.settingsSheet); });
     $('tray-close').addEventListener('click', () => { A.play('click'); closeTray(); });
-    els.bannerBtn.addEventListener('click', () => exitWash(true));
+    els.bannerBtn.addEventListener('click', rinse);
     els.heal.addEventListener('click', onHeal);
     $('hud-quit').addEventListener('click', () => { if (mode === 'game') endGame(); });
     $('go-again').addEventListener('click', startGame);

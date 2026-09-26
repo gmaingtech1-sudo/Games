@@ -112,6 +112,13 @@
     },
     lights: () => tone({ f: 200, dur: 0.05, vol: 0.2, type: 'square' }),
     gameover: () => arp([784, 659, 523, 392], 0.12, { vol: 0.14, type: 'triangle' }),
+    swoosh: () => noise({ dur: 0.22, freq: 900, q: 0.8, vol: 0.18 }),
+    boing: () => tone({ f: 220, f2: 560, dur: 0.16, vol: 0.16, type: 'triangle' }),
+    thump: () => tone({ f: 150, f2: 80, dur: 0.09, vol: 0.18 }),
+    squeak: () => {
+      tone({ f: 1400, f2: 2100, dur: 0.07, vol: 0.12, type: 'triangle' });
+      tone({ f: 2000, f2: 1300, dur: 0.09, delay: 0.07, vol: 0.12, type: 'triangle' });
+    },
   };
 
   PM.audio = {

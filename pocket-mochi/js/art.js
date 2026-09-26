@@ -1,4 +1,4 @@
-/* Pocket Mochi — drawing helpers: shapes, snacks, hats, the room and particles.
+/* Pocket Mochi — drawing helpers: shapes, snacks, hats, poop and particles.
    Everything is drawn with canvas paths in a flat "sticker" style: solid ink
    outlines around bright fills. */
 (function (PM) {
@@ -49,7 +49,7 @@
   }
 
   function roundRect(ctx, x, y, w, h, r) {
-    r = Math.min(r, w / 2, h / 2);
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
     ctx.beginPath();
     ctx.moveTo(x + r, y);
     ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -495,177 +495,6 @@
     ctx.restore();
   }
 
-  /* ---------- The room ---------- */
-
-  function drawRoom(ctx, W, H, night) {
-    const floorY = Math.round(H * 0.62);
-
-    // wall
-    ctx.fillStyle = '#BFE6DA';
-    ctx.fillRect(0, 0, W, floorY);
-    ctx.fillStyle = '#D2EFE6';
-    const gap = 26;
-    for (let y = 14, row = 0; y < floorY - 6; y += gap, row++) {
-      for (let x = (row % 2) * (gap / 2) + 8; x < W; x += gap) {
-        ctx.beginPath();
-        ctx.arc(x, y, 3.2, 0, TAU);
-        ctx.fill();
-      }
-    }
-
-    // window
-    const wx = W * 0.07;
-    const wy = H * 0.08;
-    const ww = Math.min(W * 0.38, 170);
-    const wh = Math.min(H * 0.24, 150);
-    roundRect(ctx, wx, wy, ww, wh, 14);
-    const sky = ctx.createLinearGradient(0, wy, 0, wy + wh);
-    if (night) {
-      sky.addColorStop(0, '#1A1F4E');
-      sky.addColorStop(1, '#3A3F86');
-    } else {
-      sky.addColorStop(0, '#7FCBFF');
-      sky.addColorStop(1, '#D8F1FF');
-    }
-    ctx.fillStyle = sky;
-    ctx.fill();
-    ctx.save();
-    roundRect(ctx, wx, wy, ww, wh, 14);
-    ctx.clip();
-    if (night) {
-      ctx.fillStyle = '#FFF4C2';
-      ctx.beginPath();
-      ctx.arc(wx + ww * 0.7, wy + wh * 0.32, wh * 0.16, 0, TAU);
-      ctx.fill();
-      ctx.fillStyle = '#1F2458';
-      ctx.beginPath();
-      ctx.arc(wx + ww * 0.76, wy + wh * 0.27, wh * 0.14, 0, TAU);
-      ctx.fill();
-      ctx.fillStyle = '#FFFFFF';
-      [[0.18, 0.2], [0.32, 0.55], [0.5, 0.18], [0.14, 0.72], [0.86, 0.7], [0.58, 0.8]].forEach(([fx, fy]) => {
-        sparklePath(ctx, wx + ww * fx, wy + wh * fy, 4);
-        ctx.fill();
-      });
-    } else {
-      ctx.fillStyle = '#FFD84D';
-      ctx.beginPath();
-      ctx.arc(wx + ww * 0.74, wy + wh * 0.3, wh * 0.14, 0, TAU);
-      ctx.fill();
-      ctx.fillStyle = '#FFFFFF';
-      const cx = wx + ww * 0.3;
-      const cy = wy + wh * 0.62;
-      [[0, 0, 0.14], [0.13, -0.05, 0.12], [0.26, 0.01, 0.1], [-0.12, 0.03, 0.09]].forEach(([dx, dy, r]) => {
-        ctx.beginPath();
-        ctx.arc(cx + dx * ww, cy + dy * ww, r * ww, 0, TAU);
-        ctx.fill();
-      });
-    }
-    ctx.restore();
-    // window frame
-    ctx.fillStyle = '#FFFDF8';
-    ctx.fillRect(wx + ww / 2 - 3, wy, 6, wh);
-    ctx.fillRect(wx, wy + wh / 2 - 3, ww, 6);
-    roundRect(ctx, wx, wy, ww, wh, 14);
-    ctx.lineWidth = 7;
-    ctx.strokeStyle = '#FFFDF8';
-    ctx.stroke();
-    roundRect(ctx, wx - 3.5, wy - 3.5, ww + 7, wh + 7, 17);
-    outline(ctx, 3);
-    // sill
-    roundRect(ctx, wx - 10, wy + wh + 2, ww + 20, 10, 5);
-    ctx.fillStyle = '#FFFDF8';
-    ctx.fill();
-    outline(ctx, 3);
-
-    // framed doodle on the right
-    const fw = Math.min(W * 0.22, 96);
-    const fh = fw * 1.2;
-    const fx = W * 0.88 - fw;
-    const fy = H * 0.1;
-    ctx.save();
-    ctx.translate(fx + fw / 2, fy + fh / 2);
-    ctx.rotate(0.05);
-    roundRect(ctx, -fw / 2, -fh / 2, fw, fh, 6);
-    ctx.fillStyle = '#FFC53D';
-    ctx.fill();
-    outline(ctx, 3);
-    roundRect(ctx, -fw / 2 + 8, -fh / 2 + 8, fw - 16, fh - 16, 3);
-    ctx.fillStyle = '#FFFDF8';
-    ctx.fill();
-    outline(ctx, 2);
-    heartPath(ctx, 0, 0, fw * 0.4);
-    ctx.fillStyle = '#FF5DA2';
-    ctx.fill();
-    outline(ctx, 2.5);
-    ctx.restore();
-
-    // baseboard + floor
-    ctx.fillStyle = '#F2B36A';
-    ctx.fillRect(0, floorY, W, H - floorY);
-    ctx.strokeStyle = '#DE9A52';
-    ctx.lineWidth = 2;
-    for (let i = 1; i < 6; i++) {
-      const y = floorY + (H - floorY) * (i / 6) ** 0.8;
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(W, y);
-      ctx.stroke();
-    }
-    ctx.fillStyle = '#FFFDF8';
-    ctx.fillRect(0, floorY - 8, W, 10);
-    ctx.beginPath();
-    ctx.moveTo(0, floorY + 2);
-    ctx.lineTo(W, floorY + 2);
-    outline(ctx, 3);
-
-    // rug
-    const ry = H * 0.8;
-    ctx.beginPath();
-    ctx.ellipse(W / 2, ry, W * 0.4, H * 0.07, 0, 0, TAU);
-    ctx.fillStyle = '#FF8FBF';
-    ctx.fill();
-    outline(ctx, 3);
-    ctx.beginPath();
-    ctx.ellipse(W / 2, ry, W * 0.3, H * 0.045, 0, 0, TAU);
-    ctx.setLineDash([6, 7]);
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = '#FFD0E4';
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // plant on the left
-    const px = W * 0.1;
-    const py = floorY + 22;
-    [[-0.5, 44], [0.1, 52], [0.6, 40]].forEach(([a, len]) => {
-      ctx.save();
-      ctx.translate(px, py - 30);
-      ctx.rotate(a);
-      ctx.beginPath();
-      ctx.ellipse(0, -len / 2, 10, len / 2, 0, 0, TAU);
-      ctx.fillStyle = '#5CC07A';
-      ctx.fill();
-      outline(ctx, 2.5);
-      ctx.beginPath();
-      ctx.moveTo(0, -4);
-      ctx.lineTo(0, -len + 8);
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#3E9A5C';
-      ctx.stroke();
-      ctx.restore();
-    });
-    ctx.beginPath();
-    ctx.moveTo(px - 22, py - 34);
-    ctx.lineTo(px + 22, py - 34);
-    ctx.lineTo(px + 16, py);
-    ctx.lineTo(px - 16, py);
-    ctx.closePath();
-    ctx.fillStyle = '#FF7A45';
-    ctx.fill();
-    outline(ctx, 3);
-
-    return { floorY, groundY: ry };
-  }
-
   /* ---------- Particles ---------- */
 
   class Particles {
@@ -728,10 +557,11 @@
       this.add({ kind: 'note', x, y, vx: (Math.random() - 0.5) * 30, vy: -50, life: 1.2, size: 18 });
     }
 
-    drops(W, H, n) {
+    // Water falling from y across x0..x1 (the shower).
+    drops(x0, x1, y, n) {
       for (let i = 0; i < n; i++) {
-        this.add({ kind: 'drop', x: Math.random() * W, y: -Math.random() * H * 0.3, vy: 520 + Math.random() * 200,
-          life: 1.2, size: 10 + Math.random() * 6 });
+        this.add({ kind: 'drop', x: x0 + Math.random() * (x1 - x0), y: y + Math.random() * 8, vy: 120 + Math.random() * 520,
+          g: 900, life: 0.9, size: 9 + Math.random() * 6 });
       }
     }
 
@@ -901,7 +731,7 @@
   PM.Particles = Particles;
   PM.art = {
     TAU, outline, roundRect, heartPath, starPath, sparklePath,
-    drawFood, drawHat, drawShades, drawPoop, drawNeedIcon, drawRoom,
+    drawFood, drawHat, drawShades, drawPoop, drawNeedIcon,
     foodIcon: (type, size) => iconURL((g, s) => drawFood(g, type, s / 2, s / 2, s * 0.86), size),
     hatIcon: (type, size) => iconURL((g, s) => {
       // [width, x, y] framing per hat so each one sits centered in its tile
