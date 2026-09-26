@@ -97,6 +97,8 @@ The camera and GPS only work over HTTPS, so the easiest way is GitHub Pages:
    - **iPhone (Safari):** Share button → **Add to Home Screen**.
    - **Android (Chrome):** ⋮ menu → **Add to Home screen** (or **Install app**).
 
+On Android you can also install it as a regular app instead: see [`../riftborn-android`](../riftborn-android) ([download the APK](../riftborn-android/dist/riftborn.apk)).
+
 It works offline after the first visit (the map falls back to plain ground).
 
 To try it on a computer: `cd riftborn && python3 -m http.server 8000` and open `http://localhost:8000`. The browser uses the computer's rough location. To "walk", open the developer tools, find **Sensors** (Chrome: ⋮ → More tools → Sensors) and change the location. In AR, drag to look around.
