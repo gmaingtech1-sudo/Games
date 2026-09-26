@@ -51,6 +51,11 @@
       walls: PM.rooms.defaultWalls.slice(),
       decor: {},
       goals: null,
+      login: { last: '', streak: 0, total: 0 },
+      owner: { name: '', bday: '', party: 0 },
+      party: null,
+      counts: { fed: 0, baths: 0, hearts: 0, poops: 0, duelsWon: 0, playdates: 0, parties: 0 },
+      stickers: [],
       settings: { sound: true, vibe: true },
     };
   }
@@ -82,6 +87,13 @@
     const goalsOk = s.goals && Array.isArray(s.goals.list) && s.goals.list.every((g) => GOALS[g.id]);
     if (!goalsOk) s.goals = null;
     s.bestBubbles = Number(raw.bestBubbles) || 0;
+    // Added in 1.3: login streak, owner profile, birthdays, stickers.
+    s.login = Object.assign({ last: '', streak: 0, total: 0 }, raw.login || {});
+    s.owner = Object.assign({ name: '', bday: '', party: 0 }, raw.owner || {});
+    s.counts = Object.assign(create({}).counts, raw.counts || {});
+    s.stickers = Array.isArray(raw.stickers) ? raw.stickers.filter((id) => STICKERS.some((k) => k.id === id)) : [];
+    if (!s.party || typeof s.party !== 'object' || s.party.day !== new Date().toDateString()) s.party = null;
+    if (s.party && !Array.isArray(s.party.blown)) s.party.blown = new Array(s.party.candles || 1).fill(false);
     s.hats = s.hats.filter((h) => PM.HATS[h]);
     if (s.hat && !PM.HATS[s.hat]) s.hat = null;
     return s;
@@ -223,6 +235,103 @@
     return { level: lv1, coins, grew, unlocks: unlocksBetween(lv0, lv1) };
   }
 
+  /* ---------- birthdays ---------- */
+
+  // The pet has a birthday every month on the day it hatched (a big one every
+  // year). The player can add their own birthday in settings; that party
+  // happens once a year, however often the date is changed.
+  function birthdayToday(s, now) {
+    now = now || new Date();
+    if (s.owner.bday && s.owner.party !== now.getFullYear()) {
+      const [m, d] = s.owner.bday.split('-').map(Number);
+      if (now.getMonth() + 1 === m && now.getDate() === d) return { kind: 'owner', months: 0, years: 0 };
+    }
+    if (!s.hatched) return null;
+    const born = new Date(s.born);
+    // same day of the month, or the last day of a shorter month
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    if (now.getDate() !== Math.min(born.getDate(), lastDay)) return null;
+    const months = (now.getFullYear() - born.getFullYear()) * 12 + (now.getMonth() - born.getMonth());
+    if (months < 1) return null;
+    return { kind: 'pet', months, years: months % 12 === 0 ? months / 12 : 0 };
+  }
+
+  // Sets up today's party the first time the game is opened on a birthday.
+  function startParty(s) {
+    const day = new Date().toDateString();
+    if (s.party && s.party.day === day) return null;
+    const b = birthdayToday(s);
+    if (!b) return null;
+    const candles = b.kind === 'pet' ? Math.max(1, Math.min(5, b.years || b.months)) : 3;
+    if (b.kind === 'owner') s.owner.party = new Date().getFullYear();
+    s.party = { day, kind: b.kind, months: b.months, years: b.years, candles, blown: new Array(candles).fill(false), opened: false, done: false };
+    return s.party;
+  }
+
+  /* ---------- stickers ---------- */
+
+  const STICKERS = [
+    { id: 'hatched', name: 'Hello, world', desc: 'Hatch your egg', icon: 'egg', test: (s) => s.hatched },
+    { id: 'fed10', name: 'Snack pal', desc: 'Feed 10 snacks', icon: 'apple', test: (s) => s.counts.fed >= 10 },
+    { id: 'fed50', name: 'Master chef', desc: 'Feed 50 snacks', icon: 'chef', test: (s) => s.counts.fed >= 50 },
+    { id: 'bath5', name: 'Squeaky clean', desc: 'Give 5 bubble baths', icon: 'bubbles', test: (s) => s.counts.baths >= 5 },
+    { id: 'pet100', name: 'Best friends', desc: 'Pet until 100 hearts float up', icon: 'heart', test: (s) => s.counts.hearts >= 100 },
+    { id: 'poop10', name: 'Clean-up crew', desc: 'Clean up 10 poops', icon: 'poop', test: (s) => s.counts.poops >= 10 },
+    { id: 'stars30', name: 'Star catcher', desc: 'Catch 30 stars in one game', icon: 'star', test: (s) => s.best >= 30 },
+    { id: 'pops80', name: 'Bubble boss', desc: 'Score 80 in Bubble Pop', icon: 'bubble', test: (s) => s.bestBubbles >= 80 },
+    { id: 'kid', name: 'Growing up', desc: 'Reach level 5', icon: 'lv5', test: (s) => levelOf(s.xp) >= 5 },
+    { id: 'adult', name: 'All grown up', desc: 'Reach level 12', icon: 'lv12', test: (s) => levelOf(s.xp) >= 12 },
+    { id: 'streak7', name: 'Regular', desc: 'Log in 7 days in a row', icon: 'calendar', test: (s) => s.login.streak >= 7 },
+    { id: 'party', name: 'Party animal', desc: 'Blow out the birthday candles', icon: 'cake', test: (s) => s.counts.parties >= 1 },
+    { id: 'hats5', name: 'Hat collector', desc: 'Own 5 hats', icon: 'party', test: (s) => s.hats.length >= 5 },
+    { id: 'decor', name: 'Home designer', desc: 'Buy 3 wallpapers', icon: 'wall', test: (s) => s.walls.length >= PM.rooms.defaultWalls.length + 3 },
+    { id: 'friend', name: 'Playdate', desc: 'Play with a friend online', icon: 'friends', test: (s) => s.counts.playdates >= 1 },
+    { id: 'duel', name: 'Champion', desc: 'Win a Bubble Pop duel', icon: 'crown', test: (s) => s.counts.duelsWon >= 1 },
+  ];
+  const STICKER_COINS = 10;
+
+  // Awards any stickers that are now earned; returns the new ones.
+  function checkStickers(s) {
+    const got = [];
+    STICKERS.forEach((k) => {
+      if (s.stickers.includes(k.id) || !k.test(s)) return;
+      s.stickers.push(k.id);
+      s.coins += STICKER_COINS;
+      got.push(k);
+    });
+    return got;
+  }
+
+  /* ---------- daily login streak ---------- */
+
+  const LOGIN_REWARDS = [
+    { coins: 10 },
+    { coins: 15, snack: 'apple', n: 2 },
+    { coins: 20 },
+    { coins: 20, snack: 'cupcake', n: 1 },
+    { coins: 30 },
+    { coins: 30, snack: 'pizza', n: 2 },
+    { coins: 60, snack: 'icecream', n: 2 },
+  ];
+
+  // Which streak day (1-7) today's reward is, or 0 if it was already collected.
+  function loginDay(s) {
+    const today = new Date().toDateString();
+    if (s.login.last === today) return 0;
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    return s.login.last === yesterday ? (s.login.streak % 7) + 1 : 1;
+  }
+
+  function collectLogin(s) {
+    const day = loginDay(s);
+    if (!day) return null;
+    const r = LOGIN_REWARDS[day - 1];
+    s.coins += r.coins;
+    if (r.snack) s.inv[r.snack] = (s.inv[r.snack] || 0) + r.n;
+    s.login = { last: new Date().toDateString(), streak: day, total: (s.login.total || 0) + 1 };
+    return Object.assign({ day }, r);
+  }
+
   /* ---------- daily goals ---------- */
 
   const GOALS = {
@@ -334,6 +443,8 @@
     STAT_KEYS, STAGES, create, revive, stage, stageIndex, ageDays, simulate, addXP, mood, need, clamp,
     xpForLevel, levelOf, levelInfo, isUnlocked,
     GOAL_REWARD, GOAL_BONUS, ensureGoals, track, goalText, goalsReady, claimGoal,
+    LOGIN_REWARDS, loginDay, collectLogin,
+    birthdayToday, startParty, STICKERS, STICKER_COINS, checkStickers,
 
     feed(s, type) {
       const f = PM.FOODS[type];
@@ -455,6 +566,7 @@
       this.foam = [];
       this.foamFade = 1;
       this.thought = null;
+      this.speech = null;
       this.egg = 0;
       this.eggV = 0;
       this.scale = null;
@@ -480,6 +592,13 @@
     }
 
     shakeHead(d) { this.shake = d || 0.5; }
+
+    // A speech bubble over the pet's head for a moment.
+    say(text, dur) {
+      this.speech = { text, born: this.t, until: this.t + (dur || 2.2) };
+    }
+
+    speaking() { return !!this.speech && this.t < this.speech.until; }
 
     wobbleEgg() { this.eggV += (Math.random() < 0.5 ? -1 : 1) * 7; }
 
@@ -1048,6 +1167,58 @@
         default:
           break;
       }
+    }
+
+    drawSpeech(ctx, W) {
+      if (!this.speaking()) return;
+      const sp = this.speech;
+      const g = this.geo;
+      const age = this.t - sp.born;
+      const left = sp.until - this.t;
+      const k = Math.min(1, age / 0.14) * Math.min(1, left / 0.18);
+      if (k <= 0) return;
+      ctx.save();
+      ctx.font = `800 14px ${PM.FONT_BODY}`;
+      const maxW = Math.min(W * 0.62, 210);
+      // wrap into at most two lines
+      const words = sp.text.split(' ');
+      const lines = [''];
+      words.forEach((wd) => {
+        const cur = lines[lines.length - 1];
+        const next = cur ? `${cur} ${wd}` : wd;
+        if (ctx.measureText(next).width > maxW && cur && lines.length < 2) lines.push(wd);
+        else lines[lines.length - 1] = next;
+      });
+      const tw = Math.max(...lines.map((l) => ctx.measureText(l).width));
+      const bw = tw + 26;
+      const bh = lines.length * 18 + 14;
+      const tipX = g.x + g.w * 0.12;
+      const tipY = g.top - 4;
+      const bx = Math.max(8, Math.min(W - 8 - bw, tipX - bw * 0.35));
+      const by = Math.max(6, tipY - 12 - bh);
+      ctx.translate(tipX, tipY);
+      ctx.scale(k, k);
+      ctx.translate(-tipX, -tipY);
+      ctx.beginPath();
+      const r = 14;
+      ctx.moveTo(bx + r, by);
+      ctx.arcTo(bx + bw, by, bx + bw, by + bh, r);
+      ctx.arcTo(bx + bw, by + bh, bx, by + bh, r);
+      const tx = Math.max(bx + 16, Math.min(bx + bw - 16, tipX));
+      ctx.lineTo(tx + 8, by + bh);
+      ctx.lineTo(tipX, Math.max(by + bh + 4, tipY));
+      ctx.lineTo(tx - 6, by + bh);
+      ctx.arcTo(bx, by + bh, bx, by, r);
+      ctx.arcTo(bx, by, bx + bw, by, r);
+      ctx.closePath();
+      ctx.fillStyle = '#FFFDF8';
+      ctx.fill();
+      outline(ctx, 3);
+      ctx.fillStyle = INK;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      lines.forEach((l, i) => ctx.fillText(l, bx + bw / 2, by + 7 + 9 + i * 18));
+      ctx.restore();
     }
 
     drawThought(ctx, need, t) {

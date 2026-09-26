@@ -2,7 +2,7 @@
 
 The Pocket Mochi virtual pet as a regular Android app: download the APK, install it, and it gets its own icon on your home screen. No Expo Go, no app store.
 
-**Download:** [`dist/pocket-mochi.apk`](dist/pocket-mochi.apk) (about 180 KB)
+**Download:** [`dist/pocket-mochi.apk`](dist/pocket-mochi.apk) (about 250 KB, version 1.3.0)
 
 ## Installing it
 
@@ -19,16 +19,16 @@ Works on Android 7.0 and newer, as long as Android System WebView is up to date 
 
 It's the same game as the web version in [`../pocket-mochi`](../pocket-mochi), packaged into a small native app:
 
-- The game files are inside the APK. The app serves them to its WebView from a private `https://appassets.androidplatform.net/` address, so the game works offline. Only the fonts come from Google Fonts, and it falls back to the phone's font without a connection.
+- The game files are inside the APK. The app serves them to its WebView from a private `https://appassets.androidplatform.net/` address, so the game works offline. Only the fonts come from Google Fonts (it falls back to the phone's font without a connection), and online playdates with a friend need the internet.
 - Your pet is saved in the app's own storage.
 - Vibration uses the phone's tuned click and tick effects on Android 10+.
-- The back button closes the shop, snack tray, washing or the mini-game before it leaves the app.
+- The back button closes the shop, snack tray, washing, the mini-game or a duel invite before it leaves the app, and collects the daily reward when its card is open.
 - It saves when you switch away and catches up on your pet's needs when you come back.
 
 | File | What it does |
 | --- | --- |
 | `src/app/pocketmochi/game/MainActivity.java` | The whole native side: WebView setup, serving the game files, saving, vibration, back button, pause/resume |
-| `AndroidManifest.xml` | App name, icon, permissions (internet for fonts, vibration), portrait screen |
+| `AndroidManifest.xml` | App name, icon, permissions (internet for fonts and playdates, vibration), portrait screen |
 | `res/` | Launcher icons (including the Android 8+ adaptive icon and the Android 13+ themed icon) and the dark theme |
 | `build.sh` | Builds `dist/pocket-mochi.apk` |
 | `signing.keystore` | The key the APK is signed with |

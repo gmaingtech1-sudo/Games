@@ -72,6 +72,21 @@
     notes.forEach((f, i) => tone(Object.assign({ f, dur: step * 1.6, delay: i * step }, o)));
   }
 
+  // Plays [frequency, beats] pairs one after another.
+  function tune(notes, beat, o) {
+    let at = 0;
+    notes.forEach(([f, b]) => {
+      tone(Object.assign({ f, dur: Math.max(0.12, b * beat * 0.95), delay: at }, o));
+      at += b * beat;
+    });
+  }
+
+  const G4 = 392;
+  const A4 = 440;
+  const B4 = 494;
+  const C5 = 523;
+  const D5 = 587;
+
   const sfx = {
     click: () => tone({ f: 520, dur: 0.04, vol: 0.12, type: 'triangle' }),
     tap: () => tone({ f: 620, f2: 900, dur: 0.09, vol: 0.18, type: 'triangle' }),
@@ -115,6 +130,17 @@
     swoosh: () => noise({ dur: 0.22, freq: 900, q: 0.8, vol: 0.18 }),
     boing: () => tone({ f: 220, f2: 560, dur: 0.16, vol: 0.16, type: 'triangle' }),
     thump: () => tone({ f: 150, f2: 80, dur: 0.09, vol: 0.18 }),
+    birthday: () => tune([[G4, 0.75], [G4, 0.25], [A4, 1], [G4, 1], [C5, 1], [B4, 2],
+      [G4, 0.75], [G4, 0.25], [A4, 1], [G4, 1], [D5, 1], [C5, 2]], 0.26, { vol: 0.13, type: 'triangle' }),
+    puff: () => noise({ dur: 0.25, freq: 700, q: 0.5, vol: 0.3, filter: 'lowpass' }),
+    pop: () => {
+      noise({ dur: 0.08, freq: 1800, q: 1.5, vol: 0.35 });
+      tone({ f: 600, f2: 1200, dur: 0.1, vol: 0.12, type: 'triangle' });
+    },
+    ding: () => {
+      tone({ f: 1175, dur: 0.18, vol: 0.12 });
+      tone({ f: 1568, dur: 0.3, delay: 0.1, vol: 0.1 });
+    },
     squeak: () => {
       tone({ f: 1400, f2: 2100, dur: 0.07, vol: 0.12, type: 'triangle' });
       tone({ f: 2000, f2: 1300, dur: 0.09, delay: 0.07, vol: 0.12, type: 'triangle' });

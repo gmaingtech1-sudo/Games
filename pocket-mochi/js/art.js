@@ -32,6 +32,8 @@
     cupcake:  { name: 'Cupcake',   price: 10, food: 18, fun: 22, clean: -6, xp: 6, level: 1 },
     pizza:    { name: 'Pizza',     price: 12, food: 45, fun: 10, clean: -4, xp: 7, level: 4 },
     icecream: { name: 'Ice cream', price: 9,  food: 14, fun: 28, clean: -6, xp: 6, level: 8 },
+    // special: only from birthday parties, never sold
+    cake:     { name: 'Birthday cake', price: 0, food: 30, fun: 30, clean: -4, xp: 8, level: 1, special: true },
   };
 
   const HATS = {
@@ -44,6 +46,7 @@
     chef:       { name: 'Chef hat',   price: 45, level: 6 },
     wizard:     { name: 'Wizard hat', price: 70, level: 10 },
     headphones: { name: 'Headphones', price: 80, level: 14 },
+    balloon:    { name: 'Birthday balloon', price: 0, level: 1, special: true },
   };
 
   function outline(ctx, w) {
@@ -314,6 +317,40 @@
     outline(ctx, lw * 0.8);
   };
 
+  foodDraw.cake = function (ctx, s) {
+    const lw = s * 0.06;
+    roundRect(ctx, -s * 0.4, -s * 0.08, s * 0.8, s * 0.44, s * 0.08);
+    ctx.fillStyle = '#FFB3CF';
+    ctx.fill();
+    outline(ctx, lw);
+    ctx.fillStyle = '#FFE27A';
+    ctx.fillRect(-s * 0.4 + lw / 2, s * 0.12, s * 0.8 - lw, s * 0.07);
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.4, -s * 0.02);
+    for (let i = 0; i <= 8; i++) {
+      const x = -s * 0.4 + (i / 8) * s * 0.8;
+      ctx.lineTo(x, -s * 0.06 + (i % 2 ? s * 0.08 : 0));
+    }
+    ctx.lineTo(s * 0.4, -s * 0.12);
+    ctx.lineTo(-s * 0.4, -s * 0.12);
+    ctx.closePath();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+    roundRect(ctx, -s * 0.4, -s * 0.08, s * 0.8, s * 0.44, s * 0.08);
+    outline(ctx, lw);
+    roundRect(ctx, -s * 0.035, -s * 0.36, s * 0.07, s * 0.26, s * 0.02);
+    ctx.fillStyle = '#6BC3F0';
+    ctx.fill();
+    outline(ctx, lw * 0.7);
+    ctx.beginPath();
+    ctx.moveTo(0, -s * 0.5);
+    ctx.quadraticCurveTo(s * 0.07, -s * 0.42, 0, -s * 0.37);
+    ctx.quadraticCurveTo(-s * 0.07, -s * 0.42, 0, -s * 0.5);
+    ctx.fillStyle = '#FFC53D';
+    ctx.fill();
+    outline(ctx, lw * 0.6);
+  };
+
   function drawFood(ctx, type, x, y, s, rot) {
     const fn = foodDraw[type];
     if (!fn) return;
@@ -535,6 +572,35 @@
     });
   };
 
+  // A balloon on a string, tied to the side of the head.
+  hatDraw.balloon = function (ctx, w) {
+    const lw = w * 0.025;
+    const bx = w * 0.36;
+    const by = -w * 0.62;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.22, w * 0.06);
+    ctx.quadraticCurveTo(w * 0.42, -w * 0.18, bx, by + w * 0.21);
+    ctx.lineWidth = lw;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(bx - w * 0.03, by + w * 0.24);
+    ctx.lineTo(bx + w * 0.03, by + w * 0.24);
+    ctx.lineTo(bx, by + w * 0.19);
+    ctx.closePath();
+    ctx.fillStyle = '#E0468A';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(bx, by, w * 0.17, w * 0.21, 0, 0, TAU);
+    ctx.fillStyle = '#FF5DA2';
+    ctx.fill();
+    outline(ctx, lw);
+    ctx.beginPath();
+    ctx.ellipse(bx - w * 0.06, by - w * 0.07, w * 0.035, w * 0.06, 0.5, 0, TAU);
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fill();
+  };
+
   function drawHat(ctx, type, w) {
     if (hatDraw[type]) hatDraw[type](ctx, w);
   }
@@ -726,6 +792,14 @@
       }
     }
 
+    // A little grey curl of smoke from a blown-out candle.
+    smoke(x, y) {
+      for (let i = 0; i < 4; i++) {
+        this.add({ kind: 'smoke', x: x + (Math.random() - 0.5) * 4, y: y - i * 5, vx: (Math.random() - 0.5) * 16,
+          vy: -34 - i * 8, life: 1.1 + i * 0.1, size: 4 + i * 1.5, phase: Math.random() * TAU });
+      }
+    }
+
     shell(x, y, n) {
       for (let i = 0; i < n; i++) {
         const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.6;
@@ -838,6 +912,12 @@
             ctx.fillStyle = '#FFFFFF';
             ctx.fill();
             break;
+          case 'smoke':
+            ctx.beginPath();
+            ctx.arc(Math.sin(p.phase + p.age * 4) * 4, 0, p.size * (1 + k), 0, TAU);
+            ctx.fillStyle = 'rgba(150,150,170,0.55)';
+            ctx.fill();
+            break;
           case 'shell':
             ctx.rotate(p.rot);
             ctx.beginPath();
@@ -871,6 +951,144 @@
     return c.toDataURL();
   }
 
+  /* ---------- Sticker badges ---------- */
+
+  const STICKER_COLORS = {
+    egg: '#9FE7CA', apple: '#FFB3CF', chef: '#A3D8FF', bubbles: '#A3D8FF', heart: '#FFD0E4',
+    poop: '#FFE27A', star: '#CDB9FF', bubble: '#9FE7CA', lv5: '#FFB347', lv12: '#FF8FBF',
+    calendar: '#9FE7CA', cake: '#FFE27A', party: '#CDB9FF', wall: '#FFB3CF', friends: '#FFE27A', crown: '#FF8FBF',
+  };
+
+  function drawStickerSymbol(g, icon, c, s) {
+    g.save();
+    g.translate(c, c);
+    switch (icon) {
+      case 'egg':
+        g.beginPath();
+        g.ellipse(0, s * 0.02, s * 0.2, s * 0.26, 0, 0, TAU);
+        g.fillStyle = '#FFF8EE';
+        g.fill();
+        outline(g, 2.5);
+        g.fillStyle = '#FF8FBF';
+        [[-0.07, -0.05], [0.08, 0.08]].forEach(([x, y]) => { g.beginPath(); g.arc(x * s, y * s, s * 0.045, 0, TAU); g.fill(); });
+        break;
+      case 'apple': foodDraw.apple(g, s * 0.62); break;
+      case 'cake': foodDraw.cake(g, s * 0.6); break;
+      case 'chef': g.translate(0, s * 0.14); hatDraw.chef(g, s * 0.9); break;
+      case 'party': g.translate(0, s * 0.2); hatDraw.party(g, s * 0.8); break;
+      case 'crown': g.translate(0, s * 0.12); hatDraw.crown(g, s * 1.2); break;
+      case 'poop': drawPoop(g, 0, s * 0.22, s * 0.55); break;
+      case 'heart':
+        heartPath(g, 0, 0, s * 0.46);
+        g.fillStyle = '#FF5DA2';
+        g.fill();
+        outline(g, 2.5);
+        break;
+      case 'star':
+        starPath(g, 0, 0, s * 0.26);
+        g.fillStyle = '#FFC53D';
+        g.fill();
+        outline(g, 2.5);
+        break;
+      case 'bubble':
+      case 'bubbles':
+        (icon === 'bubble' ? [[0, 0, 0.22]] : [[-0.08, 0.06, 0.15], [0.12, -0.08, 0.1], [0.13, 0.13, 0.06]]).forEach(([x, y, r]) => {
+          g.beginPath();
+          g.arc(x * s, y * s, r * s, 0, TAU);
+          g.fillStyle = 'rgba(235,248,255,0.9)';
+          g.fill();
+          g.lineWidth = 2.5;
+          g.strokeStyle = '#4FA8DC';
+          g.stroke();
+          g.beginPath();
+          g.arc((x - r * 0.35) * s, (y - r * 0.35) * s, r * s * 0.25, 0, TAU);
+          g.fillStyle = '#FFFFFF';
+          g.fill();
+        });
+        break;
+      case 'lv5':
+      case 'lv12':
+        g.fillStyle = INK;
+        g.font = `${s * 0.3}px ${PM.FONT_DISPLAY}`;
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText(icon === 'lv5' ? '5' : '12', 0, s * 0.03);
+        break;
+      case 'calendar':
+        roundRect(g, -s * 0.2, -s * 0.18, s * 0.4, s * 0.38, 5);
+        g.fillStyle = '#FFFFFF';
+        g.fill();
+        outline(g, 2.5);
+        g.fillStyle = '#F0433A';
+        g.fillRect(-s * 0.2 + 1.5, -s * 0.18 + 1.5, s * 0.4 - 3, s * 0.1);
+        g.fillStyle = INK;
+        g.font = `${s * 0.2}px ${PM.FONT_DISPLAY}`;
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText('7', 0, s * 0.07);
+        break;
+      case 'wall':
+        roundRect(g, -s * 0.2, -s * 0.2, s * 0.4, s * 0.4, 5);
+        g.save();
+        g.clip();
+        for (let r = 0; r < 4; r++) {
+          for (let k = 0; k < 4; k++) {
+            g.fillStyle = (r + k) % 2 ? '#FFE5D6' : '#FF8FBF';
+            g.fillRect(-s * 0.2 + k * s * 0.1, -s * 0.2 + r * s * 0.1, s * 0.1 + 0.5, s * 0.1 + 0.5);
+          }
+        }
+        g.restore();
+        roundRect(g, -s * 0.2, -s * 0.2, s * 0.4, s * 0.4, 5);
+        outline(g, 2.5);
+        break;
+      case 'friends':
+        [[-0.1, '#FFB3CF'], [0.11, '#A3D8FF']].forEach(([x, col]) => {
+          g.beginPath();
+          g.ellipse(x * s, s * 0.04, s * 0.13, s * 0.12, 0, 0, TAU);
+          g.fillStyle = col;
+          g.fill();
+          outline(g, 2.5);
+          g.fillStyle = INK;
+          [-0.04, 0.04].forEach((e) => { g.beginPath(); g.arc((x + e) * s, s * 0.02, s * 0.015, 0, TAU); g.fill(); });
+        });
+        break;
+      default:
+        break;
+    }
+    g.restore();
+  }
+
+  // A round rosette badge. Locked stickers are grey with a question mark.
+  function stickerIcon(icon, size, locked) {
+    return iconURL((g, s) => {
+      const c = s / 2;
+      g.beginPath();
+      for (let i = 0; i <= 32; i++) {
+        const a = (i / 32) * TAU;
+        const r = s * (i % 2 ? 0.43 : 0.47);
+        g.lineTo(c + Math.cos(a) * r, c + Math.sin(a) * r);
+      }
+      g.closePath();
+      g.fillStyle = locked ? '#D5D3E3' : (STICKER_COLORS[icon] || '#FFE27A');
+      g.fill();
+      outline(g, 2.5);
+      g.beginPath();
+      g.arc(c, c, s * 0.34, 0, TAU);
+      g.fillStyle = locked ? '#EDEBF5' : '#FFFDF8';
+      g.fill();
+      outline(g, 2);
+      if (locked) {
+        g.fillStyle = '#A7ABDA';
+        g.font = `${s * 0.34}px ${PM.FONT_DISPLAY}`;
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText('?', c, c + s * 0.02);
+      } else {
+        drawStickerSymbol(g, icon, c, s);
+      }
+    }, size);
+  }
+
   PM.INK = INK;
   PM.FONT_DISPLAY = '"Mochiy Pop One", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif';
   PM.FONT_BODY = '"M PLUS Rounded 1c", "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif';
@@ -883,11 +1101,13 @@
     TAU, outline, roundRect, heartPath, starPath, sparklePath,
     drawFood, drawHat, drawShades, drawPoop, drawNeedIcon,
     foodIcon: (type, size) => iconURL((g, s) => drawFood(g, type, s / 2, s / 2, s * 0.86), size),
+    stickerIcon,
     hatIcon: (type, size) => iconURL((g, s) => {
       // [width, x, y] framing per hat so each one sits centered in its tile
       const frame = {
         party: [1.5, 0.5, 0.78], crown: [2.0, 0.5, 0.69], bow: [1.8, 0.21, 0.46],
         chef: [1.8, 0.5, 0.74], wizard: [1.45, 0.47, 0.8], headphones: [0.9, 0.5, 0.26],
+        balloon: [1.1, 0.13, 0.93],
         flower: [2.2, 0.81, 0.76], beanie: [1.4, 0.5, 0.62], shades: [1.3, 0.5, 0.5],
       }[type] || [1.5, 0.5, 0.6];
       g.translate(s * frame[1], s * frame[2]);

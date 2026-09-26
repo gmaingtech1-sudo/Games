@@ -1069,6 +1069,306 @@
     ctx.fill();
   }
 
+  /* ---------- birthday party (living room) ---------- */
+
+  const PARTY_COLORS = ['#FF5DA2', '#FFC53D', '#5DB4F0', '#36C2A2', '#B38BFF'];
+
+  // Where the party things stand, worked out from the living room layout.
+  function partyLayout(L) {
+    const { W, H, floorY } = L;
+    const tw = Math.min(W * 0.26, 116);
+    const th = Math.min(H * 0.13, 62);
+    const foot = floorY + (L.groundY - floorY) * 0.45;
+    const table = { x: W * 0.845 - tw / 2, y: foot - th, w: tw, h: th };
+    const cw = tw * 0.72;
+    const ch = cw * 0.5;
+    const cake = { x: table.x + (tw - cw) / 2, y: table.y - ch + 4, w: cw, h: ch };
+    const ps = Math.min(W * 0.14, 58);
+    const present = { x: W * 0.17, y: floorY + (L.groundY - floorY) * 0.62, s: ps };
+    return { table, cake, present };
+  }
+
+  function candleSpots(cake, n) {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      out.push({ x: cake.x + cake.w * ((i + 1) / (n + 1)), y: cake.y + 2 });
+    }
+    return out;
+  }
+
+  function bunting(ctx, L, t) {
+    const { W, H } = L;
+    const x0 = W * 0.03;
+    const x1 = W * 0.97;
+    const y0 = H * 0.035;
+    const sag = H * 0.05;
+    const text = 'HAPPY BIRTHDAY';
+    const n = text.length;
+    const fw = (x1 - x0) / n;
+    const lineY = (u) => y0 + Math.sin(u * Math.PI) * sag;
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i++) {
+      const u = i / 40;
+      const x = x0 + (x1 - x0) * u;
+      if (i) ctx.lineTo(x, lineY(u)); else ctx.moveTo(x, lineY(u));
+    }
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    const letters = fw >= 17;
+    for (let i = 0; i < n; i++) {
+      if (text[i] === ' ') continue;
+      const u = (i + 0.5) / n;
+      const cx = x0 + (x1 - x0) * u;
+      const cy = lineY(u);
+      const sway = Math.sin(t * 1.6 + i * 0.8) * 0.06;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(sway);
+      const w = fw * 0.9;
+      const h = w * 1.25;
+      ctx.beginPath();
+      ctx.moveTo(-w / 2, 0);
+      ctx.lineTo(w / 2, 0);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      ctx.fillStyle = PARTY_COLORS[i % PARTY_COLORS.length];
+      ctx.fill();
+      outline(ctx, 2);
+      if (letters) {
+        ctx.fillStyle = INK;
+        ctx.font = `800 ${Math.round(w * 0.58)}px ${PM.FONT_BODY}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text[i], 0, h * 0.33);
+      }
+      ctx.restore();
+    }
+  }
+
+  function balloon(ctx, x, y, r, color, anchorX, anchorY) {
+    ctx.beginPath();
+    ctx.moveTo(x, y + r * 1.2);
+    ctx.quadraticCurveTo(x + r * 0.5, (y + anchorY) / 2, anchorX, anchorY);
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(x, y, r, r * 1.15, 0, 0, TAU);
+    ctx.fillStyle = color;
+    ctx.fill();
+    outline(ctx, 2.5);
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.18, y + r * 1.3);
+    ctx.lineTo(x + r * 0.18, y + r * 1.3);
+    ctx.lineTo(x, y + r * 1.1);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    outline(ctx, 2);
+    ctx.beginPath();
+    ctx.ellipse(x - r * 0.35, y - r * 0.4, r * 0.18, r * 0.3, -0.5, 0, TAU);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fill();
+  }
+
+  function drawCandle(ctx, x, y, h, color, lit, t, i) {
+    roundRect(ctx, x - 3.5, y - h, 7, h, 2);
+    ctx.fillStyle = PAPER;
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    for (let k = -1; k < 4; k++) {
+      ctx.beginPath();
+      ctx.moveTo(x - 5, y - h + k * 7);
+      ctx.lineTo(x + 5, y - h + k * 7 + 5);
+      ctx.stroke();
+    }
+    ctx.restore();
+    outline(ctx, 2);
+    if (!lit) return;
+    const f = 1 + Math.sin(t * 18 + i * 2) * 0.12;
+    ctx.save();
+    ctx.translate(x, y - h - 2);
+    ctx.scale(1, f);
+    ctx.beginPath();
+    ctx.moveTo(0, -12);
+    ctx.quadraticCurveTo(6, -3, 0, 0);
+    ctx.quadraticCurveTo(-6, -3, 0, -12);
+    ctx.fillStyle = '#FFC53D';
+    ctx.fill();
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = '#E0701A';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(0, -3.5, 1.8, 3, 0, 0, TAU);
+    ctx.fillStyle = '#FFF6D8';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPresent(ctx, p, opened, t) {
+    const s = p.s;
+    const x = p.x;
+    const y = p.y;
+    const wob = opened ? 0 : Math.sin(t * 3) * 0.04;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(wob);
+    // box
+    roundRect(ctx, -s / 2, -s * 0.72, s, s * 0.72, 5);
+    ctx.fillStyle = '#5DB4F0';
+    ctx.fill();
+    outline(ctx, 3);
+    ctx.fillStyle = '#FF5DA2';
+    ctx.fillRect(-s * 0.09, -s * 0.72 + 1.5, s * 0.18, s * 0.72 - 3);
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-s * 0.09, -s * 0.72 + 1.5, s * 0.18, s * 0.72 - 3);
+    if (opened) {
+      // open box: the dark inside, and the lid leaning against it
+      ctx.beginPath();
+      ctx.ellipse(0, -s * 0.72, s * 0.46, s * 0.1, 0, 0, TAU);
+      ctx.fillStyle = '#2E6A99';
+      ctx.fill();
+      outline(ctx, 2.5);
+      ctx.save();
+      ctx.translate(s * 0.62, -s * 0.3);
+      ctx.rotate(1.25);
+      roundRect(ctx, -s * 0.56, -s * 0.12, s * 1.12, s * 0.24, 4);
+      ctx.fillStyle = '#7CC6F7';
+      ctx.fill();
+      outline(ctx, 2.5);
+      ctx.restore();
+    } else {
+      roundRect(ctx, -s * 0.56, -s * 0.9, s * 1.12, s * 0.22, 4);
+      ctx.fillStyle = '#7CC6F7';
+      ctx.fill();
+      outline(ctx, 3);
+      ctx.fillStyle = '#FF5DA2';
+      ctx.fillRect(-s * 0.09, -s * 0.9 + 1.5, s * 0.18, s * 0.22 - 3);
+      // bow
+      [-1, 1].forEach((d) => {
+        ctx.beginPath();
+        ctx.ellipse(d * s * 0.17, -s * 0.97, s * 0.17, s * 0.1, d * 0.5, 0, TAU);
+        ctx.fillStyle = '#FF5DA2';
+        ctx.fill();
+        outline(ctx, 2.5);
+      });
+      ctx.beginPath();
+      ctx.arc(0, -s * 0.94, s * 0.07, 0, TAU);
+      ctx.fillStyle = '#FF8FBF';
+      ctx.fill();
+      outline(ctx, 2.5);
+    }
+    ctx.restore();
+  }
+
+  // Drawn behind the pet. party: { candles, blown[], opened, kind }
+  function drawParty(ctx, L, party, t) {
+    const P = partyLayout(L);
+    bunting(ctx, L, t);
+
+    // balloons tied to the table
+    const tb = P.table;
+    const ax = tb.x + tb.w - 6;
+    const ay = tb.y + 4;
+    const r = Math.min(L.W * 0.055, 24);
+    const bob = (k) => Math.sin(t * 1.3 + k) * 4;
+    balloon(ctx, ax - r * 1.3, L.H * 0.3 + bob(0), r, '#FFC53D', ax, ay);
+    balloon(ctx, ax + r * 0.3, L.H * 0.24 + bob(1.7), r * 1.05, '#FF5DA2', ax, ay);
+    balloon(ctx, ax - r * 0.2, L.H * 0.36 + bob(3.1), r * 0.95, '#36C2A2', ax, ay);
+
+    // table
+    ctx.fillStyle = '#B8753E';
+    [tb.x + 8, tb.x + tb.w - 16].forEach((lx) => {
+      roundRect(ctx, lx, tb.y + 10, 8, tb.h - 10, 3);
+      ctx.fill();
+      outline(ctx, 2.5);
+    });
+    roundRect(ctx, tb.x - 4, tb.y, tb.w + 8, 14, 5);
+    ctx.fillStyle = '#FFFDF8';
+    ctx.fill();
+    outline(ctx, 3);
+    ctx.fillStyle = '#FF8FBF';
+    for (let i = 0; i < 6; i++) {
+      const sx = tb.x - 4 + ((tb.w + 8) / 6) * i;
+      ctx.beginPath();
+      ctx.moveTo(sx, tb.y + 14);
+      ctx.lineTo(sx + (tb.w + 8) / 12, tb.y + 22);
+      ctx.lineTo(sx + (tb.w + 8) / 6, tb.y + 14);
+      ctx.closePath();
+      ctx.fill();
+      outline(ctx, 1.8);
+    }
+
+    // cake
+    const c = P.cake;
+    ctx.beginPath();
+    ctx.ellipse(c.x + c.w / 2, c.y + c.h, c.w * 0.62, 6, 0, 0, TAU);
+    ctx.fillStyle = PAPER;
+    ctx.fill();
+    outline(ctx, 2.5);
+    roundRect(ctx, c.x, c.y, c.w, c.h, 8);
+    ctx.fillStyle = '#FFE6B8';
+    ctx.fill();
+    outline(ctx, 3);
+    ctx.beginPath();
+    ctx.moveTo(c.x + 1, c.y + c.h * 0.35);
+    for (let i = 0; i <= 6; i++) {
+      const dx = c.x + (c.w / 6) * i;
+      ctx.quadraticCurveTo(dx - c.w / 12, c.y + c.h * 0.62, dx, c.y + c.h * 0.35);
+    }
+    ctx.lineTo(c.x + c.w - 1, c.y + 6);
+    ctx.quadraticCurveTo(c.x + c.w - 1, c.y + 1, c.x + c.w - 8, c.y + 1);
+    ctx.lineTo(c.x + 8, c.y + 1);
+    ctx.quadraticCurveTo(c.x + 1, c.y + 1, c.x + 1, c.y + 6);
+    ctx.closePath();
+    ctx.fillStyle = '#FF8FBF';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    ['#FFC53D', '#5DB4F0', '#FFFDF8', '#36C2A2'].forEach((col, i) => {
+      ctx.fillStyle = col;
+      ctx.fillRect(c.x + c.w * (0.2 + i * 0.2), c.y + c.h * (i % 2 ? 0.72 : 0.82), 5, 2.5);
+    });
+    const spots = candleSpots(c, party.candles);
+    const ch = Math.min(22, c.h * 0.7);
+    spots.forEach((sp, i) => drawCandle(ctx, sp.x, sp.y, ch, PARTY_COLORS[i % PARTY_COLORS.length], !party.blown[i], t, i));
+
+    drawPresent(ctx, P.present, party.opened, t);
+  }
+
+  // What was tapped at the party: { kind: 'candle', i } | { kind: 'present' } | null
+  function partyHit(L, party, x, y) {
+    const P = partyLayout(L);
+    const c = P.cake;
+    if (x >= c.x - 10 && x <= c.x + c.w + 10 && y >= c.y - 40 && y <= c.y + c.h + 8) {
+      const spots = candleSpots(c, party.candles);
+      let best = -1;
+      let bd = Infinity;
+      spots.forEach((sp, i) => {
+        if (party.blown[i]) return;
+        const d = Math.abs(sp.x - x);
+        if (d < bd) { bd = d; best = i; }
+      });
+      return { kind: 'cake', i: best };
+    }
+    const p = P.present;
+    if (Math.abs(x - p.x) < p.s * 0.75 && y > p.y - p.s * 1.15 && y < p.y + 8) return { kind: 'present' };
+    return null;
+  }
+
+  // Where each candle flame is, for smoke puffs.
+  function partyCandles(L, party) {
+    const P = partyLayout(L);
+    const ch = Math.min(22, P.cake.h * 0.7);
+    return candleSpots(P.cake, party.candles).map((sp) => ({ x: sp.x, y: sp.y - ch - 8 }));
+  }
+
   /* ---------- public ---------- */
 
   const DRAW = { living, kitchen, bathroom, bedroom, playroom };
@@ -1123,5 +1423,9 @@
     },
 
     drawBall,
+    drawParty,
+    partyHit,
+    partyCandles,
+    partyLayout,
   };
 })(window.PM = window.PM || {});

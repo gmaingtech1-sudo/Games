@@ -21,47 +21,58 @@
 <body>
 <div id="app">
   <header class="topbar">
-    <div class="who">
-      <div id="pet-name" class="pet-name">Mochi</div>
-      <div class="pet-sub">
-        <span id="pet-level" class="lv">Lv 1</span>
-        <span id="pet-stage" class="pet-stage">Baby · Day 1</span>
+    <div class="petcard">
+      <div id="lv-ring" class="lv-ring" role="progressbar" aria-label="Level 1" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><circle class="ring-bg" cx="24" cy="24" r="21"/><circle id="xp-arc" class="ring-fg" cx="24" cy="24" r="21" pathLength="100" stroke-dasharray="0 100"/></svg>
+        <span class="lv-label">LV</span>
+        <span id="pet-level" class="lv-num">1</span>
       </div>
-      <div id="xp-bar" class="xp" role="progressbar" aria-label="Progress to the next level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-        <div id="xp-fill" class="xp-fill"></div>
+      <div class="who">
+        <div id="pet-name" class="pet-name">Mochi</div>
+        <div id="pet-stage" class="pet-stage">Baby · Day 1</div>
       </div>
     </div>
-    <div class="top-right">
-      <button id="btn-coins" class="coins" type="button" aria-label="Shop">
-        <span class="coin-dot" aria-hidden="true"></span><span id="coin-count">0</span>
-        <svg class="bag" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8.5h14l-1.2 12H6.2z"/><path d="M9 8.5V6.8a3 3 0 0 1 6 0v1.7"/></svg>
-      </button>
-      <button id="btn-goals" class="icon-btn" type="button" aria-label="Today's goals">
+    <button id="btn-coins" class="coins" type="button" aria-label="Shop">
+      <span class="coin-dot" aria-hidden="true"></span><span id="coin-count">0</span>
+      <svg class="bag" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8.5h14l-1.2 12H6.2z"/><path d="M9 8.5V6.8a3 3 0 0 1 6 0v1.7"/></svg>
+    </button>
+  </header>
+
+  <section class="statusbar">
+    <div class="needs" aria-label="Pet needs">
+      <div class="meter" data-stat="hunger">
+        <svg class="ring" viewBox="0 0 48 48" aria-hidden="true"><circle class="ring-bg" cx="24" cy="24" r="19"/><circle class="ring-fg fill" cx="24" cy="24" r="19" pathLength="100" stroke-dasharray="0 100"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h18a9 9 0 0 1-18 0z"/><path d="M9 7.5c0-1.6 1.5-1.6 1.5-3.2M14 7.5c0-1.6 1.5-1.6 1.5-3.2"/></svg>
+        <span class="meter-name">Food</span>
+      </div>
+      <div class="meter" data-stat="fun">
+        <svg class="ring" viewBox="0 0 48 48" aria-hidden="true"><circle class="ring-bg" cx="24" cy="24" r="19"/><circle class="ring-fg fill" cx="24" cy="24" r="19" pathLength="100" stroke-dasharray="0 100"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/></svg>
+        <span class="meter-name">Fun</span>
+      </div>
+      <div class="meter" data-stat="energy">
+        <svg class="ring" viewBox="0 0 48 48" aria-hidden="true"><circle class="ring-bg" cx="24" cy="24" r="19"/><circle class="ring-fg fill" cx="24" cy="24" r="19" pathLength="100" stroke-dasharray="0 100"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2.5 4.5 14h7l-1 7.5 9-11.5h-7z"/></svg>
+        <span class="meter-name">Energy</span>
+      </div>
+      <div class="meter" data-stat="clean">
+        <svg class="ring" viewBox="0 0 48 48" aria-hidden="true"><circle class="ring-bg" cx="24" cy="24" r="19"/><circle class="ring-fg fill" cx="24" cy="24" r="19" pathLength="100" stroke-dasharray="0 100"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.6 6 11a6 6 0 0 1-12 0c0-4.4 6-11 6-11z"/></svg>
+        <span class="meter-name">Clean</span>
+      </div>
+    </div>
+    <div class="tools">
+      <button id="btn-goals" class="icon-btn" type="button" aria-label="Goals and stickers">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M3.5 6.2l1.4 1.4L7.5 5M3.5 12.2l1.4 1.4L7.5 11M3.5 18.2l1.4 1.4L7.5 17"/></svg>
         <span id="goals-badge" class="badge" hidden></span>
+      </button>
+      <button id="btn-friends" class="icon-btn" type="button" aria-label="Play with friends">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.5 19.5c.6-3.4 3-5.3 6-5.3s5.4 1.9 6 5.3"/><circle cx="16.8" cy="9.2" r="2.6"/><path d="M15.6 14.3c3 0 5.1 1.6 5.8 4.6"/></svg>
+        <span id="friends-dot" class="badge online" hidden></span>
       </button>
       <button id="btn-settings" class="icon-btn" type="button" aria-label="Settings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.5"/><circle cx="9.5" cy="17" r="2.5"/></svg>
       </button>
-    </div>
-  </header>
-
-  <section class="meters" aria-label="Pet needs">
-    <div class="meter" data-stat="hunger">
-      <div class="meter-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h18a9 9 0 0 1-18 0z"/><path d="M9 7.5c0-1.6 1.5-1.6 1.5-3.2M14 7.5c0-1.6 1.5-1.6 1.5-3.2"/></svg>Food</div>
-      <div class="track"><div class="fill"></div></div>
-    </div>
-    <div class="meter" data-stat="fun">
-      <div class="meter-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/></svg>Fun</div>
-      <div class="track"><div class="fill"></div></div>
-    </div>
-    <div class="meter" data-stat="energy">
-      <div class="meter-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2.5 4.5 14h7l-1 7.5 9-11.5h-7z"/></svg>Energy</div>
-      <div class="track"><div class="fill"></div></div>
-    </div>
-    <div class="meter" data-stat="clean">
-      <div class="meter-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.6 6 11a6 6 0 0 1-12 0c0-4.4 6-11 6-11z"/></svg>Clean</div>
-      <div class="track"><div class="fill"></div></div>
     </div>
   </section>
 
@@ -102,10 +113,35 @@
       <div class="hud-score"><span id="hud-label" class="hud-label">Stars</span><span id="hud-score">0</span></div>
       <div id="hud-lives" class="hud-lives" aria-label="Lives"></div>
       <div id="hud-time" class="hud-time" aria-label="Time left" hidden>0:30</div>
+      <div id="hud-vs" class="hud-score vs" hidden><span id="hud-vs-label" class="hud-label">P2</span><span id="hud-vs-score">0</span></div>
       <button id="hud-quit" class="chip-btn" type="button">Stop</button>
     </div>
 
     <div id="game-tip" class="game-tip" hidden></div>
+
+    <div id="playbar" class="playbar" hidden aria-label="Playdate">
+      <button id="emote-wave" class="pb-btn" type="button" aria-label="Wave to your friend">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 12.5V6.8a1.4 1.4 0 0 1 2.8 0v4.7M11.3 11V5.4a1.4 1.4 0 0 1 2.8 0V11M14.1 11V6.6a1.4 1.4 0 0 1 2.8 0v6.9c0 4-2.4 6.7-5.9 6.7-2.6 0-4.1-1.3-5.4-3.6l-1.9-3.4a1.4 1.4 0 0 1 2.3-1.5l2.5 2.4"/><path d="M18.5 3.5c1 .6 1.7 1.5 2 2.6M3.8 5.8c.4-1 1.1-1.8 2-2.3"/></svg>
+      </button>
+      <button id="emote-heart" class="pb-btn" type="button" aria-label="Send a heart">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/></svg>
+      </button>
+      <button id="emote-dance" class="pb-btn" type="button" aria-label="Dance together">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5.5l10-2v12.2"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="15.7" r="2.5"/></svg>
+      </button>
+      <button id="emote-gift" class="pb-btn" type="button" aria-label="Send a snack or start a duel">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="9" width="17" height="11" rx="2"/><path d="M2.5 9h19M12 9v11M12 9c-1-3-5-4.5-5.8-2.4C5.4 8.7 9.5 9 12 9zm0 0c1-3 5-4.5 5.8-2.4.8 2.1-3.3 2.4-5.8 2.4z"/></svg>
+      </button>
+    </div>
+
+    <div id="duel-invite" class="card invite" hidden role="dialog" aria-labelledby="invite-title">
+      <h2 id="invite-title">Duel time!</h2>
+      <p id="invite-text" class="go-note">Your friend wants a Bubble Pop duel.</p>
+      <div class="card-actions">
+        <button id="invite-no" class="btn ghost" type="button">Not now</button>
+        <button id="invite-yes" class="btn primary" type="button">Let's go</button>
+      </div>
+    </div>
 
     <div id="arcade" class="card arcade" hidden role="dialog" aria-labelledby="arcade-title">
       <h2 id="arcade-title">Pick a game</h2>
@@ -122,6 +158,12 @@
           <span class="gp-desc">Tap bubbles fast for combos</span>
           <span id="best-bubbles" class="gp-best">Best 0</span>
         </button>
+        <button id="play-duo" class="game-pick" type="button">
+          <svg class="gp-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="12" r="4.5"/><circle cx="16.5" cy="12" r="4.5"/><path d="M12 3v18"/></svg>
+          <span class="gp-name">Bubble Pop for 2</span>
+          <span class="gp-desc">Same phone, one half each</span>
+          <span class="gp-best">2P</span>
+        </button>
       </div>
       <button id="arcade-close" class="btn ghost wide" type="button">Not now</button>
     </div>
@@ -130,7 +172,7 @@
       <h2 id="go-title">Nice catch!</h2>
       <dl class="go-stats">
         <div><dt id="go-score-label">Stars</dt><dd id="go-score">0</dd></div>
-        <div><dt>Best</dt><dd id="go-best">0</dd></div>
+        <div><dt id="go-best-label">Best</dt><dd id="go-best">0</dd></div>
         <div><dt>Coins earned</dt><dd id="go-coins">+0</dd></div>
       </dl>
       <p id="go-note" class="go-note"></p>
@@ -191,9 +233,20 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
     </button>
   </div>
-  <div id="goals-list" class="goals"></div>
-  <p id="goals-bonus" class="goal-bonus"></p>
-  <p class="sheet-foot">New goals every day.</p>
+  <div class="tabs" role="tablist">
+    <button id="gtab-goals" class="tab gtab" role="tab" type="button" aria-selected="true" data-gtab="goals">Today</button>
+    <button id="gtab-stickers" class="tab gtab" role="tab" type="button" aria-selected="false" data-gtab="stickers">Stickers<span id="stickers-badge" class="tab-dot" hidden></span></button>
+  </div>
+  <div id="goals-pane">
+    <div id="goals-list" class="goals"></div>
+    <p id="goals-bonus" class="goal-bonus"></p>
+    <p class="sheet-foot">New goals every day.</p>
+  </div>
+  <div id="stickers-pane" hidden>
+    <p id="stickers-count" class="stickers-count"></p>
+    <div id="stickers-grid" class="stickers"></div>
+    <p class="sheet-foot">Each sticker pays 10 coins. Tap one to see how to get it.</p>
+  </div>
 </section>
 
 <section id="sheet-settings" class="sheet" role="dialog" aria-labelledby="settings-title" hidden>
@@ -211,6 +264,19 @@
     <span>Vibration</span>
     <input id="set-vibe" type="checkbox" role="switch" checked>
   </label>
+  <h3>About you</h3>
+  <div class="field-row">
+    <label for="owner-name">Your name</label>
+    <input id="owner-name" class="text-field" type="text" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Optional">
+  </div>
+  <div class="field-row">
+    <span id="owner-bday-label">Your birthday</span>
+    <div class="bday" role="group" aria-labelledby="owner-bday-label">
+      <select id="owner-month" class="text-field" aria-label="Birthday month"></select>
+      <select id="owner-day" class="text-field" aria-label="Birthday day"></select>
+    </div>
+  </div>
+  <p id="bday-note" class="field-note">Your pet throws you a party on your birthday.</p>
   <h3>How to care for your pet</h3>
   <ul class="howto">
     <li><b>Stroke</b> your pet with a finger to pet it. Tap it to make it giggle.</li>
@@ -221,6 +287,10 @@
     <li><b>Playroom:</b> flick the ball for your pet to chase. The arcade has Star Catch and Bubble Pop, which earn coins for the Shop.</li>
     <li><b>Levels:</b> everything you do earns XP. Each new level pays coins and unlocks snacks, hats and wallpapers.</li>
     <li><b>Daily goals:</b> three new ones every day. Finish them for coins and XP, and all three for a bonus.</li>
+    <li><b>Daily rewards:</b> open the game every day for a bigger gift. Day 7 is the best one.</li>
+    <li><b>Birthdays:</b> your pet has a party every month on the day it hatched, and on your birthday too. Blow out the candles and open the present in the living room.</li>
+    <li><b>Stickers:</b> collect all 16 in the sticker album (the checklist button).</li>
+    <li><b>Friends:</b> tap the friends button to host a playdate or join one with a code. Your pets visit, wave, swap snacks and duel at Bubble Pop. <b>Bubble Pop for 2</b> in the arcade is for two players on one phone.</li>
     <li><b>Tap the thought bubble</b> (or a need meter) to go straight to the room that helps.</li>
     <li><b>Tap poop</b> to clean it up. A dot on a room button means there's a mess in that room.</li>
     <li>Needs keep changing while the app is closed. If your pet gets sick, give it medicine.</li>
@@ -230,6 +300,50 @@
     <p id="reset-note" class="reset-note" hidden>Your current pet, coins and hats will be gone. Tap again to confirm.</p>
   </div>
 </section>
+
+<section id="sheet-friends" class="sheet" role="dialog" aria-labelledby="friends-title" hidden>
+  <div class="sheet-head">
+    <h2 id="friends-title">Playdates</h2>
+    <button class="close-btn" type="button" data-close aria-label="Close playdates">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div id="fr-off">
+    <p class="fr-intro">Invite a friend's pet over! One of you hosts and reads out the code, the other types it in to join.</p>
+    <button id="fr-host" class="btn primary wide" type="button">Host a playdate</button>
+    <div class="fr-join">
+      <input id="fr-code" class="text-field code" type="text" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" aria-label="Friend's code">
+      <button id="fr-join" class="btn ghost" type="button">Join</button>
+    </div>
+    <p id="fr-error" class="fr-error" role="alert" hidden></p>
+  </div>
+  <div id="fr-wait" hidden>
+    <p id="fr-label" class="fr-label">Your playdate code</p>
+    <div id="fr-mycode" class="fr-bigcode" aria-live="polite">·····</div>
+    <p id="fr-status" class="fr-status">Getting a code...</p>
+    <button id="fr-cancel" class="btn ghost wide" type="button">Cancel</button>
+  </div>
+  <div id="fr-on" hidden>
+    <div class="fr-friend">
+      <img id="fr-avatar" alt="" width="64" height="64">
+      <div><div id="fr-name" class="fr-name"></div><div id="fr-sub" class="fr-sub"></div></div>
+    </div>
+    <h3>Send a snack</h3>
+    <div id="fr-snacks" class="fr-snacks"></div>
+    <div class="fr-actions">
+      <button id="fr-duel" class="btn primary" type="button">Bubble Pop duel</button>
+      <button id="fr-leave" class="btn ghost" type="button">End playdate</button>
+    </div>
+  </div>
+  <p class="sheet-foot">Online play works best when both phones are on the same Wi-Fi. Only share your code with friends you know.</p>
+</section>
+
+<div id="login" class="card popup login" role="dialog" aria-labelledby="login-title" hidden>
+  <h2 id="login-title">Daily reward</h2>
+  <p id="login-sub" class="login-sub">Come back every day for bigger gifts!</p>
+  <ol id="login-days" class="login-days"></ol>
+  <button id="login-collect" class="btn primary wide" type="button">Collect</button>
+</div>
 
 <section id="adopt" class="adopt" hidden>
   <div class="adopt-inner">
@@ -263,6 +377,8 @@
 <script src="js/rooms.js"></script>
 <script src="js/pet.js"></script>
 <script src="js/minigame.js"></script>
+<script src="js/vendor/peerjs.min.js"></script>
+<script src="js/online.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

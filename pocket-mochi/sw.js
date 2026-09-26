@@ -1,6 +1,6 @@
 /* Pocket Mochi — offline support. Serves the cached game instantly and
    refreshes the cache in the background, so updates land on the next launch. */
-const CACHE = 'pocket-mochi-v6';
+const CACHE = 'pocket-mochi-v7';
 const SHELL = [
   './',
   'index.html',
@@ -11,6 +11,8 @@ const SHELL = [
   'js/rooms.js',
   'js/pet.js',
   'js/minigame.js',
+  'js/vendor/peerjs.min.js',
+  'js/online.js',
   'js/main.js',
   'manifest.webmanifest',
   'icons/icon.svg',
@@ -34,6 +36,11 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || !req.url.startsWith('http')) return;
+  // Only the game's own files and its fonts: never the playdate server, whose
+  // answers (like a fresh player id) must not come from the cache.
+  const url = new URL(req.url);
+  const fonts = /(^|\.)fonts\.(googleapis|gstatic)\.com$/.test(url.hostname);
+  if (url.origin !== self.location.origin && !fonts) return;
   e.respondWith(caches.open(CACHE).then(async (cache) => {
     const hit = await cache.match(req, { ignoreSearch: true });
     const net = fetch(req)

@@ -284,6 +284,18 @@
      row build a combo (up to x5). Rainbow bubbles are worth 5 and a coin;
      storm bubbles cost 3 seconds. 30 seconds per round. */
 
+  // A small seeded random generator, so both phones in an online duel get
+  // the same bubbles in the same order.
+  function seeded(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
   class BubblePop {
     constructor() {
       this.pet = new PM.PetView();
@@ -293,14 +305,22 @@
       this.H = 1;
       this.bubbles = [];
       this.texts = [];
+      this.duo = false;
+      this.scores = [0, 0];
     }
 
-    start(W, H) {
+    // opts: { seed } for the same bubbles as a friend; { duo: true } for two
+    // players on one phone, each tapping their own half.
+    start(W, H, opts) {
+      opts = opts || {};
       this.W = W;
       this.H = H;
+      this.rand = opts.seed ? seeded(opts.seed) : Math.random;
+      this.duo = !!opts.duo;
       this.bubbles = [];
       this.texts = [];
       this.score = 0;
+      this.scores = [0, 0];
       this.coins = 0;
       this.popped = 0;
       this.t = 0;
@@ -308,6 +328,8 @@
       this.spawn = 0.2;
       this.combo = 1;
       this.comboT = 0;
+      this.combos = [1, 1];
+      this.comboTs = [0, 0];
       this.shakeT = 0;
       this.pet.x = W / 2;
       this.pet.scale = 1;
@@ -329,54 +351,76 @@
     petSize() { return Math.min(this.W * 0.28, this.H * 0.2, 140); }
 
     spawnBubble() {
-      const roll = Math.random();
+      const rnd = this.rand;
+      const roll = rnd();
       const stormChance = 0.12 + Math.min(0.12, this.t * 0.005);
       const kind = roll < 0.08 ? 'rainbow' : roll < 0.08 + stormChance ? 'storm' : 'plain';
-      const r = kind === 'plain' ? 17 + Math.random() * 17 : 22;
+      const r = kind === 'plain' ? 17 + rnd() * 17 : 22;
+      const vy = -(55 + rnd() * 50) * (1 + this.t / 35);
+      const sway = rnd() * TAU;
+      if (this.duo) {
+        // the same bubble on both sides, mirrored, so it's fair
+        const half = this.W / 2;
+        const x = r + rnd() * Math.max(1, half - r * 2);
+        this.bubbles.push({ kind, r, x, y: this.H + r, vy, sway, side: 0 });
+        this.bubbles.push({ kind, r, x: this.W - x, y: this.H + r, vy, sway: sway + Math.PI, side: 1 });
+        return;
+      }
       // most bubbles come out of the pet's mouth area, the rest from anywhere
-      const fromPet = Math.random() < 0.45;
-      const x = fromPet ? this.pet.x + (Math.random() - 0.5) * 60 : r + Math.random() * (this.W - r * 2);
+      const fromPet = rnd() < 0.45;
+      const u = rnd();
+      const x = fromPet ? this.pet.x + (u - 0.5) * 60 : r + u * (this.W - r * 2);
       this.bubbles.push({
         kind, r, x: Math.max(r, Math.min(this.W - r, x)),
         y: fromPet ? this.groundY() - this.petSize() * 0.6 : this.H + r,
-        vy: -(55 + Math.random() * 50) * (1 + this.t / 35),
-        sway: Math.random() * TAU,
+        vy, sway,
       });
       if (fromPet) this.pet.setExpr('open', 0.25);
     }
 
     pointer(x, y, type) {
       if (!this.running || type !== 'down') return;
+      const side = this.duo ? (x < this.W / 2 ? 0 : 1) : 0;
       for (let i = this.bubbles.length - 1; i >= 0; i--) {
         const b = this.bubbles[i];
+        if (this.duo && b.side !== side) continue;
         if (Math.hypot(x - b.x, y - b.y) <= b.r + 12) {
           this.pop(i);
           return;
         }
       }
-      this.combo = 1; // a miss breaks the combo
-      this.comboT = 0;
+      // a miss breaks the combo
+      this.combos[side] = 1;
+      this.comboTs[side] = 0;
     }
 
     pop(i) {
       const b = this.bubbles.splice(i, 1)[0];
       const A = PM.audio;
+      const side = this.duo ? b.side : 0;
       if (b.kind === 'storm') {
-        this.time = Math.max(0, this.time - 3);
-        this.combo = 1;
-        this.comboT = 0;
+        this.combos[side] = 1;
+        this.comboTs[side] = 0;
         this.shakeT = 0.3;
         A.play('hurt');
         A.buzz(60);
         this.fx.poof(b.x, b.y);
         this.pet.setExpr('hurt', 0.6);
-        this.texts.push({ x: b.x, y: b.y, text: '-3s', color: '#F0433A', t: 0 });
+        if (this.duo) {
+          this.scores[side] = Math.max(0, this.scores[side] - 5);
+          this.texts.push({ x: b.x, y: b.y, text: '-5', color: '#F0433A', t: 0 });
+        } else {
+          this.time = Math.max(0, this.time - 3);
+          this.texts.push({ x: b.x, y: b.y, text: '-3s', color: '#F0433A', t: 0 });
+        }
+        this.syncScore();
         return;
       }
-      this.combo = this.comboT > 0 ? Math.min(5, this.combo + 1) : 1;
-      this.comboT = 0.75;
-      const pts = (b.kind === 'rainbow' ? 5 : 1) * this.combo;
-      this.score += pts;
+      const combo = this.comboTs[side] > 0 ? Math.min(5, this.combos[side] + 1) : 1;
+      this.combos[side] = combo;
+      this.comboTs[side] = 0.75;
+      const pts = (b.kind === 'rainbow' ? 5 : 1) * combo;
+      this.scores[side] += pts;
       this.popped += 1;
       if (b.kind === 'rainbow') {
         this.coins += 1;
@@ -389,8 +433,15 @@
         this.fx.sparkles(b.x, b.y, 4, b.r);
       }
       A.buzz(6);
-      const label = this.combo > 1 ? `+${pts} x${this.combo}` : `+${pts}`;
+      const label = combo > 1 ? `+${pts} x${combo}` : `+${pts}`;
       this.texts.push({ x: b.x, y: b.y, text: label, color: b.kind === 'rainbow' ? '#FF5DA2' : PM.INK, t: 0 });
+      this.syncScore();
+    }
+
+    syncScore() {
+      this.score = this.scores[0];
+      this.combo = this.combos[0];
+      this.comboT = this.comboTs[0];
     }
 
     // Returns 'over' on the frame the round ends.
@@ -403,19 +454,27 @@
       this.t += dt;
       this.time -= dt;
       if (this.shakeT > 0) this.shakeT -= dt;
-      if (this.comboT > 0) {
-        this.comboT -= dt;
-        if (this.comboT <= 0) this.combo = 1;
-      }
+      [0, 1].forEach((k) => {
+        if (this.comboTs[k] > 0) {
+          this.comboTs[k] -= dt;
+          if (this.comboTs[k] <= 0) this.combos[k] = 1;
+        }
+      });
+      this.syncScore();
       this.spawn -= dt;
       if (this.spawn <= 0) {
         this.spawnBubble();
-        this.spawn = Math.max(0.16, 0.48 - this.t * 0.008) * (0.6 + Math.random() * 0.8);
+        const gap = Math.max(0.16, 0.48 - this.t * 0.008) * (0.6 + this.rand() * 0.8);
+        this.spawn = this.duo ? gap * 1.5 : gap;
       }
+      const half = this.W / 2;
       for (let i = this.bubbles.length - 1; i >= 0; i--) {
         const b = this.bubbles[i];
         b.sway += dt * 2;
         b.x += Math.sin(b.sway) * 20 * dt;
+        if (this.duo) {
+          b.x = b.side === 0 ? Math.max(b.r, Math.min(half - b.r, b.x)) : Math.max(half + b.r, Math.min(this.W - b.r, b.x));
+        }
         b.y += b.vy * dt;
         if (b.y + b.r < -8) this.bubbles.splice(i, 1);
       }
@@ -509,10 +568,39 @@
       ctx.restore();
     }
 
+    // Two players: a line down the middle and each side's name on the foam.
+    drawSides(ctx) {
+      const { W, H } = this;
+      ctx.fillStyle = 'rgba(255,93,162,0.08)';
+      ctx.fillRect(0, 0, W / 2, H);
+      ctx.fillStyle = 'rgba(93,180,240,0.1)';
+      ctx.fillRect(W / 2, 0, W / 2, H);
+      ctx.save();
+      ctx.setLineDash([10, 10]);
+      ctx.beginPath();
+      ctx.moveTo(W / 2, 0);
+      ctx.lineTo(W / 2, this.groundY() - 20);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(34,36,61,0.35)';
+      ctx.stroke();
+      ctx.restore();
+      ctx.font = `20px ${PM.FONT_DISPLAY}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      [['P1', W * 0.2, '#FF5DA2'], ['P2', W * 0.8, '#3F93D6']].forEach(([label, x, c]) => {
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.strokeText(label, x, this.groundY() + (H - this.groundY()) / 2);
+        ctx.fillStyle = c;
+        ctx.fillText(label, x, this.groundY() + (H - this.groundY()) / 2);
+      });
+    }
+
     draw(ctx, s) {
       ctx.save();
       if (this.shakeT > 0) ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 6);
       this.drawBackground(ctx);
+      if (this.duo) this.drawSides(ctx);
       this.pet.draw(ctx, {
         species: s.species, color: s.color, hat: s.hat, size: this.petSize(),
         groundY: this.groundY(), clean: 100, sick: false, mood: 'happy',
