@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Pet Cam</title>
+<meta name="description" content="An AR pet that lives in your camera. Drop it on the floor, pet it, feed it, play fetch and take photos together.">
+<meta name="theme-color" content="#1B1830">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pet Cam">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Mochiy+Pop+One&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- The AR view: camera feed underneath, the pet drawn on a canvas on top. -->
+<main id="stage" hidden>
+  <video id="cam" playsinline muted autoplay></video>
+  <canvas id="view"></canvas>
+
+  <header class="hud">
+    <div class="hud-who">
+      <div id="hud-name" class="hud-name">Mochi</div>
+      <div id="hud-level" class="hud-level">Friendship 1</div>
+    </div>
+    <div class="hud-meters" aria-label="Pet needs">
+      <div class="meter" data-stat="food"><span class="meter-icon" aria-hidden="true">🍪</span><span class="meter-bar"><i></i></span><span class="sr">Food</span></div>
+      <div class="meter" data-stat="fun"><span class="meter-icon" aria-hidden="true">🎾</span><span class="meter-bar"><i></i></span><span class="sr">Fun</span></div>
+      <div class="meter" data-stat="energy"><span class="meter-icon" aria-hidden="true">🌙</span><span class="meter-bar"><i></i></span><span class="sr">Energy</span></div>
+    </div>
+    <button id="btn-menu" class="round-btn" type="button" aria-label="Menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+    </button>
+  </header>
+
+  <div id="hint" class="hint" role="status" aria-live="polite"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <nav class="dock" aria-label="Actions">
+    <button id="btn-treat" class="dock-btn" type="button"><span class="dock-emoji" aria-hidden="true">🍪</span>Treat</button>
+    <button id="btn-ball" class="dock-btn" type="button"><span class="dock-emoji" aria-hidden="true">🎾</span>Ball</button>
+    <button id="btn-photo" class="shutter" type="button" aria-label="Take a photo"><span></span></button>
+    <button id="btn-call" class="dock-btn" type="button"><span class="dock-emoji" aria-hidden="true">📣</span>Call</button>
+    <button id="btn-nap" class="dock-btn" type="button"><span class="dock-emoji" aria-hidden="true">💤</span><span id="nap-label">Nap</span></button>
+  </nav>
+
+  <div id="flash" class="flash"></div>
+</main>
+
+<!-- Photo preview -->
+<section id="photo-sheet" class="sheet" hidden aria-label="Photo">
+  <div class="sheet-card photo-card">
+    <img id="photo-img" alt="Photo of your pet">
+    <div class="sheet-row">
+      <button id="photo-share" class="btn btn-main" type="button">Share</button>
+      <a id="photo-save" class="btn" download="pet-cam.png">Save</a>
+      <button id="photo-close" class="btn" type="button">Close</button>
+    </div>
+  </div>
+</section>
+
+<!-- Menu -->
+<section id="menu-sheet" class="sheet" hidden aria-label="Menu">
+  <div class="sheet-card">
+    <h2 id="menu-title">Mochi</h2>
+    <p id="menu-stats" class="menu-stats"></p>
+    <div class="menu-list">
+      <button id="menu-sound" class="btn" type="button">Sound: on</button>
+      <button id="menu-place" class="btn" type="button">Place pet again</button>
+      <button id="menu-new" class="btn btn-danger" type="button">Adopt a new pet</button>
+      <button id="menu-close" class="btn btn-main" type="button">Back to my pet</button>
+    </div>
+  </div>
+</section>
+
+<!-- Adopt / welcome screen -->
+<section id="setup" class="setup">
+  <div class="setup-inner">
+    <h1 class="logo">Pet Cam</h1>
+    <p class="tagline">A tiny pet that lives in your camera.</p>
+
+    <div id="welcome-back" class="welcome" hidden>
+      <canvas id="welcome-pet" width="240" height="220" aria-hidden="true"></canvas>
+      <p id="welcome-text">Mochi missed you!</p>
+      <button id="btn-continue" class="btn btn-main btn-big" type="button">Open camera</button>
+      <button id="btn-newpet" class="link-btn" type="button">Adopt a different pet</button>
+    </div>
+
+    <form id="adopt" class="adopt" hidden>
+      <fieldset>
+        <legend>Pick a buddy</legend>
+        <div id="species-list" class="species-list"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Pick a color</legend>
+        <div id="color-list" class="color-list"></div>
+      </fieldset>
+      <label class="name-field">
+        <span>Name</span>
+        <input id="pet-name" type="text" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Mochi">
+      </label>
+      <button class="btn btn-main btn-big" type="submit">Open camera</button>
+    </form>
+
+    <p class="fineprint">Your camera stays on your phone. Nothing is uploaded.</p>
+  </div>
+</section>
+
+<script src="js/audio.js"></script>
+<script src="js/ar.js"></script>
+<script src="js/pet.js"></script>
+<script src="js/main.js"></script>
+<script>
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
