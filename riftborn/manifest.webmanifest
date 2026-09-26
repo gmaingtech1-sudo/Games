@@ -1,0 +1,17 @@
+{
+  "name": "Riftborn",
+  "short_name": "Riftborn",
+  "description": "An AR game on your real streets. Hack and link Rifts for your faction, catch the creatures pouring through, collect their DNA and fuse hybrids.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#0B0716",
+  "theme_color": "#0B0716",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

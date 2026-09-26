@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="70%">
+      <stop offset="0" stop-color="#3A1670"/>
+      <stop offset="0.6" stop-color="#150A2C"/>
+      <stop offset="1" stop-color="#0B0716"/>
+    </radialGradient>
+    <linearGradient id="tear" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2EE6C5"/>
+      <stop offset="0.5" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FF4FA3"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#C98BFF" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#B45CFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <ellipse cx="256" cy="256" rx="200" ry="200" fill="url(#glow)" opacity="0.55"/>
+  <g fill="none" stroke="#B45CFF" stroke-opacity="0.45" stroke-width="6">
+    <ellipse cx="256" cy="256" rx="170" ry="60" transform="rotate(-20 256 256)"/>
+    <ellipse cx="256" cy="256" rx="150" ry="44" transform="rotate(25 256 256)"/>
+  </g>
+  <path d="M256 92 C300 170 300 342 256 420 C212 342 212 170 256 92 Z" fill="url(#tear)"/>
+  <path d="M256 150 C276 210 276 302 256 362 C236 302 236 210 256 150 Z" fill="#FFFFFF" opacity="0.85"/>
+  <g stroke="#0B0716" stroke-width="16" stroke-linecap="round">
+    <path d="M190 190 L320 320"/>
+    <path d="M168 232 L282 346"/>
+    <path d="M226 166 L344 284"/>
+  </g>
+  <g stroke="#FFE14D" stroke-width="7" stroke-linecap="round">
+    <path d="M190 190 L320 320"/>
+    <path d="M168 232 L282 346"/>
+    <path d="M226 166 L344 284"/>
+  </g>
+</svg>
