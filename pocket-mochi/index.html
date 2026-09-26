@@ -23,14 +23,22 @@
   <header class="topbar">
     <div class="who">
       <div id="pet-name" class="pet-name">Mochi</div>
-      <div id="pet-stage" class="pet-stage">Baby · Day 1</div>
+      <div class="pet-sub">
+        <span id="pet-level" class="lv">Lv 1</span>
+        <span id="pet-stage" class="pet-stage">Baby · Day 1</span>
+      </div>
+      <div id="xp-bar" class="xp" role="progressbar" aria-label="Progress to the next level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div id="xp-fill" class="xp-fill"></div>
+      </div>
     </div>
     <div class="top-right">
-      <div class="coins" aria-label="Coins">
+      <button id="btn-coins" class="coins" type="button" aria-label="Shop">
         <span class="coin-dot" aria-hidden="true"></span><span id="coin-count">0</span>
-      </div>
-      <button id="btn-shop" class="icon-btn" type="button" aria-label="Shop">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8.5h14l-1.2 12H6.2z"/><path d="M9 8.5V6.8a3 3 0 0 1 6 0v1.7"/></svg>
+        <svg class="bag" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8.5h14l-1.2 12H6.2z"/><path d="M9 8.5V6.8a3 3 0 0 1 6 0v1.7"/></svg>
+      </button>
+      <button id="btn-goals" class="icon-btn" type="button" aria-label="Today's goals">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M3.5 6.2l1.4 1.4L7.5 5M3.5 12.2l1.4 1.4L7.5 11M3.5 18.2l1.4 1.4L7.5 17"/></svg>
+        <span id="goals-badge" class="badge" hidden></span>
       </button>
       <button id="btn-settings" class="icon-btn" type="button" aria-label="Settings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.5"/><circle cx="9.5" cy="17" r="2.5"/></svg>
@@ -91,17 +99,37 @@
     </div>
 
     <div id="game-hud" class="game-hud" hidden>
-      <div class="hud-score"><span class="hud-label">Stars</span><span id="hud-score">0</span></div>
+      <div class="hud-score"><span id="hud-label" class="hud-label">Stars</span><span id="hud-score">0</span></div>
       <div id="hud-lives" class="hud-lives" aria-label="Lives"></div>
+      <div id="hud-time" class="hud-time" aria-label="Time left" hidden>0:30</div>
       <button id="hud-quit" class="chip-btn" type="button">Stop</button>
     </div>
 
-    <div id="game-tip" class="game-tip" hidden>Slide your finger to move.<br>Catch stars and coins, dodge storm clouds!</div>
+    <div id="game-tip" class="game-tip" hidden></div>
+
+    <div id="arcade" class="card arcade" hidden role="dialog" aria-labelledby="arcade-title">
+      <h2 id="arcade-title">Pick a game</h2>
+      <div class="arcade-games">
+        <button id="play-stars" class="game-pick" type="button">
+          <svg class="gp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17l-5.6 3 1.1-6.2L3 9.4l6.2-.9z"/></svg>
+          <span class="gp-name">Star Catch</span>
+          <span class="gp-desc">Slide to catch stars, dodge storms</span>
+          <span id="best-stars" class="gp-best">Best 0</span>
+        </button>
+        <button id="play-bubbles" class="game-pick" type="button">
+          <svg class="gp-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="14.5" r="5.5"/><circle cx="17.5" cy="7.5" r="3"/><circle cx="18" cy="17" r="2"/></svg>
+          <span class="gp-name">Bubble Pop</span>
+          <span class="gp-desc">Tap bubbles fast for combos</span>
+          <span id="best-bubbles" class="gp-best">Best 0</span>
+        </button>
+      </div>
+      <button id="arcade-close" class="btn ghost wide" type="button">Not now</button>
+    </div>
 
     <div id="gameover" class="card" hidden role="dialog" aria-labelledby="go-title">
       <h2 id="go-title">Nice catch!</h2>
       <dl class="go-stats">
-        <div><dt>Stars</dt><dd id="go-score">0</dd></div>
+        <div><dt id="go-score-label">Stars</dt><dd id="go-score">0</dd></div>
         <div><dt>Best</dt><dd id="go-best">0</dd></div>
         <div><dt>Coins earned</dt><dd id="go-coins">+0</dd></div>
       </dl>
@@ -150,9 +178,22 @@
   <div class="tabs" role="tablist">
     <button id="tab-food" class="tab" role="tab" type="button" aria-selected="true" data-tab="food">Snacks</button>
     <button id="tab-hats" class="tab" role="tab" type="button" aria-selected="false" data-tab="hats">Hats</button>
+    <button id="tab-decor" class="tab" role="tab" type="button" aria-selected="false" data-tab="decor">Decor</button>
   </div>
   <div id="shop-grid" class="shop-grid"></div>
-  <p class="sheet-foot">Earn coins by catching stars in Play.</p>
+  <p id="shop-foot" class="sheet-foot">Earn coins in the arcade, from daily goals, and by leveling up.</p>
+</section>
+
+<section id="sheet-goals" class="sheet" role="dialog" aria-labelledby="goals-title" hidden>
+  <div class="sheet-head">
+    <h2 id="goals-title">Today's goals</h2>
+    <button class="close-btn" type="button" data-close aria-label="Close goals">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div id="goals-list" class="goals"></div>
+  <p id="goals-bonus" class="goal-bonus"></p>
+  <p class="sheet-foot">New goals every day.</p>
 </section>
 
 <section id="sheet-settings" class="sheet" role="dialog" aria-labelledby="settings-title" hidden>
@@ -177,7 +218,10 @@
     <li><b>Kitchen:</b> drag a snack onto its mouth, or just tap the snack. The fridge opens the snacks again.</li>
     <li><b>Bathroom:</b> scrub your pet with your finger, then tap Rinse or the shower.</li>
     <li><b>Bedroom:</b> tap the lamp to turn the lights off so energy refills. It wakes up by itself when rested.</li>
-    <li><b>Playroom:</b> flick the ball for your pet to chase. The arcade plays Star Catch, which earns coins for the Shop.</li>
+    <li><b>Playroom:</b> flick the ball for your pet to chase. The arcade has Star Catch and Bubble Pop, which earn coins for the Shop.</li>
+    <li><b>Levels:</b> everything you do earns XP. Each new level pays coins and unlocks snacks, hats and wallpapers.</li>
+    <li><b>Daily goals:</b> three new ones every day. Finish them for coins and XP, and all three for a bonus.</li>
+    <li><b>Tap the thought bubble</b> (or a need meter) to go straight to the room that helps.</li>
     <li><b>Tap poop</b> to clean it up. A dot on a room button means there's a mess in that room.</li>
     <li>Needs keep changing while the app is closed. If your pet gets sick, give it medicine.</li>
   </ul>

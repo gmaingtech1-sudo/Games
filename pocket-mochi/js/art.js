@@ -23,21 +23,27 @@
   };
 
   // Snacks: food = how much it fills the food meter, fun/clean are side effects.
+  // level = the pet level that unlocks it in the shop.
   const FOODS = {
-    apple:   { name: 'Apple',   price: 3,  food: 16, fun: 2,  clean: 0,  xp: 3 },
-    onigiri: { name: 'Onigiri', price: 5,  food: 28, fun: 3,  clean: 0,  xp: 4 },
-    fish:    { name: 'Fish',    price: 8,  food: 40, fun: 5,  clean: -2, xp: 5 },
-    dango:   { name: 'Dango',   price: 7,  food: 20, fun: 14, clean: 0,  xp: 5 },
-    cupcake: { name: 'Cupcake', price: 10, food: 18, fun: 22, clean: -6, xp: 6 },
+    apple:    { name: 'Apple',     price: 3,  food: 16, fun: 2,  clean: 0,  xp: 3, level: 1 },
+    onigiri:  { name: 'Onigiri',   price: 5,  food: 28, fun: 3,  clean: 0,  xp: 4, level: 1 },
+    fish:     { name: 'Fish',      price: 8,  food: 40, fun: 5,  clean: -2, xp: 5, level: 1 },
+    dango:    { name: 'Dango',     price: 7,  food: 20, fun: 14, clean: 0,  xp: 5, level: 1 },
+    cupcake:  { name: 'Cupcake',   price: 10, food: 18, fun: 22, clean: -6, xp: 6, level: 1 },
+    pizza:    { name: 'Pizza',     price: 12, food: 45, fun: 10, clean: -4, xp: 7, level: 4 },
+    icecream: { name: 'Ice cream', price: 9,  food: 14, fun: 28, clean: -6, xp: 6, level: 8 },
   };
 
   const HATS = {
-    party:  { name: 'Party hat',  price: 25 },
-    flower: { name: 'Daisy',      price: 20 },
-    bow:    { name: 'Big bow',    price: 30 },
-    beanie: { name: 'Beanie',     price: 35 },
-    shades: { name: 'Sunglasses', price: 40 },
-    crown:  { name: 'Crown',      price: 60 },
+    party:      { name: 'Party hat',  price: 25, level: 1 },
+    flower:     { name: 'Daisy',      price: 20, level: 1 },
+    bow:        { name: 'Big bow',    price: 30, level: 1 },
+    beanie:     { name: 'Beanie',     price: 35, level: 1 },
+    shades:     { name: 'Sunglasses', price: 40, level: 1 },
+    crown:      { name: 'Crown',      price: 60, level: 1 },
+    chef:       { name: 'Chef hat',   price: 45, level: 6 },
+    wizard:     { name: 'Wizard hat', price: 70, level: 10 },
+    headphones: { name: 'Headphones', price: 80, level: 14 },
   };
 
   function outline(ctx, w) {
@@ -234,6 +240,80 @@
     },
   };
 
+  foodDraw.pizza = function (ctx, s) {
+    const lw = s * 0.06;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.38, -s * 0.26);
+    ctx.quadraticCurveTo(0, -s * 0.4, s * 0.38, -s * 0.26);
+    ctx.lineTo(0, s * 0.46);
+    ctx.closePath();
+    ctx.fillStyle = '#FFD166';
+    ctx.fill();
+    outline(ctx, lw);
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.42, -s * 0.3);
+    ctx.quadraticCurveTo(0, -s * 0.48, s * 0.42, -s * 0.3);
+    ctx.lineTo(s * 0.36, -s * 0.18);
+    ctx.quadraticCurveTo(0, -s * 0.32, -s * 0.36, -s * 0.18);
+    ctx.closePath();
+    ctx.fillStyle = '#E0964A';
+    ctx.fill();
+    outline(ctx, lw);
+    [[-0.12, -0.08], [0.13, -0.05], [0.01, 0.16]].forEach(([dx, dy]) => {
+      ctx.beginPath();
+      ctx.arc(dx * s, dy * s, s * 0.075, 0, TAU);
+      ctx.fillStyle = '#E0564F';
+      ctx.fill();
+      outline(ctx, lw * 0.6);
+    });
+    ctx.beginPath();
+    ctx.ellipse(-s * 0.02, s * 0.02, s * 0.03, s * 0.05, 0, 0, TAU);
+    ctx.fillStyle = '#8CD47E';
+    ctx.fill();
+  };
+
+  foodDraw.icecream = function (ctx, s) {
+    const lw = s * 0.06;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.21, -s * 0.02);
+    ctx.lineTo(s * 0.21, -s * 0.02);
+    ctx.lineTo(0, s * 0.48);
+    ctx.closePath();
+    ctx.fillStyle = '#F2B36A';
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(34,36,61,0.35)';
+    ctx.lineWidth = lw * 0.6;
+    for (let i = -3; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * s * 0.1 - s * 0.2, -s * 0.02);
+      ctx.lineTo(i * s * 0.1 + s * 0.2, s * 0.5);
+      ctx.moveTo(i * s * 0.1 + s * 0.2, -s * 0.02);
+      ctx.lineTo(i * s * 0.1 - s * 0.2, s * 0.5);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.21, -s * 0.02);
+    ctx.lineTo(s * 0.21, -s * 0.02);
+    ctx.lineTo(0, s * 0.48);
+    ctx.closePath();
+    outline(ctx, lw);
+    [['#FFB3CF', -0.08, 0.2], ['#9FE7CA', -0.3, 0.17]].forEach(([c, dy, r]) => {
+      ctx.beginPath();
+      ctx.arc(0, dy * s, r * s, 0, TAU);
+      ctx.fillStyle = c;
+      ctx.fill();
+      outline(ctx, lw);
+    });
+    ctx.beginPath();
+    ctx.arc(s * 0.02, -s * 0.5, s * 0.06, 0, TAU);
+    ctx.fillStyle = '#FF4F6A';
+    ctx.fill();
+    outline(ctx, lw * 0.8);
+  };
+
   function drawFood(ctx, type, x, y, s, rot) {
     const fn = foodDraw[type];
     if (!fn) return;
@@ -383,6 +463,76 @@
       ctx.fill();
       outline(ctx, lw);
     },
+  };
+
+  hatDraw.chef = function (ctx, w) {
+    const lw = w * 0.025;
+    // stroke every puff thick, then fill on top so only the outer edge keeps a line
+    const puffs = [[-0.13, -0.17, 0.12], [0, -0.24, 0.15], [0.13, -0.17, 0.12]];
+    ctx.beginPath();
+    puffs.forEach(([x, y, r]) => { ctx.moveTo((x + r) * w, y * w); ctx.arc(x * w, y * w, r * w, 0, TAU); });
+    ctx.lineWidth = lw * 2;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+    roundRect(ctx, -w * 0.21, -w * 0.12, w * 0.42, w * 0.16, w * 0.03);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+    outline(ctx, lw);
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.1, -w * 0.1);
+    ctx.lineTo(-w * 0.1, w * 0.02);
+    ctx.moveTo(w * 0.1, -w * 0.1);
+    ctx.lineTo(w * 0.1, w * 0.02);
+    ctx.lineWidth = lw * 0.7;
+    ctx.strokeStyle = 'rgba(34,36,61,0.3)';
+    ctx.stroke();
+  };
+
+  hatDraw.wizard = function (ctx, w) {
+    const lw = w * 0.025;
+    ctx.beginPath();
+    ctx.ellipse(0, w * 0.02, w * 0.32, w * 0.07, 0, 0, TAU);
+    ctx.fillStyle = '#6B4FC4';
+    ctx.fill();
+    outline(ctx, lw);
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.18, w * 0.01);
+    ctx.quadraticCurveTo(-w * 0.08, -w * 0.3, w * 0.12, -w * 0.5);
+    ctx.quadraticCurveTo(w * 0.06, -w * 0.25, w * 0.18, w * 0.01);
+    ctx.closePath();
+    ctx.fillStyle = '#8A6CE0';
+    ctx.fill();
+    outline(ctx, lw);
+    [[-0.04, -0.12, 0.05], [0.07, -0.28, 0.035], [0.09, -0.04, 0.03]].forEach(([x, y, r]) => {
+      starPath(ctx, x * w, y * w, r * w);
+      ctx.fillStyle = '#FFE27A';
+      ctx.fill();
+    });
+  };
+
+  hatDraw.headphones = function (ctx, w) {
+    const lw = w * 0.025;
+    // band over the head, cups over the ears
+    ctx.beginPath();
+    ctx.arc(0, w * 0.34, w * 0.44, Math.PI * 1.08, Math.PI * 1.92);
+    ctx.lineCap = 'round';
+    ctx.lineWidth = w * 0.07 + lw * 2;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    ctx.lineWidth = w * 0.07;
+    ctx.strokeStyle = '#FF5DA2';
+    ctx.stroke();
+    [-1, 1].forEach((d) => {
+      roundRect(ctx, d * w * 0.46 - w * 0.07, w * 0.22, w * 0.14, w * 0.24, w * 0.06);
+      ctx.fillStyle = '#2E3160';
+      ctx.fill();
+      outline(ctx, lw);
+      roundRect(ctx, d * w * 0.46 - w * 0.035, w * 0.26, w * 0.07, w * 0.16, w * 0.03);
+      ctx.fillStyle = '#FF8FBF';
+      ctx.fill();
+    });
   };
 
   function drawHat(ctx, type, w) {
@@ -737,6 +887,7 @@
       // [width, x, y] framing per hat so each one sits centered in its tile
       const frame = {
         party: [1.5, 0.5, 0.78], crown: [2.0, 0.5, 0.69], bow: [1.8, 0.21, 0.46],
+        chef: [1.8, 0.5, 0.74], wizard: [1.45, 0.47, 0.8], headphones: [0.9, 0.5, 0.26],
         flower: [2.2, 0.81, 0.76], beanie: [1.4, 0.5, 0.62], shades: [1.3, 0.5, 0.5],
       }[type] || [1.5, 0.5, 0.6];
       g.translate(s * frame[1], s * frame[2]);

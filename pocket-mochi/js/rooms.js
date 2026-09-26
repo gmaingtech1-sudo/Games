@@ -19,6 +19,105 @@
     { id: 'playroom', name: 'Playroom' },
   ];
 
+  /* ---------- wallpapers ---------- */
+
+  // Every room can wear any wallpaper. The five defaults are what the rooms
+  // come with; the rest are bought in the shop (level = level that unlocks it).
+  const WALLS = {
+    mint:   { name: 'Mint dots',      base: '#BFE6DA', ink: '#D2EFE6', pattern: 'dots',     price: 20, level: 1 },
+    butter: { name: 'Butter stripes', base: '#FFE9AE', ink: '#FFF1CB', pattern: 'stripes',  price: 20, level: 1 },
+    aqua:   { name: 'Aqua tiles',     base: '#CFEFFF', ink: '#EAF9FF', pattern: 'tiles',    price: 20, level: 1 },
+    lilac:  { name: 'Lilac sparkles', base: '#DCD1F7', ink: '#ECE6FF', pattern: 'sparkles', price: 20, level: 1 },
+    sky:    { name: 'Sky blue',       base: '#C6E6FF', ink: '#D6EEFF', pattern: 'plain',    price: 20, level: 1 },
+    berry:  { name: 'Berry hearts',   base: '#FFCADC', ink: '#FFE0EB', pattern: 'hearts',   price: 40, level: 3 },
+    peach:  { name: 'Peach checks',   base: '#FFD6C0', ink: '#FFE5D6', pattern: 'checks',   price: 45, level: 5 },
+    forest: { name: 'Forest leaves',  base: '#C4E6B8', ink: '#D9F0CF', pattern: 'leaves',   price: 55, level: 7 },
+    night:  { name: 'Starry night',   base: '#343F7C', ink: '#5561A2', pattern: 'sparkles', price: 70, level: 10 },
+  };
+  const DEFAULT_WALL = { living: 'mint', kitchen: 'butter', bathroom: 'aqua', bedroom: 'lilac', playroom: 'sky' };
+
+  function paintWall(ctx, W, floorY, id) {
+    const w = WALLS[id] || WALLS.mint;
+    ctx.fillStyle = w.base;
+    ctx.fillRect(0, 0, W, floorY);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, W, floorY - 8);
+    ctx.clip();
+    ctx.fillStyle = w.ink;
+    ctx.strokeStyle = w.ink;
+    switch (w.pattern) {
+      case 'dots':
+        wallDots(ctx, W, floorY, w.ink, 26, 3.2);
+        break;
+      case 'stripes':
+        for (let x = 6; x < W; x += 30) ctx.fillRect(x, 0, 13, floorY);
+        break;
+      case 'tiles':
+        ctx.lineWidth = 2;
+        for (let x = 0; x < W; x += 26) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, floorY); ctx.stroke(); }
+        for (let y = 0; y < floorY; y += 26) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+        break;
+      case 'sparkles':
+        for (let y = 18, row = 0; y < floorY; y += 30, row++) {
+          for (let x = (row % 2) * 15 + 10; x < W; x += 30) {
+            sparklePath(ctx, x, y, 4);
+            ctx.fill();
+          }
+        }
+        break;
+      case 'hearts':
+        for (let y = 20, row = 0; y < floorY; y += 34, row++) {
+          for (let x = (row % 2) * 17 + 12; x < W; x += 34) {
+            heartPath(ctx, x, y, 11);
+            ctx.fill();
+          }
+        }
+        break;
+      case 'checks':
+        checker(ctx, 0, 0, W, floorY, 24, [w.base, w.ink]);
+        break;
+      case 'leaves':
+        for (let y = 18, row = 0; y < floorY; y += 28, row++) {
+          for (let x = (row % 2) * 14 + 10, col = 0; x < W; x += 28, col++) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate((row + col) % 2 ? 0.6 : -0.6);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 4, 8, 0, 0, TAU);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+        break;
+      default:
+        break;
+    }
+    ctx.restore();
+  }
+
+  // A little square preview for the shop: the wallpaper over a strip of floor.
+  function wallIcon(id, size) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const c = document.createElement('canvas');
+    c.width = c.height = Math.round(size * dpr);
+    const g = c.getContext('2d');
+    g.scale(dpr, dpr);
+    const floorY = size * 0.72;
+    roundRect(g, 1.5, 1.5, size - 3, size - 3, 10);
+    g.save();
+    g.clip();
+    paintWall(g, size, floorY, id);
+    g.fillStyle = '#F2B36A';
+    g.fillRect(0, floorY, size, size - floorY);
+    g.fillStyle = PAPER;
+    g.fillRect(0, floorY - 5, size, 6);
+    g.restore();
+    roundRect(g, 1.5, 1.5, size - 3, size - 3, 10);
+    outline(g, 3);
+    return c.toDataURL();
+  }
+
   /* ---------- shared pieces ---------- */
 
   function wallDots(ctx, W, bottom, color, gap, r) {
@@ -149,11 +248,9 @@
 
   /* ---------- living room ---------- */
 
-  function living(ctx, W, H, night) {
+  function living(ctx, W, H, night, wall) {
     const floorY = Math.round(H * 0.62);
-    ctx.fillStyle = '#BFE6DA';
-    ctx.fillRect(0, 0, W, floorY);
-    wallDots(ctx, W, floorY, '#D2EFE6', 26, 3.2);
+    paintWall(ctx, W, floorY, wall);
 
     drawWindow(ctx, W * 0.07, H * 0.08, Math.min(W * 0.38, 170), Math.min(H * 0.24, 150), night);
 
@@ -217,12 +314,9 @@
 
   /* ---------- kitchen ---------- */
 
-  function kitchen(ctx, W, H, night) {
+  function kitchen(ctx, W, H, night, wall) {
     const floorY = Math.round(H * 0.62);
-    ctx.fillStyle = '#FFE9AE';
-    ctx.fillRect(0, 0, W, floorY);
-    ctx.fillStyle = '#FFF1CB';
-    for (let x = 6; x < W; x += 30) ctx.fillRect(x, 0, 13, floorY);
+    paintWall(ctx, W, floorY, wall);
 
     checker(ctx, 0, floorY, W, H, Math.max(26, W / 9), ['#FFF7E6', '#9ED8CE']);
     baseboard(ctx, W, floorY);
@@ -414,14 +508,9 @@
 
   /* ---------- bathroom ---------- */
 
-  function bathroom(ctx, W, H) {
+  function bathroom(ctx, W, H, night, wall) {
     const floorY = Math.round(H * 0.6);
-    ctx.fillStyle = '#CFEFFF';
-    ctx.fillRect(0, 0, W, floorY);
-    ctx.strokeStyle = '#EAF9FF';
-    ctx.lineWidth = 2;
-    for (let x = 0; x < W; x += 26) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, floorY); ctx.stroke(); }
-    for (let y = 0; y < floorY; y += 26) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    paintWall(ctx, W, floorY, wall);
     checker(ctx, 0, floorY, W, H, Math.max(20, W / 12), ['#E9F7FB', '#B7E3EE']);
     baseboard(ctx, W, floorY);
 
@@ -624,17 +713,9 @@
 
   /* ---------- bedroom ---------- */
 
-  function bedroom(ctx, W, H, night) {
+  function bedroom(ctx, W, H, night, wall) {
     const floorY = Math.round(H * 0.6);
-    ctx.fillStyle = '#DCD1F7';
-    ctx.fillRect(0, 0, W, floorY);
-    ctx.fillStyle = '#ECE6FF';
-    for (let y = 18, row = 0; y < floorY - 8; y += 30, row++) {
-      for (let x = (row % 2) * 15 + 10; x < W; x += 30) {
-        sparklePath(ctx, x, y, 4);
-        ctx.fill();
-      }
-    }
+    paintWall(ctx, W, floorY, wall);
     ctx.fillStyle = '#EBC4B4';
     ctx.fillRect(0, floorY, W, H - floorY);
     baseboard(ctx, W, floorY);
@@ -801,10 +882,9 @@
 
   /* ---------- playroom ---------- */
 
-  function playroom(ctx, W, H) {
+  function playroom(ctx, W, H, night, wall) {
     const floorY = Math.round(H * 0.62);
-    ctx.fillStyle = '#C6E6FF';
-    ctx.fillRect(0, 0, W, floorY);
+    paintWall(ctx, W, floorY, wall);
 
     // rainbow mural
     const rcx = W * 0.47;
@@ -994,15 +1074,20 @@
   const DRAW = { living, kitchen, bathroom, bedroom, playroom };
 
   PM.ROOMS = ROOMS;
+  PM.WALLS = WALLS;
   PM.rooms = {
+    defaultWall: (id) => DEFAULT_WALL[id] || 'mint',
+    defaultWalls: Object.values(DEFAULT_WALL),
+    wallIcon,
     list: ROOMS,
     ids: ROOMS.map((r) => r.id),
     has: (id) => Object.prototype.hasOwnProperty.call(DRAW, id),
     name: (id) => (ROOMS.find((r) => r.id === id) || ROOMS[0]).name,
 
     // Draws the room's static background and returns its layout.
-    draw(id, ctx, W, H, night) {
-      const layout = (DRAW[id] || living)(ctx, W, H, night);
+    draw(id, ctx, W, H, night, wall) {
+      const draw = DRAW[id] || living;
+      const layout = draw(ctx, W, H, night, WALLS[wall] ? wall : DEFAULT_WALL[id] || 'mint');
       layout.W = W;
       layout.H = H;
       return layout;

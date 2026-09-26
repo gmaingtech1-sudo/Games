@@ -16,7 +16,11 @@
     hud: $('game-hud'), hudScore: $('hud-score'), hudLives: $('hud-lives'), tip: $('game-tip'),
     over: $('gameover'), dock: document.querySelector('.dock'),
     roomButtons: Array.from(document.querySelectorAll('.dock .act')),
-    prev: $('room-prev'), next: $('room-next'), roomAction: $('room-action'), shop: $('btn-shop'),
+    prev: $('room-prev'), next: $('room-next'), roomAction: $('room-action'), shop: $('btn-coins'),
+    goalsBtn: $('btn-goals'), goalsBadge: $('goals-badge'), goalsSheet: $('sheet-goals'),
+    goalsList: $('goals-list'), goalsBonus: $('goals-bonus'),
+    level: $('pet-level'), xpBar: $('xp-bar'), xpFill: $('xp-fill'),
+    arcade: $('arcade'), hudLabel: $('hud-label'), hudTime: $('hud-time'),
     scrim: $('scrim'), shopSheet: $('sheet-shop'), settingsSheet: $('sheet-settings'),
     shopGrid: $('shop-grid'), shopCoins: $('shop-coins'),
     adopt: $('adopt'), preview: $('preview'),
@@ -28,7 +32,14 @@
   const ctx = els.canvas.getContext('2d');
   const pet = new PM.PetView();
   const fx = new PM.Particles();
-  const game = new PM.StarCatch();
+  const games = { stars: new PM.StarCatch(), bubbles: new PM.BubblePop() };
+  let gameKind = 'stars';   // which arcade game is being played
+  let game = games[gameKind];
+  const GAME_INFO = {
+    stars: { label: 'Stars', tip: 'Slide your finger to move.<br>Catch stars and coins, dodge storm clouds!' },
+    bubbles: { label: 'Score', tip: 'Tap bubbles to pop them. Pop fast for combos!<br>Rainbows are worth more; storm bubbles cost time.' },
+  };
+  const NEED_ROOM = { hunger: 'kitchen', clean: 'bathroom', energy: 'bedroom', fun: 'playroom' };
 
   let s = null;             // the saved pet
   let mode = 'home';        // home | game | gameover
@@ -58,7 +69,8 @@
   let resetArmed = 0;
   let shopTab = 'food';
   const timers = { save: 0, ui: 0, stink: 0, z: 0, purr: 0, bubble: 0, night: 0, idle: 0 };
-  const icons = { food: {}, hat: {} };
+  const icons = { food: {}, hat: {}, wall: {} };
+  const toastQueue = [];
 
   /* ---------------- storage ---------------- */
 
@@ -95,20 +107,64 @@
 
   function petSize() { return Math.min(W * 0.46, H * 0.4, 230); }
 
-  function toast(msg, ms) {
-    els.toast.textContent = msg;
+  // Messages queue up, since a level-up and a finished goal often land together.
+  // News jumps ahead of waiting tips (from hint). Whatever is on screen gets
+  // shortened once something is waiting, so news never lags far behind.
+  const SHORT = { tip: 1400, news: 1900 };
+
+  function toast(msg, ms, hintKey) {
+    if (toastQueue.some((t) => t.msg === msg)) return;
+    const item = { msg, ms: ms || 2400, hint: hintKey || null };
+    if (!item.hint) {
+      const firstTip = toastQueue.findIndex((t, i) => i > 0 && t.hint);
+      toastQueue.splice(firstTip > 0 ? firstTip : toastQueue.length, 0, item);
+    } else {
+      toastQueue.push(item);
+    }
+    const cur = toastQueue[0];
+    if (cur !== item && !cur.cut && (cur.hint || !item.hint)) {
+      cur.cut = true;
+      clearTimeout(toastTimer);
+      const keep = cur.hint ? SHORT.tip : SHORT.news;
+      toastTimer = setTimeout(nextToast, Math.max(250, Math.min(cur.ms, keep) - (performance.now() - cur.shownAt)));
+    }
+    // Keep the queue short: drop the oldest waiting tip, or else the oldest waiting message.
+    while (toastQueue.length > 4) {
+      const tip = toastQueue.findIndex((t, i) => i > 0 && t.hint);
+      toastQueue.splice(tip > 0 ? tip : 1, 1);
+    }
+    if (toastQueue.length === 1) showToast();
+  }
+
+  function nextToast() {
+    toastQueue.shift();
+    showToast();
+  }
+
+  function showToast() {
+    const t = toastQueue[0];
+    clearTimeout(toastTimer);
+    if (!t) {
+      els.toast.hidden = true;
+      return;
+    }
+    t.shownAt = performance.now();
+    if (t.hint && s) s.hints[t.hint] = 1; // a tip only counts as seen once shown
+    if (toastQueue.length > 1 && !t.cut) {
+      t.cut = true;
+      t.ms = Math.min(t.ms, t.hint ? SHORT.tip : SHORT.news);
+    }
+    els.toast.textContent = t.msg;
     els.toast.hidden = false;
     els.toast.style.animation = 'none';
     void els.toast.offsetWidth;
     els.toast.style.animation = '';
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { els.toast.hidden = true; }, ms || 2400);
+    toastTimer = setTimeout(nextToast, t.ms);
   }
 
   function hint(key, msg, ms) {
     if (!s || s.hints[key]) return false;
-    s.hints[key] = 1;
-    toast(msg, ms || 3200);
+    toast(msg, ms || 3200, key);
     return true;
   }
 
@@ -120,14 +176,27 @@
 
   function gainXP(n) {
     const up = M.addXP(s, n);
-    if (up) {
-      A.play('levelup');
-      A.buzz([30, 50, 30]);
-      fx.confetti(pet.geo.x, pet.geo.top, 50);
-      pet.hop(300);
-      toast(`${s.name} grew into a ${up.label}! +20 coins`, 3200);
-      bumpCoins();
-    }
+    if (!up) return;
+    A.play('levelup');
+    A.buzz([30, 50, 30]);
+    fx.confetti(pet.geo.x, pet.geo.top, 50);
+    pet.hop(300);
+    let msg = up.grew
+      ? `${s.name} grew into a ${up.grew.label}! Level ${up.level}, +${up.coins} coins.`
+      : `Level ${up.level}! +${up.coins} coins.`;
+    if (up.unlocks.length) msg += ` New in the shop: ${up.unlocks.join(', ')}.`;
+    toast(msg, 4200);
+    bumpCoins();
+    updateUI();
+  }
+
+  // Counts progress toward today's goals, and cheers when one is finished.
+  function track(id, amount) {
+    const done = M.track(s, id, amount);
+    if (!done.length) return;
+    A.play('sparkle');
+    toast(`Goal done: ${M.goalText(done[0], s.name)}. Claim it in Goals!`, 3200);
+    updateUI();
   }
 
   function poopPos(p) {
@@ -169,7 +238,7 @@
       canvas.height = els.canvas.height;
       const g = canvas.getContext('2d');
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      c = bgCache[id] = { canvas, layout: PM.rooms.draw(id, g, W, H, night) };
+      c = bgCache[id] = { canvas, layout: PM.rooms.draw(id, g, W, H, night, M.wallOf(s, id)) };
     }
     return c;
   }
@@ -184,7 +253,7 @@
 
   // True when Android's back button should close something instead of leaving.
   function overlayOpen() {
-    if (!els.scrim.hidden || !els.tray.hidden) return true;
+    if (!els.scrim.hidden || !els.tray.hidden || !els.arcade.hidden) return true;
     return !!s && (mode !== 'home' || (s.room !== 'living' && !s.asleep));
   }
 
@@ -194,6 +263,13 @@
     els.name.textContent = s.name;
     els.stage.textContent = s.hatched ? `${M.stage(s).label} · Day ${M.ageDays(s)}` : 'Egg · ready to hatch';
     els.coins.textContent = s.coins;
+    els.shop.setAttribute('aria-label', `Shop. You have ${s.coins} coins.`);
+    const li = M.levelInfo(s);
+    els.level.textContent = `Lv ${li.level}`;
+    els.xpFill.style.width = `${Math.round(li.frac * 100)}%`;
+    els.xpBar.setAttribute('aria-valuenow', String(Math.round(li.frac * 100)));
+    els.xpBar.setAttribute('aria-label', `Level ${li.level}. ${li.toNext} XP to the next level.`);
+    els.goalsBadge.hidden = !M.goalsReady(s);
     for (const m of meters) {
       const v = Math.round(s.stats[m.key]);
       m.fill.style.width = `${v}%`;
@@ -223,8 +299,9 @@
     if (!inGame && s.hatched) {
       if (s.room === 'kitchen' && els.tray.hidden && !s.asleep) action = 'Open the fridge';
       else if (s.room === 'bedroom') action = s.asleep ? 'Wake up' : 'Lights off';
-      else if (s.room === 'playroom') action = 'Play Star Catch';
+      else if (s.room === 'playroom') action = 'Arcade';
     }
+    if (!els.arcade.hidden) action = null;
     els.roomAction.hidden = !action;
     if (action && els.roomAction.textContent !== action) els.roomAction.textContent = action;
     els.roomAction.classList.toggle('warm', s.asleep);
@@ -381,7 +458,10 @@
       A.play('chomp');
       A.buzz(12);
       pet.squish(1.4);
-      const crumb = { apple: '#FF5A5F', onigiri: '#FFFFFF', fish: '#7CC0F5', dango: '#FF9FC4', cupcake: '#FFB3D3' }[eating.type];
+      const crumb = {
+        apple: '#FF5A5F', onigiri: '#FFFFFF', fish: '#7CC0F5', dango: '#FF9FC4', cupcake: '#FFB3D3',
+        pizza: '#FFC53D', icecream: '#FFB3CF',
+      }[eating.type];
       fx.crumbs(pet.geo.x, pet.geo.mouthY, 5, crumb);
     }
     if (eating.t >= 1.4) {
@@ -392,6 +472,7 @@
       pet.hop(200);
       fx.hearts(pet.geo.x, pet.geo.top, 2);
       gainXP(f.xp);
+      track('feed');
       save();
       updateUI();
       if (s.stats.hunger >= 96) toast(`${s.name} is nice and full.`);
@@ -419,6 +500,7 @@
     }, 450);
     if (scrubbed) {
       gainXP(6);
+      track('bath');
       save();
     } else if (!pet.foam.length) {
       toast(`Scrub ${s.name} with your finger first, then rinse.`);
@@ -458,6 +540,7 @@
       s.stats.fun = M.clamp(s.stats.fun + 1.2);
       gainXP(0.25);
       fx.hearts(p.x, p.y - 12, 1);
+      track('pet');
     }
     if (timers.purr <= 0) {
       timers.purr = 0.55;
@@ -534,6 +617,11 @@
       else toast('Tap the egg to help it hatch!');
       return;
     }
+    const th = pet.thought;
+    if (th && Math.hypot(p.x - th.x, p.y - th.y) < th.r) {
+      followNeed(th.need);
+      return;
+    }
     for (const poop of poopsHere()) {
       const pp = poopPos(poop);
       if (Math.hypot(p.x - pp.x, p.y - (pp.y - pp.size * 0.4)) < pp.size * 0.85) {
@@ -573,7 +661,7 @@
         onSleep();
         break;
       case 'arcade':
-        startGame();
+        openArcade();
         break;
       case 'shower':
         rinse();
@@ -597,7 +685,7 @@
     A.unlock();
     const p = toRoom(e);
     if (mode === 'game') {
-      game.pointer(p.x);
+      game.pointer(p.x, p.y, 'down');
       pointer = { id: e.pointerId };
       try { els.canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       return;
@@ -624,7 +712,7 @@
     if (!s) return;
     const p = toRoom(e);
     if (mode === 'game') {
-      if (pointer || e.pointerType === 'mouse') game.pointer(p.x);
+      if (pointer || e.pointerType === 'mouse') game.pointer(p.x, p.y, 'move');
       return;
     }
     if (!pointer || e.pointerId !== pointer.id) {
@@ -753,6 +841,7 @@
         pet.squish(1.2);
         s.stats.fun = M.clamp(s.stats.fun + 1.5);
         gainXP(0.3);
+        track('ball');
         fx.sparkles(b.x, b.y, 5, b.r);
       }
     }
@@ -797,6 +886,7 @@
       }
     } else {
       s.asleep = true;
+      track('sleep');
       A.play('yawn');
       pet.setExpr('yawn', 1.3);
       pet.targetX = null;
@@ -885,7 +975,7 @@
     if (id === 'bedroom' && !s.asleep) hint('bed', `Tap the lamp to put ${s.name} to bed.`);
     if (id === 'playroom') {
       ensureBall();
-      hint('ball', `Flick the ball and ${s.name} will chase it. The arcade plays Star Catch.`, 3800);
+      hint('ball', `Flick the ball and ${s.name} will chase it. The arcade has two games.`, 3800);
     }
     if (arrived && (id === 'living' || id === 'playroom' || (id === 'bedroom' && !s.asleep))) pet.hop(240);
   }
@@ -898,8 +988,34 @@
     } else if (s.room === 'bedroom') {
       onSleep();
     } else if (s.room === 'playroom') {
-      startGame();
+      openArcade();
     }
+  }
+
+  // Take the player to whatever the pet is asking for (thought bubble or a meter).
+  function followNeed(need) {
+    if (!s || !s.hatched || mode !== 'home') return;
+    A.play('tap');
+    if (need === 'sick') {
+      if (s.sick) onHeal();
+      return;
+    }
+    if (need === 'poop') {
+      const p = s.poops.find((x) => x.room !== s.room);
+      if (p && !poopsHere().length) goRoom(p.room);
+      toast('Tap the poop to clean it up.');
+      return;
+    }
+    const room = NEED_ROOM[need];
+    if (!room) return;
+    if (room !== s.room) {
+      goRoom(room);
+      return;
+    }
+    if (room === 'kitchen' && els.tray.hidden) openTray();
+    else if (room === 'bathroom') toast(`Scrub ${s.name} with your finger, then tap Rinse.`);
+    else if (room === 'bedroom' && !s.asleep) toast(`Tap the lamp to put ${s.name} to bed.`);
+    else if (room === 'playroom') openArcade();
   }
 
   /* ---------------- mini-game ---------------- */
@@ -911,18 +1027,47 @@
     Array.from(els.hudLives.children).forEach((c, i) => c.classList.toggle('lost', i >= game.lives));
   }
 
-  function startGame() {
+  function renderTime() {
+    const t = Math.ceil(game.time);
+    els.hudTime.textContent = `0:${String(t).padStart(2, '0')}`;
+    els.hudTime.classList.toggle('low', t <= 5);
+  }
+
+  function openArcade() {
+    A.play('click');
+    if (needsPet()) return;
+    $('best-stars').textContent = `Best ${s.best}`;
+    $('best-bubbles').textContent = `Best ${s.bestBubbles}`;
+    els.arcade.hidden = false;
+    updateUI();
+  }
+
+  function closeArcade() {
+    els.arcade.hidden = true;
+    updateUI();
+  }
+
+  function startGame(kind) {
     A.play('click');
     if (needsPet()) return;
     if (s.asleep) { toast(`Shh... ${s.name} is sleeping.`); return; }
     if (s.sick) { toast(`${s.name} feels sick. Give medicine first.`); return; }
     if (s.stats.energy < 12) { toast(`${s.name} is too tired to play. Try a nap.`); return; }
+    if (games[kind]) gameKind = kind;
+    game = games[gameKind];
     closeTray();
+    els.arcade.hidden = true;
     els.over.hidden = true;
     mode = 'game';
     game.start(W, H);
-    renderLives();
+    const info = GAME_INFO[gameKind];
+    els.hudLabel.textContent = info.label;
+    els.hudLives.hidden = gameKind !== 'stars';
+    els.hudTime.hidden = gameKind !== 'bubbles';
+    if (gameKind === 'stars') renderLives();
+    else renderTime();
     els.hudScore.textContent = '0';
+    els.tip.innerHTML = info.tip;
     els.hud.hidden = false;
     els.tip.hidden = false;
     setTimeout(() => { els.tip.hidden = true; }, 2600);
@@ -936,23 +1081,31 @@
     pointer = null;
     els.tip.hidden = true;
     els.hud.hidden = true;
+    const stars = gameKind === 'stars';
     const score = game.score;
-    const coins = game.coins * 2 + Math.floor(score / 3);
-    const newBest = score > s.best && score >= 5;
-    s.best = Math.max(s.best, score);
+    const coins = game.coins * 2 + Math.floor(score / (stars ? 3 : 6));
+    const bestKey = stars ? 'best' : 'bestBubbles';
+    const newBest = score > s[bestKey] && score >= 5;
+    s[bestKey] = Math.max(s[bestKey], score);
     s.coins += coins;
-    s.stats.fun = M.clamp(s.stats.fun + Math.min(32, 6 + score * 1.2));
+    s.stats.fun = M.clamp(s.stats.fun + Math.min(32, 6 + score * (stars ? 1.2 : 0.5)));
     s.stats.energy = M.clamp(s.stats.energy - (6 + Math.min(10, game.t / 8)));
     s.stats.hunger = M.clamp(s.stats.hunger - 5);
-    $('go-title').textContent = newBest ? 'New best!' : score >= 10 ? 'Nice catch!' : 'Good try!';
+    const great = score >= (stars ? 10 : 30);
+    $('go-title').textContent = newBest ? 'New best!' : great ? (stars ? 'Nice catch!' : 'Pop star!') : 'Good try!';
+    $('go-score-label').textContent = stars ? 'Stars' : 'Score';
     $('go-score').textContent = score;
-    $('go-best').textContent = s.best;
+    $('go-best').textContent = s[bestKey];
     $('go-coins').textContent = `+${coins}`;
-    $('go-note').textContent = coins > 0 ? `${s.name} had fun and you earned ${coins} coins.` : 'Catch stars and coins to earn money for the shop.';
+    $('go-note').textContent = coins > 0
+      ? `${s.name} had fun and you earned ${coins} coins.`
+      : stars ? 'Catch stars and coins to earn money for the shop.' : 'Pop bubbles fast for combos. Rainbow bubbles give coins.';
     els.over.hidden = false;
     A.play(newBest ? 'levelup' : 'gameover');
     if (coins > 0) bumpCoins();
-    gainXP(4 + Math.min(30, score * 0.6));
+    track(stars ? 'stars' : 'bubbles', stars ? score : game.popped);
+    track('arcade');
+    gainXP(4 + Math.min(30, score * (stars ? 0.6 : 0.3)));
     save();
     updateUI();
   }
@@ -984,6 +1137,7 @@
     els.scrim.hidden = true;
     els.shopSheet.hidden = true;
     els.settingsSheet.hidden = true;
+    els.goalsSheet.hidden = true;
     disarmReset();
     updateUI();
   }
@@ -994,6 +1148,7 @@
     if (!els.scrim.hidden) closeSheets();
     else if (mode === 'game') endGame();
     else if (mode === 'gameover') leaveGame();
+    else if (!els.arcade.hidden) closeArcade();
     else if (!els.tray.hidden) closeTray();
     else if (s && s.room !== 'living' && !s.asleep) goRoom('living');
     updateUI();
@@ -1007,39 +1162,49 @@
 
   function renderShop() {
     els.shopCoins.textContent = s.coins;
-    ['food', 'hats'].forEach((t) => $(`tab-${t}`).setAttribute('aria-selected', String(t === shopTab)));
+    ['food', 'hats', 'decor'].forEach((t) => $(`tab-${t}`).setAttribute('aria-selected', String(t === shopTab)));
     els.shopGrid.innerHTML = '';
     const coinDot = '<span class="coin-dot" aria-hidden="true"></span>';
+    const priceBtn = (item) => `<button type="button" class="buy${s.coins < item.price ? ' poor' : ''}" ` +
+      `aria-label="Buy ${item.name} for ${item.price} coins">${coinDot}${item.price}</button>`;
+    const lockBtn = (item) => `<button type="button" class="buy locked" aria-label="${item.name} unlocks at level ${item.level}">Lv ${item.level}</button>`;
+    const add = (icon, item, meta, btn, onBuy) => {
+      const el = document.createElement('div');
+      const locked = !M.isUnlocked(s, item);
+      el.className = `item${locked ? ' is-locked' : ''}`;
+      el.innerHTML = `<img alt="" src="${icon}"><div class="item-name">${item.name}</div>` +
+        `<div class="item-meta">${locked ? `Unlocks at level ${item.level}` : meta}</div>${locked ? lockBtn(item) : btn}`;
+      el.querySelector('.buy').addEventListener('click', () => (locked ? lockedMsg(el, item) : onBuy(el)));
+      els.shopGrid.appendChild(el);
+    };
+    let foot = 'Earn coins in the arcade, from daily goals, and by leveling up.';
     if (shopTab === 'food') {
       for (const [k, f] of Object.entries(PM.FOODS)) {
         const effects = [`+${f.food} food`];
         if (f.fun >= 10) effects.push(`+${f.fun} fun`);
-        const item = document.createElement('div');
-        item.className = 'item';
-        const poor = s.coins < f.price;
-        item.innerHTML = `<img alt="" src="${icons.food[k]}"><div class="item-name">${f.name}</div>` +
-          `<div class="item-meta">${effects.join(', ')} · have ${s.inv[k] || 0}</div>` +
-          `<button type="button" class="buy${poor ? ' poor' : ''}" aria-label="Buy ${f.name} for ${f.price} coins">${coinDot}${f.price}</button>`;
-        item.querySelector('.buy').addEventListener('click', () => buyFood(k, item));
-        els.shopGrid.appendChild(item);
+        add(icons.food[k], f, `${effects.join(', ')} · have ${s.inv[k] || 0}`, priceBtn(f), (el) => buyFood(k, el));
       }
-    } else {
+    } else if (shopTab === 'hats') {
       for (const [k, h] of Object.entries(PM.HATS)) {
         const owned = s.hats.includes(k);
         const wearing = s.hat === k;
-        const poor = !owned && s.coins < h.price;
-        const item = document.createElement('div');
-        item.className = 'item';
-        let btn;
-        if (!owned) btn = `<button type="button" class="buy${poor ? ' poor' : ''}" aria-label="Buy ${h.name} for ${h.price} coins">${coinDot}${h.price}</button>`;
-        else if (wearing) btn = '<button type="button" class="buy wearing">Take off</button>';
-        else btn = '<button type="button" class="buy alt">Wear</button>';
-        item.innerHTML = `<img alt="" src="${icons.hat[k]}"><div class="item-name">${h.name}</div>` +
-          `<div class="item-meta">${wearing ? 'Wearing now' : owned ? 'Yours' : ''}</div>${btn}`;
-        item.querySelector('.buy').addEventListener('click', () => hatAction(k, item));
-        els.shopGrid.appendChild(item);
+        let btn = priceBtn(h);
+        if (wearing) btn = '<button type="button" class="buy wearing">Take off</button>';
+        else if (owned) btn = '<button type="button" class="buy alt">Wear</button>';
+        add(icons.hat[k], h, wearing ? 'Wearing now' : owned ? 'Yours' : '', btn, (el) => hatAction(k, el));
+      }
+    } else {
+      const here = M.wallOf(s, s.room);
+      foot = `Wallpaper goes up in the ${PM.rooms.name(s.room).toLowerCase()}. Visit another room to decorate it.`;
+      for (const [k, w] of Object.entries(PM.WALLS)) {
+        const owned = s.walls.includes(k);
+        let btn = priceBtn(w);
+        if (here === k) btn = '<button type="button" class="buy wearing">In use</button>';
+        else if (owned) btn = '<button type="button" class="buy alt">Use here</button>';
+        add(icons.wall[k], w, here === k ? 'Up in this room' : owned ? 'Yours' : '', btn, (el) => wallAction(k, el));
       }
     }
+    $('shop-foot').textContent = foot;
   }
 
   function notEnough(item, price) {
@@ -1048,11 +1213,17 @@
     meta.textContent = `Need ${price - s.coins} more coins`;
   }
 
+  function lockedMsg(el, item) {
+    A.play('no');
+    el.querySelector('.item-meta').textContent = `Reach level ${item.level} to unlock`;
+  }
+
   function buyFood(k, item) {
     const f = PM.FOODS[k];
     if (!M.buyFood(s, k)) { notEnough(item, f.price); return; }
     A.play('coin');
     A.buzz(10);
+    track('shop');
     save();
     renderShop();
     updateUI();
@@ -1065,6 +1236,7 @@
       if (!M.buyHat(s, k)) { notEnough(item, h.price); return; }
       A.play('coin');
       A.buzz(10);
+      track('shop');
     } else {
       s.hat = s.hat === k ? null : k;
       A.play('click');
@@ -1075,6 +1247,73 @@
     }
     save();
     renderShop();
+    updateUI();
+  }
+
+  // Buying a wallpaper puts it up in the room you're in; owned ones can go anywhere.
+  function wallAction(k, item) {
+    const w = PM.WALLS[k];
+    if (!s.walls.includes(k)) {
+      if (!M.buyWall(s, k)) { notEnough(item, w.price); return; }
+      A.play('coin');
+      A.buzz(10);
+      track('shop');
+    } else {
+      A.play('click');
+    }
+    M.setWall(s, s.room, k);
+    delete bgCache[s.room];
+    layout = roomBg(s.room).layout;
+    fx.sparkles(W / 2, H * 0.3, 16, W * 0.4);
+    save();
+    renderShop();
+    updateUI();
+  }
+
+  /* ---------------- daily goals ---------------- */
+
+  function openGoals() {
+    A.play('click');
+    if (!s) return;
+    M.ensureGoals(s);
+    renderGoals();
+    openSheet(els.goalsSheet);
+  }
+
+  function renderGoals() {
+    const R = M.GOAL_REWARD;
+    els.goalsList.innerHTML = '';
+    s.goals.list.forEach((g, i) => {
+      const ready = g.have >= g.n;
+      const el = document.createElement('div');
+      el.className = `goal${g.claimed ? ' claimed' : ''}`;
+      const action = g.claimed ? '<span class="done-tag">Claimed</span>'
+        : ready ? '<button type="button" class="btn primary">Claim</button>' : '<span></span>';
+      el.innerHTML = `<div><div class="goal-text"></div><div class="goal-meta">${Math.floor(g.have)} / ${g.n} · +${R.coins} coins, +${R.xp} XP</div></div>` +
+        `${action}<div class="goal-bar"><div style="width:${Math.round((g.have / g.n) * 100)}%"></div></div>`;
+      el.querySelector('.goal-text').textContent = M.goalText(g, s.name);
+      const b = el.querySelector('button');
+      if (b) b.addEventListener('click', () => claimGoal(i));
+      els.goalsList.appendChild(el);
+    });
+    els.goalsBonus.textContent = s.goals.bonus
+      ? `Daily bonus collected: +${M.GOAL_BONUS} coins`
+      : `Finish all three for a +${M.GOAL_BONUS} coin bonus`;
+  }
+
+  function claimGoal(i) {
+    const r = M.claimGoal(s, i);
+    if (!r) return;
+    A.play('coin');
+    A.buzz([20, 40, 20]);
+    bumpCoins();
+    gainXP(r.xp);
+    if (r.bonus) {
+      A.play('levelup');
+      toast(`All three goals done! Bonus +${r.bonus} coins.`, 3200);
+    }
+    save();
+    renderGoals();
     updateUI();
   }
 
@@ -1105,6 +1344,7 @@
     shownRoom = null;
     trans = null;
     ball = null;
+    els.arcade.hidden = true;
     els.over.hidden = true;
     els.hud.hidden = true;
     els.banner.hidden = true;
@@ -1151,6 +1391,12 @@
   }
 
   function dailyGift() {
+    if (M.ensureGoals(s) && s.hatched) {
+      setTimeout(() => {
+        if (s) hint('goals', 'New: daily goals! Tap the checklist at the top to see them.', 3600);
+      }, 1800);
+      updateUI();
+    }
     const today = new Date().toDateString();
     if (s.gift === today) return;
     s.gift = today;
@@ -1189,6 +1435,7 @@
 
   function drawScene() {
     const L = layout;
+    pet.thought = null;
     const g0 = currentGround();
     ctx.drawImage(roomBg(s.room).canvas, 0, 0, W, H);
     PM.rooms.drawLive(s.room, ctx, L, pet.t);
@@ -1357,6 +1604,7 @@
       timers.night = 30;
       const n = isNight();
       if (n !== night) { night = n; resetBackgrounds(); }
+      dailyGift(); // new day: new goals and gift
     }
 
     if (mode === 'game' || mode === 'gameover') {
@@ -1368,7 +1616,8 @@
       }
       if (mode === 'game') {
         els.hudScore.textContent = game.score;
-        if (els.hudLives.querySelectorAll('.lost').length !== 3 - game.lives) renderLives();
+        if (gameKind === 'bubbles') renderTime();
+        else if (els.hudLives.querySelectorAll('.lost').length !== 3 - game.lives) renderLives();
       }
       game.draw(ctx, s);
     } else {
@@ -1540,7 +1789,20 @@
     els.bannerBtn.addEventListener('click', rinse);
     els.heal.addEventListener('click', onHeal);
     $('hud-quit').addEventListener('click', () => { if (mode === 'game') endGame(); });
-    $('go-again').addEventListener('click', startGame);
+    $('go-again').addEventListener('click', () => startGame(gameKind));
+    $('play-stars').addEventListener('click', () => startGame('stars'));
+    $('play-bubbles').addEventListener('click', () => startGame('bubbles'));
+    $('arcade-close').addEventListener('click', () => { A.play('click'); closeArcade(); });
+    els.goalsBtn.addEventListener('click', openGoals);
+    // each need meter leads to the room that fills it
+    meters.forEach((m) => {
+      m.el.setAttribute('role', 'button');
+      m.el.tabIndex = 0;
+      m.el.addEventListener('click', () => followNeed(m.key));
+      m.el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); followNeed(m.key); }
+      });
+    });
     $('go-home').addEventListener('click', leaveGame);
 
     els.scrim.addEventListener('click', closeSheets);
@@ -1615,12 +1877,17 @@
   function boot() {
     for (const k of Object.keys(PM.FOODS)) icons.food[k] = PM.art.foodIcon(k, 56);
     for (const k of Object.keys(PM.HATS)) icons.hat[k] = PM.art.hatIcon(k, 60);
+    for (const k of Object.keys(PM.WALLS)) icons.wall[k] = PM.rooms.wallIcon(k, 60);
     wire();
     s = load();
     if (s) startSession();
     else showAdopt();
     requestAnimationFrame((ts) => { lastFrame = ts; frame(ts); });
     registerServiceWorker();
+    // For automated tests: open the page with ?debug to reach the game state.
+    if (/[?&]debug\b/.test(location.search)) {
+      PM.debug = { get s() { return s; }, get game() { return game; }, get layout() { return layout; }, pet, goRoom };
+    }
   }
 
   boot();

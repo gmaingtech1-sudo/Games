@@ -44,9 +44,13 @@
       hats: [],
       hat: null,
       best: 0,
+      bestBubbles: 0,
       gift: '',
       hints: {},
       room: 'living',
+      walls: PM.rooms.defaultWalls.slice(),
+      decor: {},
+      goals: null,
       settings: { sound: true, vibe: true },
     };
   }
@@ -68,6 +72,18 @@
     if (!PM.rooms.has(s.room)) s.room = 'living';
     s.poops.forEach((p) => { if (!PM.rooms.has(p.room)) p.room = 'living'; });
     if (s.asleep) s.room = 'bedroom';
+    // Added in 1.2: wallpapers, daily goals, Bubble Pop best score.
+    const walls = Array.isArray(raw.walls) ? raw.walls : [];
+    s.walls = Array.from(new Set(PM.rooms.defaultWalls.concat(walls))).filter((w) => PM.WALLS[w]);
+    s.decor = raw.decor && typeof raw.decor === 'object' ? Object.assign({}, raw.decor) : {};
+    Object.keys(s.decor).forEach((room) => {
+      if (!PM.rooms.has(room) || !s.walls.includes(s.decor[room])) delete s.decor[room];
+    });
+    const goalsOk = s.goals && Array.isArray(s.goals.list) && s.goals.list.every((g) => GOALS[g.id]);
+    if (!goalsOk) s.goals = null;
+    s.bestBubbles = Number(raw.bestBubbles) || 0;
+    s.hats = s.hats.filter((h) => PM.HATS[h]);
+    if (s.hat && !PM.HATS[s.hat]) s.hat = null;
     return s;
   }
 
@@ -151,15 +167,142 @@
     return ev;
   }
 
+  /* ---------- levels ---------- */
+
+  // The curve passes through the old growth points, so pets from before
+  // levels keep their stage: Kid at level 5 (120 XP), Grown-up at level 12 (400 XP).
+  const LEVEL_P = Math.log(400 / 120) / Math.log(11 / 4);
+  const LEVEL_A = 120 / Math.pow(4, LEVEL_P);
+  const LEVEL_COINS = 10;
+  const STAGE_COINS = 20;
+
+  function xpForLevel(level) {
+    return level <= 1 ? 0 : Math.round(LEVEL_A * Math.pow(level - 1, LEVEL_P));
+  }
+
+  function levelOf(xp) {
+    let level = 1;
+    while (xpForLevel(level + 1) <= xp) level++;
+    return level;
+  }
+
+  function levelInfo(s) {
+    const level = levelOf(s.xp);
+    const a = xpForLevel(level);
+    const b = xpForLevel(level + 1);
+    return { level, frac: clamp((s.xp - a) / (b - a), 0, 1), toNext: Math.max(1, Math.ceil(b - s.xp)) };
+  }
+
+  function isUnlocked(s, item) {
+    return (item.level || 1) <= levelOf(s.xp);
+  }
+
+  // Names of shop items that unlock above level `from`, up to level `to`.
+  function unlocksBetween(from, to) {
+    const out = [];
+    [PM.FOODS, PM.HATS, PM.WALLS].forEach((table) => {
+      Object.values(table).forEach((item) => {
+        const lv = item.level || 1;
+        if (lv > from && lv <= to) out.push(item.name);
+      });
+    });
+    return out;
+  }
+
+  // Adds XP. On a level up, pays out coins and says what unlocked.
   function addXP(s, n) {
-    const before = stageIndex(s);
+    const lv0 = levelOf(s.xp);
+    const st0 = stageIndex(s);
     s.xp += n;
-    const after = stageIndex(s);
-    if (after > before) {
-      s.coins += 20;
-      return STAGES[after];
+    const lv1 = levelOf(s.xp);
+    if (lv1 <= lv0) return null;
+    const st1 = stageIndex(s);
+    const grew = st1 > st0 ? STAGES[st1] : null;
+    const coins = (lv1 - lv0) * LEVEL_COINS + (grew ? STAGE_COINS : 0);
+    s.coins += coins;
+    return { level: lv1, coins, grew, unlocks: unlocksBetween(lv0, lv1) };
+  }
+
+  /* ---------- daily goals ---------- */
+
+  const GOALS = {
+    feed:    { amounts: [3, 4, 5], text: (n, name) => `Feed ${name} ${n} snacks` },
+    pet:     { amounts: [15, 25], text: (n, name) => `Pet ${name} until ${n} hearts float up` },
+    bath:    { amounts: [1], text: (n, name) => `Scrub ${name} in the bath, then rinse` },
+    sleep:   { amounts: [1], text: (n, name) => `Tuck ${name} into bed` },
+    ball:    { amounts: [8, 12], text: (n, name) => `Play ball until ${name} bops it ${n} times` },
+    stars:   { amounts: [15, 25], text: (n) => `Catch ${n} stars in Star Catch` },
+    bubbles: { amounts: [30, 50], text: (n) => `Pop ${n} bubbles in Bubble Pop` },
+    arcade:  { amounts: [2, 3], text: (n) => `Play ${n} arcade games` },
+    shop:    { amounts: [1], text: () => 'Buy something in the shop' },
+  };
+  const GOAL_REWARD = { coins: 15, xp: 10 };
+  const GOAL_BONUS = 25;
+
+  function seeded(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
     }
-    return null;
+    if (!h) h = 1;
+    return () => {
+      h ^= h << 13;
+      h ^= h >>> 17;
+      h ^= h << 5;
+      return (h >>> 0) / 4294967296;
+    };
+  }
+
+  // Three goals a day. They're picked from the date, so they stay the same all day.
+  function ensureGoals(s) {
+    const day = new Date().toDateString();
+    if (s.goals && s.goals.day === day) return false;
+    const rnd = seeded(`${day}|${s.name}`);
+    const pool = Object.keys(GOALS);
+    const list = [];
+    while (list.length < 3) {
+      const id = pool.splice(Math.floor(rnd() * pool.length), 1)[0];
+      const amounts = GOALS[id].amounts;
+      list.push({ id, n: amounts[Math.floor(rnd() * amounts.length)], have: 0, claimed: false });
+    }
+    s.goals = { day, list, bonus: false };
+    return true;
+  }
+
+  // Counts progress toward today's goals; returns the goals this just finished.
+  function track(s, id, amount) {
+    if (!s.goals) return [];
+    const done = [];
+    s.goals.list.forEach((g) => {
+      if (g.id !== id || g.have >= g.n) return;
+      g.have = Math.min(g.n, g.have + (amount || 1));
+      if (g.have >= g.n) done.push(g);
+    });
+    return done;
+  }
+
+  function goalText(g, name) {
+    return (GOALS[g.id] || GOALS.feed).text(g.n, name);
+  }
+
+  function goalsReady(s) {
+    return !!s.goals && s.goals.list.some((g) => g.have >= g.n && !g.claimed);
+  }
+
+  // Pays out a finished goal (XP is added by the caller so it can celebrate).
+  function claimGoal(s, i) {
+    const g = s.goals && s.goals.list[i];
+    if (!g || g.claimed || g.have < g.n) return null;
+    g.claimed = true;
+    s.coins += GOAL_REWARD.coins;
+    let bonus = 0;
+    if (!s.goals.bonus && s.goals.list.every((x) => x.claimed)) {
+      s.goals.bonus = true;
+      bonus = GOAL_BONUS;
+      s.coins += bonus;
+    }
+    return { coins: GOAL_REWARD.coins, xp: GOAL_REWARD.xp, bonus };
   }
 
   function mood(s) {
@@ -189,6 +332,8 @@
 
   const model = {
     STAT_KEYS, STAGES, create, revive, stage, stageIndex, ageDays, simulate, addXP, mood, need, clamp,
+    xpForLevel, levelOf, levelInfo, isUnlocked,
+    GOAL_REWARD, GOAL_BONUS, ensureGoals, track, goalText, goalsReady, claimGoal,
 
     feed(s, type) {
       const f = PM.FOODS[type];
@@ -218,7 +363,7 @@
 
     buyFood(s, type) {
       const f = PM.FOODS[type];
-      if (!f || s.coins < f.price) return false;
+      if (!f || s.coins < f.price || !isUnlocked(s, f)) return false;
       s.coins -= f.price;
       s.inv[type] = (s.inv[type] || 0) + 1;
       return true;
@@ -226,10 +371,29 @@
 
     buyHat(s, type) {
       const h = PM.HATS[type];
-      if (!h || s.hats.includes(type) || s.coins < h.price) return false;
+      if (!h || s.hats.includes(type) || s.coins < h.price || !isUnlocked(s, h)) return false;
       s.coins -= h.price;
       s.hats.push(type);
       s.hat = type;
+      return true;
+    },
+
+    buyWall(s, id) {
+      const w = PM.WALLS[id];
+      if (!w || s.walls.includes(id) || s.coins < w.price || !isUnlocked(s, w)) return false;
+      s.coins -= w.price;
+      s.walls.push(id);
+      return true;
+    },
+
+    wallOf(s, room) {
+      return s.decor[room] || PM.rooms.defaultWall(room);
+    },
+
+    setWall(s, room, id) {
+      if (!s.walls.includes(id)) return false;
+      if (id === PM.rooms.defaultWall(room)) delete s.decor[room];
+      else s.decor[room] = id;
       return true;
     },
   };
@@ -290,6 +454,7 @@
       this.facing = 1;
       this.foam = [];
       this.foamFade = 1;
+      this.thought = null;
       this.egg = 0;
       this.eggV = 0;
       this.scale = null;
@@ -892,6 +1057,7 @@
       const side = g.x > ctx.canvas.clientWidth * 0.55 ? -1 : 1;
       const bx = g.x + side * g.w * 0.62;
       const by = g.top - r * 0.4 + Math.sin(t * 2) * 3;
+      this.thought = { x: bx, y: by, r: r * 1.3, need }; // so a tap on it can be found
       const dots = [[0.35, 0.95, 0.12], [0.18, 0.6, 0.2]];
       dots.forEach(([fx, fy, fr]) => {
         ctx.beginPath();
