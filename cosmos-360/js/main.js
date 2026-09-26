@@ -807,7 +807,7 @@ function hudFrame(dt, warpFx) {
       sub = `${near.name} · altitude ${fmtKm(surfKm(near))}`;
     }
   }
-  if (!sub && fov < 60 && mode === 'fly') sub = `Zoom ${(65 / fov).toFixed(fov < 6 ? 0 : 1)}×`;
+  if (fov < 60 && mode === 'fly') main += ` · zoom ${(65 / fov).toFixed(fov < 6 ? 0 : 1)}×`;
   ui.setReadout(main, sub, warn);
   ui.setThrottle(ship.throttle, mode === 'fly' && !travel);
 
@@ -972,7 +972,8 @@ if (location.hash.includes('debug')) {
   window.cosmos = {
     get state() { return state; },
     get world() { return world; },
-    ship, orbit, S,
+    ship, orbit, S, input,
+    get fov() { return camera.fov; },
     orbitAt(id, dist, azDeg = 30, elDeg = 15, sunRel = true) {
       const b = world.byId[id];
       select(b); enterOrbit(b);
