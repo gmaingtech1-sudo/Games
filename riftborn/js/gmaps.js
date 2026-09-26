@@ -7,8 +7,8 @@
    for the area in view comes from the viewport endpoint and is shown in the
    corner, as Google requires.
 
-   Without a key, or if Google refuses it, the map uses the free CARTO
-   tiles instead. */
+   Without a key, or if Google refuses it, the map uses a free map (Esri or
+   OpenStreetMap) instead. */
 window.RB = window.RB || {};
 (function (RB) {
   'use strict';

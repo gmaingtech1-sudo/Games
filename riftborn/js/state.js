@@ -47,7 +47,7 @@ window.RB = window.RB || {};
       events: [],        // news to show on next look ("your Rift fell")
       stats: { caught: 0, darts: 0, hits: 0, hacks: 0, claimed: 0, links: 0, fields: 0, wins: 0, fused: 0, meters: 0 },
       medals: {},        // medal id → tier reached (1 bronze … 5 onyx)
-      settings: { sound: true, map: 'scanner', mapV: 2, ar: true, googleKey: '' },
+      settings: { sound: true, map: 'scanner', mapV: 2, tiles: 'auto', ar: true, googleKey: '' },
       missions: null,    // today's field missions
       walk: { buddy: 0, stash: 0 },   // meters toward the next walking rewards
       lastPos: null,

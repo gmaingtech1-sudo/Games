@@ -642,18 +642,20 @@ window.RB = window.RB || {};
         <button class="btn" data-set="sound">Sound: ${st.sound ? 'on' : 'off'}</button>
         <button class="btn" data-set="map">Map: ${({ scanner: 'scanner (like Ingress)', auto: 'day and night follow your clock', day: 'always day', night: 'always night', grid: 'no street map (offline)' })[st.map] || 'scanner'}</button>
         <button class="btn" data-set="ar">AR camera: ${st.ar === false ? 'off' : 'on'}</button>
+        <button class="btn" data-set="tiles">Map source: ${RB.gmaps.active() ? 'Google Maps' : ({ esri: 'Esri', osm: 'OpenStreetMap' })[st.tiles] || `automatic (${RB.map.sourceName})`}</button>
         <button class="btn" data-gmaps>Google Maps: ${RB.gmaps.key() ? (RB.gmaps.status.state === 'error' ? 'key problem' : 'on') : 'off (add a key)'}</button>
         <button class="btn" data-account>Account: ${esc(RB.auth.user ? RB.auth.user.name : '')}</button>
         <button class="btn" data-guide>How to play</button>
         <button class="btn btn-danger" data-reset>Start this agent over</button>
       </div>
-      <p class="muted small center">Stay aware of your surroundings. Never play while driving or cycling.<br>${RB.gmaps.active() ? 'Map data ©Google' : 'Map data © OpenStreetMap contributors © CARTO'}.</p>
+      <p class="muted small center">Stay aware of your surroundings. Never play while driving or cycling.<br>${RB.gmaps.active() ? 'Map data ©Google' : 'Map data © OpenStreetMap contributors and Esri'}.</p>
     `, (el) => {
       on(el, '[data-set]', (b) => {
         const k = b.dataset.set;
         if (k === 'sound') { st.sound = !st.sound; sfx.on = st.sound; }
         if (k === 'map') st.map = ({ scanner: 'auto', auto: 'day', day: 'night', night: 'grid', grid: 'scanner' })[st.map] || 'scanner';
         if (k === 'ar') st.ar = st.ar === false;
+        if (k === 'tiles') { st.tiles = ({ auto: 'esri', esri: 'osm', osm: 'auto' })[st.tiles || 'auto']; RB.map.sourceChanged(); }
         S.persist();
         menu();
       });

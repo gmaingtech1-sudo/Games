@@ -23,7 +23,7 @@ If you turned location off by mistake: **Settings → Apps → Riftborn → Perm
 
 It's the same game as the web version in [`../riftborn`](../riftborn), packaged into a small native app:
 
-- The game files, including the 3D engine, are inside the APK. The app serves them to its WebView from a private `https://appassets.androidplatform.net/` address, which counts as a secure page, so GPS and the camera work. Only the map tiles (Google Maps with a key, CARTO otherwise) and fonts come from the internet.
+- The game files, including the 3D engine, are inside the APK. The app serves them to its WebView from a private `https://appassets.androidplatform.net/` address, which counts as a secure page, so GPS and the camera work. Only the map tiles (Google Maps with a key, Esri or OpenStreetMap otherwise) and fonts come from the internet.
 - The game's location and camera requests are passed on to Android's own permission prompts. Your location and camera picture stay on the phone.
 - Accounts and progress are saved in the app's own storage (and to your account online, when the build has a Firebase project).
 - The screen stays on while you play.

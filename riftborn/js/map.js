@@ -21,11 +21,30 @@ window.RB = window.RB || {};
   const MIN_D = 55, MAX_D = 320;  // camera distance range (m)
   const PITCH = 0.56;             // camera angle below the horizon (rad)
   const AGENT_SCALE = 5;          // the map isn't to scale: props are big
-  const TILE_URL = {
-    day: (s, z, x, y) => `https://${s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}@2x.png`,
-    night: (s, z, x, y) => `https://${s}.basemaps.cartocdn.com/dark_nolabels/${z}/${x}/${y}@2x.png`,
-    scanner: (s, z, x, y) => `https://${s}.basemaps.cartocdn.com/dark_nolabels/${z}/${x}/${y}@2x.png`,
+  // Free street maps that need no key (Google Maps is used instead when
+  // you've added a key). If one keeps failing, the next one takes over.
+  const ESRI = 'https://services.arcgisonline.com/ArcGIS/rest/services';
+  const FREE = {
+    esri: {
+      name: 'Esri',
+      // Dark Gray Canvas (no labels) for the scanner and night; the street
+      // map by day. Esri's URLs are z/y/x.
+      url: (st, z, x, y) => (st === 'day'
+        ? `${ESRI}/World_Street_Map/MapServer/tile/${z}/${y}/${x}`
+        : `${ESRI}/Canvas/World_Dark_Gray_Base/MapServer/tile/${z}/${y}/${x}`),
+      maxZ: (st) => (st === 'day' ? 18 : 16),
+      credit: 'Powered by Esri · Esri, HERE, Garmin, © OpenStreetMap contributors',
+    },
+    osm: {
+      name: 'OpenStreetMap',
+      url: (st, z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`,
+      maxZ: () => 18,
+      credit: '© OpenStreetMap contributors',
+      // The standard OSM style is bright, so darken it for night and the scanner.
+      dark: true,
+    },
   };
+  const FREE_ORDER = ['esri', 'osm'];
 
   let container = null, renderer = null, scene = null, camera = null;
   let handlers = {};
@@ -226,7 +245,15 @@ window.RB = window.RB || {};
 
   const tiles = new Map();
   let tilesFailed = 0;
-  let provider = 'carto';
+  let provider = 'esri';
+  let freeIndex = 0;
+
+  // The free map to use: the one picked in the menu, or the first that works.
+  function freeProvider() {
+    const pick = S.save.settings.tiles;
+    if (FREE[pick]) return pick;
+    return FREE_ORDER[Math.min(freeIndex, FREE_ORDER.length - 1)];
+  }
   let tileTimer = 0;
   const loader = new T.TextureLoader();
   loader.setCrossOrigin('anonymous');
@@ -245,18 +272,21 @@ window.RB = window.RB || {};
 
   function updateTiles() {
     const google = RB.gmaps.active();
+    // Auto: a free map that keeps failing hands over to the next one.
+    if (!google && tilesFailed > 10 && !FREE[S.save.settings.tiles] && freeIndex < FREE_ORDER.length - 1) { freeIndex++; tilesFailed = 0; }
     if (style === 'grid' || (!google && tilesFailed > 10) || navigator.onLine === false) {
       if (tiles.size) { for (const tl of tiles.values()) disposeTile(tl); tiles.clear(); }
       return;
     }
-    const z = cam.dist < 150 ? 17 : 16;
+    const free = FREE[freeProvider()];
+    const z = Math.min(cam.dist < 150 ? 17 : 16, RB.gmaps.active() ? 17 : free.maxZ(style));
     const c = toLL(cam.target);
     const reach = 700;
     const dLat = reach / 110574, dLng = reach / (111320 * Math.cos(c.lat * Math.PI / 180));
     const x0 = Math.floor(lng2x(c.lng - dLng, z)), x1 = Math.floor(lng2x(c.lng + dLng, z));
     const y0 = Math.floor(lat2y(c.lat + dLat, z)), y1 = Math.floor(lat2y(c.lat - dLat, z));
-    // Google Maps when there's a working key, the free CARTO map otherwise.
-    provider = google ? 'google' : 'carto';
+    // Google Maps when there's a working key, a free map otherwise.
+    provider = google ? 'google' : freeProvider();
     if (google) RB.gmaps.updateCopyright(style, z, { north: c.lat + dLat, south: c.lat - dLat, east: c.lng + dLng, west: c.lng - dLng });
     const want = new Set();
     const list = [];
@@ -271,9 +301,12 @@ window.RB = window.RB || {};
     for (const it of list.slice(0, 48)) {
       want.add(it.key);
       if (tiles.has(it.key)) continue;
-      const url = google ? RB.gmaps.tileUrl(style, z, it.x, it.y) : TILE_URL[style]('abcd'[(it.x + it.y) % 4], z, it.x, it.y);
+      const url = google ? RB.gmaps.tileUrl(style, z, it.x, it.y) : free.url(style, z, it.x, it.y);
       if (!url) continue;   // Google session still starting
-      const tint = style === 'day' ? '#F4FFF0' : style === 'scanner' && !google ? '#8FFFEA' : '#FFFFFF';
+      // Colour the tiles for the style: teal scanner, and a bright map
+      // darkened for night when the source has no dark version.
+      let tint = style === 'day' ? '#F4FFF0' : style === 'scanner' && !google ? '#8FFFEA' : '#FFFFFF';
+      if (!google && free.dark && style !== 'day') tint = style === 'scanner' ? '#2E6B64' : '#4A4470';
       const mat = new T.MeshBasicMaterial({ color: tint, transparent: true, opacity: 0, toneMapped: false });
       const mesh = new T.Mesh(new T.PlaneGeometry(1, 1), mat);
       mesh.rotation.x = -Math.PI / 2;
@@ -600,16 +633,20 @@ window.RB = window.RB || {};
     }, { passive: false });
   }
 
+  // Called when the map source setting changes.
+  function sourceChanged() { freeIndex = 0; tilesFailed = 0; }
+
   RB.map = {
     SIGHT, player, cam,
-    init, show, resize, render, setPlayer, setEntities, recenter, reset,
+    init, show, resize, render, setPlayer, setEntities, recenter, reset, sourceChanged,
+    get sourceName() { return FREE[freeProvider()].name; },
     zoom(f) { cam.dist = clamp(cam.dist * f, MIN_D, MAX_D); },
     get view() { const c = toLL(cam.target); return { lat: c.lat, lng: c.lng, far: cam.dist > 240 }; },
     get radiusM() { return clamp(cam.dist * 6, 400, 1400); },
     get attribution() {
       if (style === 'grid' || !tiles.size) return '';
       if (provider === 'google') return `Google · ${RB.gmaps.copyright || 'Map data ©Google'}`;
-      return '© OpenStreetMap contributors © CARTO';
+      return FREE[provider] ? FREE[provider].credit : '';
     },
     get rotated() { return Math.abs(Math.sin(cam.yaw / 2)) > 0.03; },
   };
