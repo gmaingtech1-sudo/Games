@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Riftborn</title>
+<meta name="description" content="An AR game on your real streets. Hack and link Rifts for your faction, catch the creatures pouring through, collect their DNA and fuse hybrids.">
+<meta name="theme-color" content="#0B0716">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Riftborn">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Audiowide&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ Map ============ -->
+<main id="map-screen" hidden>
+  <canvas id="map" aria-label="Map of Rifts and creatures around you"></canvas>
+  <div id="scan-pulse" class="scan-pulse" aria-hidden="true"></div>
+
+  <header class="hud">
+    <button id="btn-profile" class="agent" type="button" aria-label="Agent profile">
+      <span id="hud-glyph" class="agent-glyph-sm"></span>
+      <span class="agent-text"><b id="hud-name">Agent</b><small id="hud-level">Lv 1</small></span>
+      <span class="xpbar"><i id="hud-xp"></i></span>
+    </button>
+    <div class="hud-items" aria-label="Supplies">
+      <span title="Rift Orbs">🔮<b id="hud-orbs">0</b></span>
+      <span title="DNA Darts">🎯<b id="hud-darts">0</b></span>
+      <span title="Rift Shards">💠<b id="hud-shards">0</b></span>
+    </div>
+  </header>
+
+  <div id="gps-status" class="gps-status" role="status" aria-live="polite"></div>
+
+  <div class="map-side">
+    <button id="btn-zoomin" class="round-btn" type="button" aria-label="Zoom in">+</button>
+    <button id="btn-zoomout" class="round-btn" type="button" aria-label="Zoom out">−</button>
+    <button id="btn-center" class="round-btn center-btn" type="button" aria-label="Back to me">◎</button>
+  </div>
+
+  <div id="nearby" class="nearby" aria-label="Creatures nearby"></div>
+
+  <nav class="dock" aria-label="Main">
+    <button id="btn-lab" class="dock-btn" type="button"><span aria-hidden="true">🧬</span>Lab</button>
+    <button id="btn-bag" class="dock-btn" type="button"><span aria-hidden="true">🎒</span>Bag</button>
+    <button id="btn-scan" class="scan-btn" type="button" aria-label="Scan nearby"><span></span></button>
+    <button id="btn-profile2" class="dock-btn" type="button"><span aria-hidden="true">🪪</span>Agent</button>
+    <button id="btn-menu" class="dock-btn" type="button"><span aria-hidden="true">☰</span>Menu</button>
+  </nav>
+  <small id="map-attrib" class="attrib">© OpenStreetMap contributors © CARTO</small>
+</main>
+
+<!-- ============ AR encounter ============ -->
+<section id="ar-screen" class="ar-screen" hidden>
+  <video id="cam" playsinline muted autoplay hidden></video>
+  <canvas id="ar-view"></canvas>
+
+  <header class="enc-top">
+    <div class="enc-title">
+      <b id="enc-name">Creature</b>
+      <small id="enc-meta"></small>
+    </div>
+    <div class="enc-bars">
+      <div class="enc-bar" title="Time left"><span>⏱</span><span class="bar"><i id="enc-timer-bar"></i></span></div>
+      <div class="enc-bar" title="Calm: calmer creatures are easier to catch"><span>💤</span><span class="bar calm"><i id="enc-sed-bar"></i></span></div>
+    </div>
+    <div class="enc-dna"><span>🧬</span><b id="enc-dna">+0</b></div>
+  </header>
+
+  <div id="enc-hint" class="enc-hint" role="status" aria-live="polite"></div>
+
+  <div class="enc-bottom">
+    <button id="enc-run" class="round-btn" type="button" aria-label="Leave">✕</button>
+    <div class="enc-modes">
+      <button id="enc-dart" class="mode-btn" type="button">🎯 Darts <b id="enc-darts">0</b></button>
+      <button id="enc-orb" class="mode-btn" type="button">🔮 Orbs <b id="enc-orbs">0</b></button>
+    </div>
+    <button id="enc-fire" class="fire-btn" type="button">FIRE</button>
+  </div>
+
+  <div id="enc-result" class="overlay" hidden>
+    <div class="overlay-card">
+      <canvas id="enc-result-pic" class="portrait big"></canvas>
+      <h2 id="enc-result-title"></h2>
+      <p id="enc-result-text"></p>
+      <button id="enc-done" class="btn btn-main btn-big" type="button">Continue</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Battle ============ -->
+<section id="battle-screen" class="battle-screen" hidden>
+  <canvas id="battle-view"></canvas>
+  <header class="bt-top">
+    <button id="bt-flee" class="round-btn" type="button" aria-label="Retreat">✕</button>
+    <b id="bt-title">Rift battle</b>
+  </header>
+  <div class="bt-card foe">
+    <div class="bt-name"><b id="bt-foe-name"></b><small id="bt-foe-lvl"></small></div>
+    <div class="bar hp"><i id="bt-foe-hp"></i></div>
+    <div class="bt-sub"><span id="bt-foe-pips" class="pips"></span><small id="bt-foe-hpt"></small></div>
+  </div>
+  <div class="bt-card me">
+    <div class="bt-name"><b id="bt-me-name"></b><small id="bt-me-lvl"></small></div>
+    <div class="bar hp"><i id="bt-me-hp"></i></div>
+    <div class="bt-sub"><span id="bt-me-pips" class="pips"></span><small id="bt-me-hpt"></small></div>
+  </div>
+  <div class="bt-panel">
+    <p id="bt-log" class="bt-log" role="status" aria-live="polite"></p>
+    <div class="bt-moves">
+      <button id="bt-strike" class="move" type="button"></button>
+      <button id="bt-blast" class="move blast" type="button"></button>
+      <button id="bt-guard" class="move" type="button"></button>
+      <button id="bt-swap" class="move swap" type="button"><b>🔄 Swap</b><small>Uses your turn</small></button>
+    </div>
+  </div>
+  <div id="bt-swap-sheet" class="overlay" hidden>
+    <div class="overlay-card"><h2>Swap in</h2><div id="bt-swap-list" class="list"></div></div>
+  </div>
+  <div id="bt-result" class="overlay" hidden>
+    <div class="overlay-card">
+      <h2 id="bt-result-title"></h2>
+      <p id="bt-result-text"></p>
+      <button id="bt-done" class="btn btn-main btn-big" type="button">Continue</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Sheets, toasts ============ -->
+<section id="sheet" class="sheet" hidden>
+  <div id="sheet-card" class="sheet-card" role="dialog" aria-modal="true"></div>
+</section>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="levelup" class="levelup" hidden>
+  <small>Agent level</small>
+  <b id="levelup-n">2</b>
+  <p id="levelup-text"></p>
+</div>
+
+<!-- ============ Onboarding ============ -->
+<section id="onboard" class="onboard">
+  <canvas id="ob-bg" aria-hidden="true"></canvas>
+
+  <div class="ob-step" data-step="title">
+    <h1 class="logo">RIFTBORN</h1>
+    <p class="tagline">The Rifts are open. Creatures from another world are pouring into your streets.</p>
+    <div class="ob-actions">
+      <button id="ob-continue" class="btn btn-main btn-big" type="button" hidden>Continue</button>
+      <button id="ob-begin" class="btn btn-main btn-big" type="button">Begin</button>
+    </div>
+  </div>
+
+  <div class="ob-step" data-step="faction" hidden>
+    <h2>Choose your side</h2>
+    <p class="muted">Two factions fight over the Rifts. You can't switch later.</p>
+    <button class="fac" data-f="W" type="button" style="--c:#2EE6C5">
+      <span class="fac-glyph">⬡</span>
+      <span><b>Wardens</b><small>Seal the Rifts. Protect both worlds.</small></span>
+    </button>
+    <button class="fac" data-f="B" type="button" style="--c:#FF4FA3">
+      <span class="fac-glyph">✶</span>
+      <span><b>Breachers</b><small>Tear them open. Claim the power beyond.</small></span>
+    </button>
+  </div>
+
+  <div class="ob-step" data-step="name" hidden>
+    <h2>Your agent codename</h2>
+    <form id="ob-name-form" class="ob-form">
+      <input id="ob-name" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Codename" aria-label="Codename">
+      <button class="btn btn-main btn-big" type="submit">Next</button>
+    </form>
+  </div>
+
+  <div class="ob-step" data-step="starter" hidden>
+    <h2>Pick your first creature</h2>
+    <p class="muted">It came through the Rift near you and won't stop following you around.</p>
+    <div class="starters">
+      <button class="starter" data-sp="cindertail" type="button" style="--c:#FF6A3D"><canvas data-sp="cindertail"></canvas><b>Cindertail</b><small>🔥 Ember raptor</small></button>
+      <button class="starter" data-sp="ripplehorn" type="button" style="--c:#3DB8FF"><canvas data-sp="ripplehorn"></canvas><b>Ripplehorn</b><small>💧 Tide horned</small></button>
+      <button class="starter" data-sp="zephyrix" type="button" style="--c:#7CF0C8"><canvas data-sp="zephyrix"></canvas><b>Zephyrix</b><small>🌪️ Gale flyer</small></button>
+    </div>
+  </div>
+
+  <div class="ob-step" data-step="where" hidden>
+    <h2>How will you move?</h2>
+    <p class="muted">Riftborn puts Rifts and creatures on your real streets. Your location stays on your phone.</p>
+    <button id="ob-gps" class="btn btn-main btn-big" type="button">📍 Use my location</button>
+    <button id="ob-tap" class="btn btn-big" type="button">🏠 Play at home (tap to walk)</button>
+    <p class="fineprint">Stay aware of your surroundings. Don't trespass, and never play while driving or cycling.</p>
+  </div>
+</section>
+
+<script src="js/core.js"></script>
+<script src="js/host.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/creatures.js"></script>
+<script src="js/world.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ar.js"></script>
+<script src="js/map.js"></script>
+<script src="js/encounter.js"></script>
+<script src="js/battle.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+<script>
+  if ('serviceWorker' in navigator && location.protocol === 'https:' && !RB.host.native) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
