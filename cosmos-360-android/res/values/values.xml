@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cosmos 360</string>
+    <color name="space">#03050B</color>
+
+    <style name="Cosmos" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/space</item>
+        <item name="android:statusBarColor">@color/space</item>
+        <item name="android:navigationBarColor">@color/space</item>
+    </style>
+</resources>

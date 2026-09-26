@@ -95,6 +95,7 @@ const ui = new UI({
   onThrottle: (v) => setThrottle(v),
   onAction: (a, d) => sheetAction(a, d),
   onSheetClosed: () => {},
+  onSheetChange: (open) => { try { window.AndroidHost?.setOverlay(open); } catch { /* not in the app */ } },
 });
 
 const input = new Input(canvas, {
@@ -438,6 +439,8 @@ function sheetAction(a, d) {
     }
   } else if (a === 'share') {
     sharePhoto();
+  } else if (a === 'save-photo') {
+    if (lastPhoto && window.AndroidHost) window.AndroidHost.savePhoto(lastPhoto.url.split(',')[1], lastPhoto.name);
   }
 }
 
@@ -887,6 +890,10 @@ function capturePhoto() {
 }
 async function sharePhoto() {
   if (!lastPhoto) return;
+  if (window.AndroidHost) {
+    if (!window.AndroidHost.sharePhoto(lastPhoto.url.split(',')[1], lastPhoto.name)) ui.toast('Couldn\'t share the photo');
+    return;
+  }
   try {
     const blob = await (await fetch(lastPhoto.url)).blob();
     const file = new File([blob], lastPhoto.name, { type: 'image/jpeg' });
@@ -966,6 +973,17 @@ document.getElementById('btn-start').addEventListener('click', () => {
 });
 
 document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); });
+
+// Messages from the Android app (see cosmos-360-android): pause, resume, back, photo-saved.
+window.cosmosApp = {
+  receive(m) {
+    if (!m) return;
+    if (m.t === 'pause') { persist(); if (sound.ctx) sound.ctx.suspend(); }
+    else if (m.t === 'resume') { if (sound.ctx && S.sound) sound.ctx.resume(); lastNow = performance.now(); }
+    else if (m.t === 'back') ui.closeSheet();
+    else if (m.t === 'photo-saved') ui.toast(m.ok ? 'Saved to Pictures/Cosmos 360' : 'Couldn\'t save the photo', m.ok ? 'good' : '');
+  },
+};
 
 // Test hook: open the game with #debug to drive it from the console.
 if (location.hash.includes('debug')) {

@@ -172,11 +172,13 @@ export class UI {
     this.sheetBody.innerHTML = html;
     this.sheet.hidden = false;
     this.sheetBody.scrollTop = 0;
+    this.h.onSheetChange?.(true);
   }
   closeSheet() {
     if (this.sheet.hidden) return;
     this.sheet.hidden = true;
     this.sheetKind = null;
+    this.h.onSheetChange?.(false);
     this.h.onSheetClosed?.();
   }
   get sheetOpen() { return !this.sheet.hidden; }
@@ -274,8 +276,13 @@ export class UI {
   }
 
   openPhoto(url, name) {
-    const share = navigator.canShare ? '<button class="btn" type="button" data-act="share">Share</button>' : '';
-    const html = `<img class="photo" src="${url}" alt="Photo of space"><div class="row-btns"><a class="btn primary" href="${url}" download="${esc(name)}">Save photo</a>${share}</div>`;
+    // In the Android app, saving and sharing go through the app itself.
+    const app = !!window.AndroidHost;
+    const share = app || navigator.canShare ? '<button class="btn" type="button" data-act="share">Share</button>' : '';
+    const save = app
+      ? '<button class="btn primary" type="button" data-act="save-photo">Save to gallery</button>'
+      : `<a class="btn primary" href="${url}" download="${esc(name)}">Save photo</a>`;
+    const html = `<img class="photo" src="${url}" alt="Photo of space"><div class="row-btns">${save}${share}</div>`;
     this.openSheet('photo', 'Photo', html);
   }
 }
