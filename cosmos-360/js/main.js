@@ -261,7 +261,7 @@ function pick(x, y) {
   if (S.labels) {
     for (const m of sky.markers) {
       projectDir(m.dir, s);
-      if (s.front && Math.hypot(s.x - x, s.y - y) < 30) { openSystemInfo(m.sys); return; }
+      if (s.front && Math.hypot(s.x - x, s.y - y) < 30) { openSystemInfo(m.sys, m.ly); return; }
     }
   }
 }
@@ -373,9 +373,10 @@ function openInfo(def) {
     jump: !here,
   });
 }
-function openSystemInfo(other) {
+function openSystemInfo(other, ly) {
   ui.openMap(sys.id, found);
-  ui.toast(`${other.name}: ${other.ly.toLocaleString('en-US')} light-years from the Sun`);
+  const d = ly < 100 ? ly.toFixed(2) : Math.round(ly).toLocaleString('en-US');
+  ui.toast(`${other.id === 'sol' ? 'The Sun' : other.name} is ${d} light-years from here`);
 }
 function targetRows() {
   const rows = [];
@@ -539,7 +540,9 @@ function updateFly(dt) {
   turnX *= Math.exp(-dt * 3); turnY *= Math.exp(-dt * 3);
 
   const near = world.nearest(ship.pos);
-  const vmax = Math.max(near.surf, 0.00005) * 1.5;
+  // Near a black hole there's no surface to slow for: let the player fall in.
+  const floor = near.body && near.body.kind === 'blackhole' ? near.body.R * 0.08 : 0.00005;
+  const vmax = Math.max(near.surf, floor) * 1.5;
   const want = ship.throttle * ship.throttle * vmax;
   ship.speed += (want - ship.speed) * (1 - Math.exp(-dt * 2.5));
   ship.pos.addScaledVector(forward(_v2), ship.speed * dt);

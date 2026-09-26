@@ -60,7 +60,7 @@ export class World {
     this.dispose();
     this.sys = sys;
     this.quality = quality;
-    const texScale = quality === 'low' ? 0.5 : 1;
+    const texScale = quality === 'low' ? 0.5 : quality === 'medium' ? 0.75 : 1;
     const hi = quality === 'high';
     const defs = BODIES.filter((b) => b.sys === sys.id);
     const order = [];

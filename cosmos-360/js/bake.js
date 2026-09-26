@@ -116,37 +116,37 @@ void styleRocky(vec3 d, float lat, float lon, out vec3 col, out float h) {
   float co = rays(d, 9.6, -20.1, 0.027, 0.18, 4.0);
   float ke = rays(d, 8.1, -38.0, 0.009, 0.1, 7.0);
   col = mix(col, c3, clamp(ty * 0.4 + co * 0.35 + ke * 0.3, 0.0, 0.6));
-  h += namedCrater(d, -43.3, -11.2, 0.025, 0.04) + namedCrater(d, 9.6, -20.1, 0.027, 0.04);
+  h += namedCrater(d, -43.3, -11.2, 0.025, 0.008) + namedCrater(d, 9.6, -20.1, 0.027, 0.008);
   // Orientale's rings
   float od = angDist(d, dirLL(-19.4, -94.7));
-  h += 0.03 * exp(-pow((od - 0.27) / 0.02, 2.0)) + 0.02 * exp(-pow((od - 0.36) / 0.02, 2.0));
+  h += 0.008 * exp(-pow((od - 0.27) / 0.02, 2.0)) + 0.006 * exp(-pow((od - 0.36) / 0.02, 2.0));
 #endif
 #ifdef F_MERCURY
   float cd = angDist(d, dirLL(30.5, 170.2));
   float cal = 1.0 - sst(0.5, 0.66, cd + fbm(p * 5.0, 3) * 0.05);
   col = mix(col, c1 * vec3(1.08, 1.04, 0.98), cal * 0.5);
-  h += 0.03 * exp(-pow((cd - 0.64) / 0.03, 2.0)) - cal * 0.02;
+  h += 0.012 * exp(-pow((cd - 0.64) / 0.03, 2.0)) - cal * 0.015;
   col = mix(col, c3, clamp(rays(d, -57.0, -48.0, 0.012, 0.3, 2.0) * 0.6, 0.0, 0.7));
 #endif
 #ifdef F_MIMAS
   float hd = angDist(d, dirLL(1.7, -111.8));
-  h += craterProfile(hd / 0.36) * 0.28 + 0.2 * exp(-pow(hd / 0.05, 2.0));
+  h += craterProfile(hd / 0.36) * 0.2 + 0.03 * exp(-pow(hd / 0.05, 2.0));
   col *= 1.0 - 0.12 * (1.0 - sst(0.2, 0.36, hd));
 #endif
 #ifdef F_IAPETUS
   float dk = 1.0 - sst(0.85, 1.05, ell(lat, lon, 0.0, -90.0, 55.0, 95.0) + fbm(p * 3.0, 5) * 0.25);
   col = mix(col, c4 * (0.8 + 0.4 * n2), dk);
   float rl = mod(lon + 540.0, 360.0) - 180.0;
-  h += 0.12 * exp(-pow(lat / 1.4, 2.0)) * sst(-175.0, -150.0, rl) * sst(-10.0, -30.0, rl);
+  h += 0.012 * exp(-pow(lat / 1.4, 2.0)) * sst(-175.0, -150.0, rl) * sst(-10.0, -30.0, rl);
 #endif
 #ifdef F_CHARON
   col = mix(col, c4, sst(58.0, 80.0, lat + fbm(p * 4.0, 4) * 10.0));
   float belt = pow(1.0 - abs(snoise(vec3(d.x * 3.0, d.y * 14.0, d.z * 3.0) + seed)), 18.0) * sst(40.0, 5.0, abs(lat - 5.0));
-  col *= 1.0 - belt * 0.4; h -= belt * 0.05;
+  col *= 1.0 - belt * 0.4; h -= belt * 0.012;
 #endif
 #ifdef F_CERES
   float oc = angDist(d, dirLL(19.8, -120.7));
-  h += craterProfile(oc / 0.098) * 0.05;
+  h += craterProfile(oc / 0.098) * 0.02;
   col = mix(col, vec3(1.0, 0.99, 0.96), exp(-pow(oc / 0.012, 2.0)) + 0.6 * exp(-pow(angDist(d, dirLL(20.5, -118.5)) / 0.008, 2.0)));
 #endif
 #ifdef F_CALLISTO
@@ -164,7 +164,7 @@ void styleRocky(vec3 d, float lat, float lon, out vec3 col, out float h) {
   col *= 1.0 + cr * 0.45;
   col = mix(col, c3, clamp(bright, 0.0, 1.0) * prm.z);
   col = mix(col, vec3(0.86, 0.87, 0.9), sst(45.0, 70.0, abs(lat)) * 0.55);
-  h += grooves * 0.02;
+  h += grooves * 0.005;
 #endif
 #ifdef F_ENCELADUS
   float colat = 90.0 + lat;
@@ -178,7 +178,7 @@ void styleRocky(vec3 d, float lat, float lon, out vec3 col, out float h) {
       st += exp(-pow((y - off) / 0.7, 2.0)) * sst(20.0, 12.0, abs(xx));
     }
     col = mix(col, c4, clamp(st, 0.0, 1.0) * 0.85);
-    h -= st * 0.03;
+    h -= st * 0.008;
   }
   float gr = pow(1.0 - abs(snoise(d * vec3(9.0, 24.0, 9.0) + seed)), 14.0);
   col *= 1.0 - gr * 0.06;
@@ -187,19 +187,19 @@ void styleRocky(vec3 d, float lat, float lon, out vec3 col, out float h) {
   float sd = angDist(d, dirLL(-1.0, -49.0));
   h += craterProfile(sd / 0.42) * 0.25;
   float gro = pow(1.0 - abs(snoise(vec3(d.x * 2.0, d.y * 26.0, d.z * 2.0))), 12.0);
-  col *= 1.0 - gro * 0.25; h -= gro * 0.02;
+  col *= 1.0 - gro * 0.25; h -= gro * 0.006;
 #endif
 #ifdef F_MIRANDA
   float cor = sst(0.1, 0.4, fbm(p * 1.4 + 2.0, 3));
   float bands = 0.5 + 0.5 * sin(dot(d, normalize(vec3(0.3, 1.0, 0.2))) * 70.0 + fbm(p * 2.0, 3) * 6.0);
   col = mix(col, mix(c2, c3, bands), cor * 0.8);
-  h += cor * bands * 0.03;
+  h += cor * bands * 0.008;
   float vr = exp(-pow((angDist(d, dirLL(-18.0, -20.0)) - 0.35) / 0.01, 2.0));
-  col = mix(col, c3, vr * 0.8); h += vr * 0.06;
+  col = mix(col, c3, vr * 0.8); h += vr * 0.012;
 #endif
 #ifdef F_TITANIA
   float can = pow(1.0 - abs(snoise(d * 5.0 + seed)), 30.0);
-  col *= 1.0 - can * 0.35; h -= can * 0.05;
+  col *= 1.0 - can * 0.35; h -= can * 0.012;
 #endif
 #ifdef F_COMET
   h += fbm(p * 3.0, 4) * 0.1;
@@ -367,17 +367,17 @@ void styleMars(vec3 d, float lat, float lon, out vec3 col, out float h) {
   float hellas = inEll(lat, lon, -42.0, 70.0, 11.0, 16.0, dn * 0.5);
   float argyre = inEll(lat, lon, -50.0, -43.0, 6.0, 9.0, dn * 0.5);
   col = mix(col, dust * 1.08, max(hellas, argyre) * 0.7);
-  h = 0.5 + 0.04 * n - hellas * 0.12 - argyre * 0.06;
+  h = 0.5 + 0.04 * n - hellas * 0.07 - argyre * 0.04;
   float bright = 0.0;
   float highlands = sst(10.0, -20.0, lat + n * 15.0);
   h += craterStack(p, 0.35 + 0.6 * highlands, bright) * 0.45;
   // Tharsis volcanoes
   float om = angDist(d, dirLL(18.65, -133.8));
-  h += 0.35 * exp(-pow(om / 0.1, 2.0)) - 0.05 * exp(-pow(om / 0.012, 2.0)) + 0.03 * exp(-pow((om - 0.11) / 0.01, 2.0));
-  h += 0.22 * exp(-pow(angDist(d, dirLL(-8.3, -120.1)) / 0.06, 2.0));
-  h += 0.22 * exp(-pow(angDist(d, dirLL(0.8, -113.4)) / 0.055, 2.0));
-  h += 0.22 * exp(-pow(angDist(d, dirLL(11.8, -104.5)) / 0.055, 2.0));
-  h += 0.12 * exp(-pow(angDist(d, dirLL(3.0, -112.0)) / 0.3, 2.0));
+  h += 0.05 * exp(-pow(om / 0.1, 2.0)) - 0.01 * exp(-pow(om / 0.012, 2.0)) + 0.006 * exp(-pow((om - 0.11) / 0.01, 2.0));
+  h += 0.03 * exp(-pow(angDist(d, dirLL(-8.3, -120.1)) / 0.06, 2.0));
+  h += 0.03 * exp(-pow(angDist(d, dirLL(0.8, -113.4)) / 0.055, 2.0));
+  h += 0.03 * exp(-pow(angDist(d, dirLL(11.8, -104.5)) / 0.055, 2.0));
+  h += 0.04 * exp(-pow(angDist(d, dirLL(3.0, -112.0)) / 0.3, 2.0));
   col = mix(col, dust * 1.1, exp(-pow(om / 0.08, 2.0)) * 0.4);
   // Valles Marineris
   float vl = clamp((lon + 95.0) / 50.0, 0.0, 1.0);
@@ -385,7 +385,7 @@ void styleMars(vec3 d, float lat, float lon, out vec3 col, out float h) {
   float vm = exp(-pow((lat - vlat) / (1.2 + 1.5 * sin(vl * 3.14)), 2.0)) * step(-97.0, lon) * step(lon, -40.0);
   vm *= 0.6 + 0.4 * sst(-0.2, 0.4, fbm(p * 20.0, 3));
   col = mix(col, dark * 0.9, vm * 0.75);
-  h -= vm * 0.18;
+  h -= vm * 0.035;
   // Polar caps
   float north = sst(79.0, 82.0, lat + fbm(p * 6.0, 4) * 4.0);
   float trough = 0.5 + 0.5 * sin(atan(d.z, d.x) * 1.0 + (90.0 - lat) * 0.9);
@@ -496,7 +496,7 @@ void styleIo(vec3 d, float lat, float lon, out vec3 col, out float h) {
     float sz = 0.08 + 0.12 * rnd.y;
     col = mix(col, vec3(0.08, 0.06, 0.05), (1.0 - sst(sz * 0.6, sz, dist)) * 0.9);
     col = mix(col, vec3(0.75, 0.32, 0.15), exp(-pow((dist - sz * 2.2) / (sz * 0.8), 2.0)) * 0.35 * rnd.z);
-    h -= (1.0 - sst(sz * 0.6, sz, dist)) * 0.02;
+    h -= (1.0 - sst(sz * 0.6, sz, dist)) * 0.006;
   }
   float pd = angDist(d, dirLL(-19.0, 105.0));
   col = mix(col, vec3(0.72, 0.28, 0.14), exp(-pow((pd - 0.3) / 0.07, 2.0)) * 0.7);
@@ -517,17 +517,17 @@ void styleEuropa(vec3 d, float lat, float lon, out vec3 col, out float h) {
     vec3 r = hash33(vec3(float(i), seed, 3.0)) * 2.0 - 1.0;
     vec3 nrm = normalize(r + vec3(0.0001));
     vec3 a = normalize(cross(nrm, hash33(vec3(float(i), 7.0, seed)) * 2.0 - 1.0 + vec3(0.001)));
-    float w = 0.0025 + 0.004 * hash13(vec3(float(i), 2.0, 5.0));
+    float w = max(0.0025 + 0.004 * hash13(vec3(float(i), 2.0, 5.0)), 9.0 / texW);
     float dd = abs(dot(d, nrm));
     float arc = sst(0.2, 0.5, dot(d, a) + 0.3 * snoise(d * 3.0 + float(i)));
     float l = (1.0 - sst(w * 0.4, w, dd)) * arc;
     float dbl = exp(-pow((dd - w * 1.4) / (w * 0.35), 2.0)) * arc;
     lines += l * 0.8 + dbl * 0.35;
   }
-  float fineL = pow(1.0 - abs(snoise(p * 18.0)), 30.0) + pow(1.0 - abs(snoise(p * 34.0 + 4.0)), 40.0);
+  float fineL = pow(1.0 - abs(snoise(p * 18.0)), 14.0) + pow(1.0 - abs(snoise(p * 34.0 + 4.0)), 18.0) * 0.6;
   lines += fineL * 0.5;
   col = mix(col, vec3(0.5, 0.33, 0.22), clamp(lines, 0.0, 1.0) * 0.7);
-  h += lines * 0.02;
+  h += lines * 0.006;
   col *= 0.94 + 0.12 * fbm(p * 20.0, 3);
 }
 
@@ -558,7 +558,7 @@ void styleTriton(vec3 d, float lat, float lon, out vec3 col, out float h) {
   col = mix(cant, cap, capM);
   float plumes = pow(max(snoise(vec3(d.x * 10.0 + d.y * 6.0, d.y * 18.0, d.z * 10.0) + seed), 0.0), 3.0) * capM;
   col = mix(col, vec3(0.3, 0.24, 0.22), clamp(plumes * 2.0, 0.0, 0.7));
-  h = 0.5 + (1.0 - capM) * sst(0.1, 0.6, md) * 0.04;
+  h = 0.5 + (1.0 - capM) * sst(0.1, 0.6, md) * 0.015;
 }
 
 void stylePluto(vec3 d, float lat, float lon, out vec3 col, out float h) {
@@ -760,7 +760,7 @@ export class Baker {
     const tex = body.tex;
     const out = {};
     const mk = (w, mip = true) => {
-      w = Math.max(128, Math.round(w * scale));
+      w = Math.max(128, Math.round((w * scale) / 2) * 2);
       const rt = new THREE.WebGLRenderTarget(w, w / 2, {
         type: THREE.UnsignedByteType, format: THREE.RGBAFormat, depthBuffer: false,
         generateMipmaps: mip, minFilter: mip ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter, magFilter: THREE.LinearFilter,

@@ -189,6 +189,7 @@ export class Sky {
 
     // Point stars
     this.markers = [];
+    this.constellationNames = [];
     if (!core) this.buildStars(sys, quality);
     // Other systems, placed where they really are.
     const here = systemPos(sys);
