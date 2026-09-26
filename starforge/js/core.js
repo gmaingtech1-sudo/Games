@@ -1,4 +1,4 @@
-/* Starforge — shared helpers: maths, colour, glow sprites and storage. */
+/* Starforge — shared helpers: maths, colour and glow sprites. */
 (function (SF) {
   'use strict';
 
@@ -200,25 +200,6 @@
     g.arcTo(x, y, x + w, y, r);
     g.closePath();
   }
-
-  /* ---------- Storage ---------- */
-
-  SF.store = {
-    read(key) {
-      try {
-        const raw = localStorage.getItem(key);
-        return raw ? JSON.parse(raw) : null;
-      } catch (e) {
-        return null;
-      }
-    },
-    write(key, value) {
-      try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage may be blocked */ }
-    },
-    remove(key) {
-      try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
-    },
-  };
 
   SF.util = {
     TAU, clamp, lerp, rand, randInt, pick, chance, approach, easeOut, easeInOut,

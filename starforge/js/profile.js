@@ -1,10 +1,9 @@
 /* Starforge — the pilot's profile: credits, owned parts, the ship, upgrades,
-   records and settings. Saved in localStorage. */
+   records and settings. Saved by SF.host (localStorage, or the Android app). */
 (function (SF) {
   'use strict';
 
   const P = SF.parts;
-  const KEY = 'starforge-save-v1';
   const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function defaults() {
@@ -63,9 +62,9 @@
   }
 
   const profile = {
-    data: sanitize(SF.store.read(KEY)),
+    data: sanitize(SF.host.loadSave()),
 
-    save() { SF.store.write(KEY, this.data); },
+    save() { SF.host.writeSave(this.data); },
 
     reset() {
       const settings = this.data.settings;

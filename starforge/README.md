@@ -2,7 +2,7 @@
 
 A space shooter for phones. Build your own starfighter in the hangar by choosing its hull, wings, engine, weapon and special, and painting it how you like. Then fly it through sector after sector of enemy waves and bosses. Every run earns credits to spend on new parts and upgrades.
 
-It's plain HTML, CSS and JavaScript. There's no build step and nothing to install. Ships, enemies, explosions, sound effects and music are all drawn or synthesised in code, so the only image files are the app icons. After the first visit it also works offline.
+It's plain HTML, CSS and JavaScript. There's no build step and nothing to install. Ships, enemies, explosions, sound effects and music are all drawn or synthesised in code, so the only image files are the app icons. After the first visit it also works offline. There's also an installable Android app in [`../starforge-android`](../starforge-android).
 
 ## Playing
 
@@ -82,7 +82,8 @@ Then open <http://localhost:8000>. To try it on your phone, connect it to the sa
 | --- | --- |
 | `index.html` | Layout: the hangar, the flight HUD, pause and game-over cards, settings and rename sheets |
 | `css/style.css` | All styling. Mobile-first, respects safe areas (notches) and reduced-motion settings; two columns on wide screens |
-| `js/core.js` | Maths and colour helpers, glow and bullet sprites, and storage |
+| `js/core.js` | Maths and colour helpers, and the glow and bullet sprites |
+| `js/host.js` | Where saves and vibration go: the browser, or the Android app when running inside it |
 | `js/parts.js` | The parts catalogue: every hull, wing, engine, weapon, special, colour, decal, finish and upgrade, and how a loadout adds up to stats |
 | `js/profile.js` | Your save: credits, owned parts, the ship, upgrades, records and settings |
 | `js/art.js` | Draws your ship from its parts and paint, plus the enemy ships, bosses, asteroids and icons |
@@ -97,6 +98,8 @@ Then open <http://localhost:8000>. To try it on your phone, connect it to the sa
 | `sw.js`, `manifest.webmanifest`, `icons/` | Installable app + offline support |
 
 Progress is saved in the browser's `localStorage`, so each phone or browser has its own pilot.
+
+If you change the game, run `./build.sh` in `../starforge-android` so the Android app gets the change too.
 
 ### Tuning
 

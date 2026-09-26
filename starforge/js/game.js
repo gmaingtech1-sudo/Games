@@ -47,8 +47,7 @@
   const input = { id: null, ax: 0, ay: 0, sx: 0, sy: 0, keys: new Set(), kb: false };
 
   function buzz(pattern) {
-    if (!SF.profile.data.settings.vibe || !navigator.vibrate) return;
-    try { navigator.vibrate(pattern); } catch (e) { /* ignore */ }
+    if (SF.profile.data.settings.vibe) SF.host.haptic(pattern);
   }
 
   /* ---------- Setup ---------- */

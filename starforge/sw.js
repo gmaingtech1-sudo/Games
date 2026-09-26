@@ -1,12 +1,13 @@
 /* Starforge — offline support. Serves the cached game instantly and
    refreshes the cache in the background, so updates land on the next launch.
    Fonts come from Google and are left to the browser's own cache. */
-const CACHE = 'starforge-v1';
+const CACHE = 'starforge-v2';
 const SHELL = [
   './',
   'index.html',
   'css/style.css',
   'js/core.js',
+  'js/host.js',
   'js/parts.js',
   'js/profile.js',
   'js/audio.js',

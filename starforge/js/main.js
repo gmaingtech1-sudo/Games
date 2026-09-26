@@ -66,11 +66,18 @@
 
   /* ---------- Sheets ---------- */
 
+  // In the Android app, the back button is the game's while you're flying
+  // or a sheet is open; otherwise it leaves the app.
+  function syncOverlay() {
+    SF.host.setOverlay(!!sheet || screen === 'flight');
+  }
+
   function openSheet(el) {
     closeSheet();
     sheet = el;
     els.scrim.hidden = false;
     el.hidden = false;
+    syncOverlay();
   }
 
   function closeSheet() {
@@ -80,6 +87,7 @@
     els.scrim.hidden = true;
     els.reset.textContent = 'Reset progress';
     resetArmed = 0;
+    syncOverlay();
   }
 
   els.settingsBtn.addEventListener('click', () => {
@@ -134,6 +142,8 @@
     SF.hangar.hide();
     els.flight.hidden = false;
     screen = 'flight';
+    syncOverlay();
+    SF.host.setImmersive(true);
     SF.game.start();
   }
 
@@ -141,6 +151,8 @@
     SF.game.stop();
     els.flight.hidden = true;
     screen = 'hangar';
+    syncOverlay();
+    SF.host.setImmersive(false);
     SF.hangar.show();
     A.music('hangar');
   }
@@ -174,14 +186,34 @@
 
   document.addEventListener('pointerdown', () => A.unlock(), { capture: true });
 
+  // Switching away pauses the flight and silences the sound.
+  function goneAway() {
+    if (screen === 'flight' && SF.game.running) SF.game.pause();
+    A.suspend(true);
+  }
+
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      if (screen === 'flight' && SF.game.running) SF.game.pause();
-      A.suspend(true);
-    } else {
-      A.suspend(false);
-    }
+    if (document.hidden) goneAway();
+    else A.suspend(false);
   });
+
+  // The Android back button: close a sheet, pause or resume the flight, or
+  // leave the summary for the hangar.
+  function back() {
+    if (sheet) {
+      A.play('click');
+      closeSheet();
+    } else if (screen === 'flight') {
+      const G = SF.game.G;
+      if (G.state === 'over') toHangar();
+      else if (G.paused) SF.game.resume();
+      else SF.game.pause();
+    }
+  }
+
+  SF.host.on('back', back);
+  SF.host.on('pause', goneAway);
+  SF.host.on('resume', () => A.suspend(false));
 
   window.addEventListener('resize', () => {
     if (screen === 'flight') SF.game.resize();
@@ -203,7 +235,7 @@
   }
 
   function registerSW() {
-    if (!('serviceWorker' in navigator) || window.top !== window) return;
+    if (SF.host.native || !('serviceWorker' in navigator) || window.top !== window) return;
     if (location.protocol !== 'https:' && location.hostname !== 'localhost') return;
     navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is optional */ });
   }
@@ -211,6 +243,7 @@
   SF.ui = { toast, editName };
 
   applySettings();
+  syncOverlay();
   SF.hangar.show();
   A.music('hangar');
   requestAnimationFrame(loop);
