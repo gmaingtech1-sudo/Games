@@ -455,9 +455,14 @@ window.RB = window.RB || {};
     open('profile', `
       <div class="agent-card" style="--c:${F.color}">
         <div class="agent-glyph">${F.glyph}</div>
-        <div><h2>${esc(a.name)}</h2><p>${F.one} · Level ${L.level}</p></div>
+        <div><h2>${esc(a.name)}</h2><p>${F.one} · Level ${L.level} ${S.title(L.level)}</p></div>
       </div>
       <div class="bar-row"><span>XP</span><span class="bar"><i style="width:${pct(L.frac)};background:${F.color}"></i></span><span>${L.into.toLocaleString()}/${L.need.toLocaleString()}</span></div>
+      <p class="muted small">${a.xp.toLocaleString()} XP in total.${L.level < S.MAX_LEVEL ? ` ${(L.need - L.into).toLocaleString()} more to level ${L.level + 1}.` : ' Top level!'}</p>
+      <div class="actions" style="flex-direction:row">
+        <button class="btn" style="flex:1" data-levels>📈 Levels</button>
+        <button class="btn" style="flex:1" data-board>🏆 Leaderboard</button>
+      </div>
       <div class="stats">
         <div><b>${S.aether().toLocaleString()}</b><small>Aether</small></div>
         <div><b>${held}</b><small>Rifts held</small></div>
@@ -472,8 +477,88 @@ window.RB = window.RB || {};
       ${buddy ? `<h3>Walking buddy</h3>
       <div class="row"><canvas data-sp="${buddy.sp}"></canvas><span><b>${esc(C.byId(buddy.sp).name)}</b><small>Finds 5 DNA every ${S.BUDDY_M} m you walk · next in ${fmtDist(S.BUDDY_M - S.save.walk.buddy)}</small></span></div>
       <p class="muted small">Supply stash every ${fmtDist(S.STASH_M)}: next in ${fmtDist(S.STASH_M - S.save.walk.stash)}. Your buddy is the first creature on your team (★ in the Lab).</p>` : ''}
+      <h3>Medals</h3>
+      <div class="medals">${S.medals().map((x) => {
+        const t = x.tier ? S.TIERS[x.tier - 1] : null;
+        const val = (v) => (x.m.div ? `${(v / x.m.div).toLocaleString()}` : v.toLocaleString());
+        return `<div class="medal ${t ? '' : 'none'}" style="${t ? `--t:${t.color}` : ''}">
+          <span class="ic">${x.m.icon}</span><b>${esc(x.m.name)}</b>
+          <small>${t ? t.name : 'Not yet'}</small>
+          <small>${x.next ? `${val(x.value)} / ${val(x.next)} ${x.m.what}` : `${val(x.value)} ${x.m.what}`}</small>
+        </div>`;
+      }).join('')}</div>
       <p class="muted small center">“${esc(F.motto)}”</p>
-    `);
+    `, (el) => {
+      on(el, '[data-levels]', () => levels());
+      on(el, '[data-board]', () => board());
+    });
+  }
+
+  // Every agent level: XP needed, title and reward.
+  function levels() {
+    const L = S.level().level;
+    const rows = [];
+    for (let n = 1; n <= S.MAX_LEVEL; n++) {
+      const r = S.levelReward(n);
+      const unlock = n % 2 === 0 && n <= 14 ? ` · Rift upgrades to L${Math.min(8, 1 + n / 2)}` : '';
+      const newTitle = n % 5 === 0 ? ` · New title: <b>${S.title(n)}</b>` : '';
+      rows.push(`<div class="row ${n === L ? 'cur' : n > L ? 'locked' : ''}">
+        <span class="rank">${n}</span>
+        <span><b>${S.xpFor(n).toLocaleString()} XP</b><small>${n === 1 ? 'Where everyone starts' : `🔮 ${r.orbs} · 🎯 ${r.darts} · 💠 ${r.shards}${unlock}${newTitle}`}</small></span>
+        <span class="go">${n < L ? '✓' : n === L ? 'You' : ''}</span>
+      </div>`);
+    }
+    open('levels', `
+      <h2>Agent levels</h2>
+      <p class="muted small">Earn XP by catching and darting creatures, hacking and claiming Rifts, linking, battling, fusing, finishing missions, earning medals and walking. Every level up gives you supplies.</p>
+      <div class="list levels">${rows.join('')}</div>
+      <button class="btn" data-back>Back</button>
+    `, (el) => {
+      on(el, '[data-back]', () => profile());
+      const cur = el.querySelector('.row.cur');
+      if (cur) cur.scrollIntoView({ block: 'center' });
+    });
+  }
+
+  async function board() {
+    const me = RB.auth.user;
+    open('board', `<h2>Leaderboard</h2><p class="muted">Loading…</p>`);
+    let rows = [];
+    try {
+      rows = await RB.auth.leaderboard();
+    } catch (e) {
+      open('board', `<h2>Leaderboard</h2><p class="far">Couldn’t load the leaderboard. Check your internet connection.</p><button class="btn" data-back>Back</button>`, (el) => on(el, '[data-back]', () => profile()));
+      return;
+    }
+    if (!current || current.name !== 'board') return;
+    open('board', `
+      <h2>Leaderboard</h2>
+      <p class="muted small">${me && me.mode === 'cloud' ? 'Top agents everywhere, by XP.' : 'Agents on this phone, by XP. With online accounts (see the README) everyone shares one leaderboard.'}</p>
+      ${rows.length ? `<div class="list lb">${rows.map((r, i) => `<div class="row ${me && r.uid === me.uid ? 'me' : ''}">
+        <span class="rank">${i + 1}</span>
+        <span class="dot" style="--c:${(S.FACTIONS[r.faction] || {}).color || '#888'};margin:0 4px"></span>
+        <span><b>${esc(r.name)}</b><small>Level ${r.level} ${S.title(r.level)} · ${Number(r.xp).toLocaleString()} XP</small></span>
+      </div>`).join('')}</div>` : '<p class="far">No agents yet.</p>'}
+      <button class="btn" data-back>Back</button>
+    `, (el) => on(el, '[data-back]', () => profile()));
+  }
+
+  function account() {
+    const u = RB.auth.user;
+    open('account', `
+      <h2>Account</h2>
+      <div class="row"><span><b>${esc(u.name)}</b><small>${esc(u.email || 'No email')} · ${u.mode === 'cloud' ? 'online account' : 'account on this phone'}</small></span></div>
+      <p class="muted small">${u.mode === 'cloud'
+        ? `Your progress is saved to your account and follows you to any phone.${RB.auth.lastSync ? ` Last synced ${new Date(RB.auth.lastSync).toLocaleTimeString()}.` : ''}`
+        : 'Your account and progress are stored on this phone. Uninstalling the app or clearing the browser’s data deletes them.'}</p>
+      <div class="actions">
+        ${u.mode === 'cloud' ? '<button class="btn" data-sync>Sync now</button>' : ''}
+        <button class="btn btn-danger" data-logout>Log out</button>
+      </div>
+    `, (el) => {
+      on(el, '[data-sync]', async () => { S.persist(true); await RB.auth.flush(); toast('Progress saved to your account.', 'good'); account(); });
+      on(el, '[data-logout]', async () => { S.persist(true); await RB.auth.logOut(); location.reload(); });
+    });
   }
 
   function missionsSheet() {
@@ -558,8 +643,9 @@ window.RB = window.RB || {};
         <button class="btn" data-set="map">Map: ${({ scanner: 'scanner (like Ingress)', auto: 'day and night follow your clock', day: 'always day', night: 'always night', grid: 'no street map (offline)' })[st.map] || 'scanner'}</button>
         <button class="btn" data-set="ar">AR camera: ${st.ar === false ? 'off' : 'on'}</button>
         <button class="btn" data-gmaps>Google Maps: ${RB.gmaps.key() ? (RB.gmaps.status.state === 'error' ? 'key problem' : 'on') : 'off (add a key)'}</button>
+        <button class="btn" data-account>Account: ${esc(RB.auth.user ? RB.auth.user.name : '')}</button>
         <button class="btn" data-guide>How to play</button>
-        <button class="btn btn-danger" data-reset>Start over as a new agent</button>
+        <button class="btn btn-danger" data-reset>Start this agent over</button>
       </div>
       <p class="muted small center">Stay aware of your surroundings. Never play while driving or cycling.<br>${RB.gmaps.active() ? 'Map data ©Google' : 'Map data © OpenStreetMap contributors © CARTO'}.</p>
     `, (el) => {
@@ -572,10 +658,12 @@ window.RB = window.RB || {};
         menu();
       });
       on(el, '[data-guide]', () => guide());
+      on(el, '[data-account]', () => account());
       on(el, '[data-gmaps]', () => googleSheet());
-      on(el, '[data-reset]', (b) => {
-        if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Tap again: this deletes everything'; return; }
+      on(el, '[data-reset]', async (b) => {
+        if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Tap again: this deletes this agent’s progress'; return; }
         S.reset();
+        await RB.auth.dropSave();
         location.reload();
       });
     });

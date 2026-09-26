@@ -33,7 +33,8 @@
       $('ob-begin').hidden = true;
       return;
     }
-    const save = S.load();
+    RB.auth.restore();
+    const save = RB.auth.user ? S.load() : null;
     RB.encounter.init();
     RB.battle.init();
     UI.setHooks({
@@ -45,6 +46,8 @@
     });
     bindDom();
     onboarding(save);
+    if (RB.auth.user) pullCloud();
+    S.onXP(xpPop);
     window.addEventListener('resize', resize);
     resize();
     requestAnimationFrame(frame);
@@ -95,37 +98,90 @@
     }
   }
 
+  // The title screen: sign up / log in, or continue as the logged-in agent.
   function onboarding(save) {
     $('onboard').hidden = false;
     mode = 'onboard';
-    if (save) {
-      $('ob-continue').hidden = false;
-      $('ob-continue').textContent = `Continue as ${save.agent.name}`;
-      $('ob-begin').textContent = 'New agent';
-      $('ob-begin').classList.remove('btn-main');
-      $('ob-begin').classList.add('link-btn');
-    }
+    const u = RB.auth.user;
+    $('ob-continue').hidden = !(u && save);
+    if (save) $('ob-continue').textContent = `Continue as ${save.agent.name}`;
+    $('ob-begin').hidden = !(u && !save);
+    $('ob-signup').hidden = $('ob-login').hidden = !!u;
+    $('ob-logout').hidden = !u;
+    $('ob-mode').textContent = u
+      ? `Logged in as ${u.name}${u.email ? ` (${u.email})` : ''} · ${u.mode === 'cloud' ? 'online account' : 'account on this phone'}`
+      : RB.auth.online() ? 'Online accounts: your progress follows you to any phone.' : 'Accounts are kept on this phone.';
+    $('li-forgot').hidden = !RB.auth.online();
     step('title');
   }
 
+  // Online accounts: take the cloud save if it's newer than this phone's.
+  async function pullCloud() {
+    const u = RB.auth.user;
+    if (!u || u.mode !== 'cloud') return null;
+    const local = S.save;
+    const json = await RB.auth.pullSave(local ? local.updated || 0 : 0);
+    if (json && S.load(json) && mode === 'onboard') onboarding(S.save);
+    return json;
+  }
+
+  // After signing up or logging in: straight in if the agent exists,
+  // otherwise make one.
+  async function afterLogin(u) {
+    let save = S.load();
+    if (u.mode === 'cloud') { await pullCloud(); save = S.save && S.load(); }
+    if (RB.auth.takeAdopted() && save) setTimeout(() => UI.toast(`Your agent ${esc(save.agent.name)} is now linked to this account.`, 'good'), 600);
+    if (save) { enterMap(); return; }
+    draft.name = u.name;
+    step('faction');
+  }
+
+  async function submitAuth(kind) {
+    const f = kind === 'signup'
+      ? { name: $('su-name').value, email: $('su-email').value, password: $('su-pass').value }
+      : { email: $('li-email').value, password: $('li-pass').value };
+    const err = $(kind === 'signup' ? 'su-error' : 'li-error');
+    const btn = $(`${kind}-form`).querySelector('button[type=submit]');
+    err.textContent = '';
+    btn.disabled = true;
+    const label = btn.textContent;
+    btn.textContent = 'One moment…';
+    try {
+      const u = kind === 'signup' ? await RB.auth.signUp(f) : await RB.auth.logIn(f);
+      sfx.claim();
+      await afterLogin(u);
+    } catch (e) {
+      err.textContent = e.friendly ? e.message : 'Something went wrong. Try again.';
+      sfx.error();
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  }
+
   function bindDom() {
-    $('ob-begin').addEventListener('click', () => { sfx.unlock(); sfx.tap(); step('faction'); });
+    $('ob-begin').addEventListener('click', () => { sfx.unlock(); sfx.tap(); draft.name = RB.auth.user.name; step('faction'); });
+    $('ob-signup').addEventListener('click', () => { sfx.unlock(); sfx.tap(); step('signup'); setTimeout(() => $('su-name').focus(), 50); });
+    $('ob-login').addEventListener('click', () => { sfx.unlock(); sfx.tap(); step('login'); setTimeout(() => $('li-email').focus(), 50); });
+    $('ob-logout').addEventListener('click', async () => { sfx.tap(); await RB.auth.logOut(); location.reload(); });
+    document.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => { sfx.tap(); step(b.dataset.goto); }));
+    $('signup-form').addEventListener('submit', (e) => { e.preventDefault(); submitAuth('signup'); });
+    $('login-form').addEventListener('submit', (e) => { e.preventDefault(); submitAuth('login'); });
+    $('li-forgot').addEventListener('click', async () => {
+      try {
+        await RB.auth.resetPassword($('li-email').value);
+        $('li-error').textContent = 'Check your email for a link to set a new password.';
+      } catch (e) {
+        $('li-error').textContent = e.friendly ? e.message : 'Couldn’t send the email. Try again.';
+      }
+    });
     $('ob-continue').addEventListener('click', () => { sfx.unlock(); sfx.tap(); enterMap(); });
     document.querySelectorAll('.fac').forEach((b) => b.addEventListener('click', () => {
       sfx.tap();
       draft.faction = b.dataset.f;
       document.body.dataset.faction = draft.faction;
-      step('name');
-      setTimeout(() => $('ob-name').focus(), 50);
-    }));
-    $('ob-name-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const n = $('ob-name').value.trim().replace(/\s+/g, ' ').slice(0, 16);
-      if (!n) { $('ob-name').focus(); sfx.error(); return; }
-      draft.name = n;
-      sfx.tap();
       step('starter');
-    });
+    }));
     document.querySelectorAll('.starter').forEach((b) => b.addEventListener('click', () => {
       sfx.tap();
       draft.starter = b.dataset.sp;
@@ -148,16 +204,16 @@
 
     document.addEventListener('visibilitychange', () => {
       RB.ar.pauseCamera(document.hidden);
-      if (document.hidden && S.save) S.persist(true);
+      if (document.hidden && S.save) { S.persist(true); RB.auth.flush(); }
     });
-    window.addEventListener('pagehide', () => { if (S.save) S.persist(true); });
+    window.addEventListener('pagehide', () => { if (S.save) { S.persist(true); RB.auth.flush(); } });
 
     RB.host.on('back', () => {
       if (UI.isOpen()) UI.close();
       else if (mode === 'encounter') RB.encounter.leave();
       else if (!$('bt-swap-sheet').hidden) $('bt-swap-sheet').hidden = true;
     });
-    RB.host.on('pause', () => { RB.ar.pauseCamera(true); if (S.save) S.persist(true); });
+    RB.host.on('pause', () => { RB.ar.pauseCamera(true); if (S.save) { S.persist(true); RB.auth.flush(); } });
     RB.host.on('resume', () => RB.ar.pauseCamera(false));
   }
 
@@ -350,11 +406,34 @@
     }
   }
 
+  // "+50 XP" floating up by your level bar.
+  let publishedLevel = 0, publishedXP = 0, publishedAt = 0;
+  function xpPop(n) {
+    if (mode !== 'map' || n <= 0) return;
+    const el = document.createElement('div');
+    el.className = 'xp-pop';
+    el.textContent = `+${n.toLocaleString()} XP`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1500);
+  }
+
   function updateHud() {
     const s = S.save;
     const L = S.level();
     $('hud-name').textContent = s.agent.name;
-    $('hud-level').textContent = `Lv ${L.level}`;
+    $('hud-level').innerHTML = `Lv ${L.level} <em>${S.title(L.level)}</em>`;
+    // Keep the leaderboard entry current when your level changes.
+    if (L.level !== publishedLevel || (s.agent.xp !== publishedXP && Date.now() - publishedAt > 60000)) {
+      publishedLevel = L.level;
+      publishedXP = s.agent.xp;
+      publishedAt = Date.now();
+      RB.auth.publish({ name: s.agent.name, faction: s.agent.faction, level: L.level, xp: s.agent.xp });
+    }
+    for (const got of S.checkMedals()) {
+      sfx.levelUp();
+      UI.toast(`${got.medal.icon} ${S.TIERS[got.tier - 1].name} ${esc(got.medal.name)} medal! +${S.TIERS[got.tier - 1].xp.toLocaleString()} XP`, 'good');
+      if (got.up) UI.levelUp(got.up);
+    }
     $('hud-xp').style.width = `${Math.round(L.frac * 100)}%`;
     $('hud-glyph').textContent = S.faction().glyph;
     $('hud-orbs').textContent = s.items.orbs;

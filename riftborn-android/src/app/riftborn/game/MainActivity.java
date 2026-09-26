@@ -36,7 +36,8 @@ import java.util.Map;
  * private https address, so the page gets a normal secure origin (which GPS
  * and the camera require) without a web server. Map tiles and fonts still
  * come from the internet. window.AndroidHost is the bridge the game's
- * js/host.js looks for: it stores the save in SharedPreferences and drives
+ * js/host.js looks for: it keeps saves, accounts and the login session in
+ * SharedPreferences and drives
  * the vibration motor. The activity sends back pause, resume and back
  * messages, and asks Android for location and camera access when the page
  * wants them.
@@ -46,7 +47,6 @@ public class MainActivity extends Activity {
     // Reserved for apps to serve their own files; it never reaches the network.
     private static final String ASSET_HOST = "appassets.androidplatform.net";
     private static final String START_URL = "https://" + ASSET_HOST + "/game/index.html";
-    private static final String SAVE_KEY = "riftborn-save-v1";
     private static final int NIGHT = Color.rgb(0x0B, 0x07, 0x16);
 
     private static final int ASK_CAMERA = 1;
@@ -272,19 +272,20 @@ public class MainActivity extends Activity {
 
     /** Exposed to the page as window.AndroidHost. Called on a WebView background thread. */
     private final class Bridge {
+        // Key/value storage for saves, accounts and the login session.
         @JavascriptInterface
-        public String loadSave() {
-            return prefs.getString(SAVE_KEY, null);
+        public String getItem(String key) {
+            return prefs.getString(key, null);
         }
 
         @JavascriptInterface
-        public void writeSave(String json) {
-            prefs.edit().putString(SAVE_KEY, json).apply();
+        public void setItem(String key, String value) {
+            prefs.edit().putString(key, value).apply();
         }
 
         @JavascriptInterface
-        public void clearSave() {
-            prefs.edit().remove(SAVE_KEY).apply();
+        public void removeItem(String key) {
+            prefs.edit().remove(key).apply();
         }
 
         @JavascriptInterface

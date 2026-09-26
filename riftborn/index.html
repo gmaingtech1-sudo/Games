@@ -166,8 +166,39 @@
     <p class="tagline">The Rifts are open. Creatures from another world are pouring into your streets.</p>
     <div class="ob-actions">
       <button id="ob-continue" class="btn btn-main btn-big" type="button" hidden>Continue</button>
-      <button id="ob-begin" class="btn btn-main btn-big" type="button">Begin</button>
+      <button id="ob-begin" class="btn btn-main btn-big" type="button" hidden>Create your agent</button>
+      <button id="ob-signup" class="btn btn-main btn-big" type="button">Sign up</button>
+      <button id="ob-login" class="btn btn-big" type="button">Log in</button>
+      <button id="ob-logout" class="link-btn" type="button" hidden>Log out</button>
     </div>
+    <p id="ob-mode" class="fineprint"></p>
+  </div>
+
+  <div class="ob-step" data-step="signup" hidden>
+    <h2>Sign up</h2>
+    <p class="muted">Make your agent account.</p>
+    <form id="signup-form" class="ob-form auth-form" novalidate>
+      <input id="su-name" type="text" maxlength="16" autocomplete="nickname" spellcheck="false" placeholder="Agent codename" aria-label="Agent codename">
+      <input id="su-email" type="email" autocomplete="email" spellcheck="false" placeholder="Email" aria-label="Email">
+      <input id="su-pass" type="password" autocomplete="new-password" placeholder="Password (8+ characters)" aria-label="Password">
+      <p id="su-error" class="form-error" role="alert"></p>
+      <button class="btn btn-main btn-big" type="submit">Create account</button>
+    </form>
+    <button class="link-btn" type="button" data-goto="login">I already have an account</button>
+    <button class="link-btn" type="button" data-goto="title">Back</button>
+  </div>
+
+  <div class="ob-step" data-step="login" hidden>
+    <h2>Log in</h2>
+    <form id="login-form" class="ob-form auth-form" novalidate>
+      <input id="li-email" type="text" autocomplete="username" spellcheck="false" placeholder="Email" aria-label="Email">
+      <input id="li-pass" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password">
+      <p id="li-error" class="form-error" role="alert"></p>
+      <button class="btn btn-main btn-big" type="submit">Log in</button>
+    </form>
+    <button id="li-forgot" class="link-btn" type="button">Forgot password?</button>
+    <button class="link-btn" type="button" data-goto="signup">New here? Sign up</button>
+    <button class="link-btn" type="button" data-goto="title">Back</button>
   </div>
 
   <div class="ob-step" data-step="faction" hidden>
@@ -181,14 +212,6 @@
       <span class="fac-glyph">✶</span>
       <span><b>Breachers</b><small>Tear them open. Claim the power beyond.</small></span>
     </button>
-  </div>
-
-  <div class="ob-step" data-step="name" hidden>
-    <h2>Your agent codename</h2>
-    <form id="ob-name-form" class="ob-form">
-      <input id="ob-name" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Codename" aria-label="Codename">
-      <button class="btn btn-main btn-big" type="submit">Next</button>
-    </form>
   </div>
 
   <div class="ob-step" data-step="starter" hidden>
@@ -213,6 +236,7 @@
 <script src="vendor/three.min.js"></script>
 <script src="js/core.js"></script>
 <script src="js/host.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/gfx.js"></script>
 <script src="js/creatures.js"></script>

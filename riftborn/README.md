@@ -16,7 +16,30 @@ It's plain HTML, CSS and JavaScript on top of [three.js](https://threejs.org) (i
 
 ### Getting started
 
-Pick a faction (**Wardens** or **Breachers**), a codename and a first creature (Cindertail, Ripplehorn or Zephyrix), then turn on location.
+**Sign up** with an agent codename, email and password (or **Log in**), pick a faction (**Wardens** or **Breachers**) and a first creature (Cindertail, Ripplehorn or Zephyrix), then turn on location. The game remembers your login until you log out (**Menu → Account**).
+
+### Accounts
+
+- **On this phone (works out of the box):** accounts are stored on the device, with passwords stored only as salted hashes. Several agents can share one phone, each with its own progress. Log in with your email or codename. The leaderboard shows the agents on this phone.
+- **Online (optional, with Firebase):** your progress is saved to your account, so you can log in on any phone and carry on. There's a shared leaderboard of all agents, and a **Forgot password?** email.
+
+The agent you had before accounts existed is linked to the first account made on that phone.
+
+To turn on online accounts, create a free [Firebase](https://console.firebase.google.com/) project:
+
+1. **Add project**, then in **Build → Authentication → Sign-in method**, enable **Email/Password**.
+2. In **Build → Firestore Database**, create a database. Under **Rules**, paste the contents of [`firestore.rules`](firestore.rules) and **Publish**. Only you can read or write your save, and anyone signed in can read the leaderboard.
+3. In **Project settings → General**, copy the **Web API key** and **Project ID** into `config.js` (`firebase: { apiKey: '…', projectId: '…' }`) on your web copy, or build the APK with `FIREBASE_API_KEY=… FIREBASE_PROJECT_ID=… ./build.sh`.
+
+The Web API key only identifies the project and is meant to sit in apps; the Firestore rules are what protect your data. Progress is checked on the phone, not on a server, so a determined player could edit their own save and leaderboard entry.
+
+### XP, levels and medals
+
+You earn XP for nearly everything: catching and darting creatures, hacking, claiming, upgrading, recharging and linking Rifts, control fields, battles, fusing and levelling creatures, missions, medals and walking. XP pops up by your level bar as you earn it.
+
+- **40 agent levels.** Each level up gives supplies. Even levels up to 14 let you upgrade Rifts one level higher. Every five levels you get a new title: Recruit, Scout, Tracker, Hunter, Ranger, Riftwalker, Vanguard, Legend, and Riftborn at level 40. **Agent → 📈 Levels** lists every level's XP and reward.
+- **Medals**, like Ingress badges: Trekker (km walked), Collector, Hacker, Sharpshooter (dart hits), Builder, Connector, Mind Controller (fields), Brawler and Geneticist. Each has Bronze, Silver, Gold, Platinum and Onyx tiers, worth 500 to 40,000 XP. They're shown in **Agent**.
+- **🏆 Leaderboard** in **Agent**: top agents by XP.
 
 ### Moving
 
@@ -137,7 +160,9 @@ Stay aware of your surroundings. Don't go onto private property, and never play 
 | `index.html` | The screens: onboarding, map, AR encounter, battle |
 | `css/style.css` | All the styling |
 | `js/core.js` | Seeded random numbers and small helpers |
-| `js/host.js` | Saving and vibration, in a browser or a native app shell |
+| `js/host.js` | Storage and vibration, in a browser or a native app shell |
+| `js/auth.js` | Accounts: sign up, log in, log out, cloud saves and the leaderboard (Firebase or on the phone) |
+| `firestore.rules` | Security rules for online accounts |
 | `js/audio.js` | Synthesized sound effects |
 | `vendor/three.min.js` | three.js, the 3D engine |
 | `js/gfx.js` | The shared 3D renderer, lighting and generated textures |
@@ -145,10 +170,10 @@ Stay aware of your surroundings. Don't go onto private property, and never play 
 | `js/beasts.js` | The 3D creature models: rigs, skinned meshes, skin textures, animation, portraits |
 | `js/props.js` | 3D agent, Rift towers, supply crates, Rift Orbs, rocks |
 | `js/world.js` | Generates Rifts, caches and creatures from real coordinates |
-| `js/state.js` | Your save and the game rules: items, XP, DNA, Rifts, links, fields |
+| `js/state.js` | Your save and the game rules: items, XP, levels, medals, missions, DNA, Rifts, links, fields |
 | `js/map.js` | The 3D map screen |
 | `js/gmaps.js` | Google Maps tiles: sessions, day and night styles, copyright line |
-| `config.js` | Build settings (an optional built-in Google Maps key; leave it empty in the repository) |
+| `config.js` | Build settings: an optional Google Maps key and Firebase project (leave them empty in the repository) |
 | `js/ar.js` | Camera, motion sensors and the 3D-to-screen projection |
 | `js/encounter.js` | The AR encounter: darts, orbs, catching |
 | `js/battle.js` | Turn-based Rift battles in the 3D arena |

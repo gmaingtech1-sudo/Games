@@ -30,6 +30,11 @@ if [ -n "${GOOGLE_MAPS_KEY:-}" ]; then
   sed -i "s#googleMapsKey: ''#googleMapsKey: '${GOOGLE_MAPS_KEY}'#" "$BUILD/assets/game/config.js"
   echo "    with your Google Maps key"
 fi
+# Optional: online accounts through your Firebase project.
+if [ -n "${FIREBASE_API_KEY:-}" ] && [ -n "${FIREBASE_PROJECT_ID:-}" ]; then
+  sed -i "s#firebase: { apiKey: '', projectId: '' }#firebase: { apiKey: '${FIREBASE_API_KEY}', projectId: '${FIREBASE_PROJECT_ID}' }#" "$BUILD/assets/game/config.js"
+  echo "    with online accounts (Firebase project ${FIREBASE_PROJECT_ID})"
+fi
 
 echo "2/5 Compiling resources"
 aapt2 compile --dir res -o "$BUILD/res.zip"

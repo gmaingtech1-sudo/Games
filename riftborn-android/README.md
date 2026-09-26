@@ -9,7 +9,7 @@ The Riftborn AR game as a regular Android app: download the APK, install it, and
 1. Open the APK on your phone (from your browser's downloads, the Files app, or wherever you saved it).
 2. Android will say it can't install apps from that source. Tap **Settings**, turn on **Allow from this source**, and go back.
 3. Tap **Install**. If Play Protect warns that it doesn't recognise the app, tap **More details → Install anyway**. It often warns about apps that don't come from the Play Store.
-4. Open **Riftborn**, make your agent, and tap **Turn on location and start**. Android asks for location access: pick **While using the app** (and **Precise**, so you can reach things 60 m away). Android asks for the camera the first time you engage a creature. If you say no, you see the Rift plain instead of your camera.
+4. Open **Riftborn**, sign up, make your agent, and tap **Turn on location and start**. Android asks for location access: pick **While using the app** (and **Precise**, so you can reach things 60 m away). Android asks for the camera the first time you engage a creature. If you say no, you see the Rift plain instead of your camera.
 
 Then go for a walk. Like Ingress, you move in the game only by moving in real life.
 
@@ -17,7 +17,7 @@ Works on Android 7.0 and newer with an up-to-date Android System WebView (the Pl
 
 If you turned location off by mistake: **Settings → Apps → Riftborn → Permissions → Location → Allow only while using the app**, then tap **Try again** in the game.
 
-**Updating:** install a newer APK right over the old one. Your progress stays, because every build is signed with the same key (`signing.keystore`). Uninstalling the app deletes your progress.
+**Updating:** install a newer APK right over the old one. Your accounts and progress stay, because every build is signed with the same key (`signing.keystore`). Uninstalling the app deletes accounts kept on the phone (online accounts are kept by Firebase).
 
 ## What's in it
 
@@ -25,7 +25,7 @@ It's the same game as the web version in [`../riftborn`](../riftborn), packaged 
 
 - The game files, including the 3D engine, are inside the APK. The app serves them to its WebView from a private `https://appassets.androidplatform.net/` address, which counts as a secure page, so GPS and the camera work. Only the map tiles (Google Maps with a key, CARTO otherwise) and fonts come from the internet.
 - The game's location and camera requests are passed on to Android's own permission prompts. Your location and camera picture stay on the phone.
-- Your progress is saved in the app's own storage.
+- Accounts and progress are saved in the app's own storage (and to your account online, when the build has a Firebase project).
 - The screen stays on while you play.
 - Vibration uses the phone's tuned click and tick effects on Android 10+.
 - The back button closes a panel or leaves an encounter before it leaves the app.
@@ -51,6 +51,8 @@ sudo apt install openjdk-21-jdk-headless aapt dalvik-exchange zipalign apksigner
 `build.sh` copies the game in from `../riftborn` each time, so after changing the game just run it again.
 
 To build with Google Maps turned on, pass your key: `GOOGLE_MAPS_KEY=AIza... ./build.sh`. Restrict the key to the Map Tiles API and to `https://appassets.androidplatform.net/*` (see [Google Maps](../riftborn/README.md#google-maps)). Players can also add a key in the app under **Menu → Google Maps**.
+
+To build with online accounts (cloud saves on any phone, a shared leaderboard), pass your Firebase project: `FIREBASE_API_KEY=… FIREBASE_PROJECT_ID=… ./build.sh` (see [Accounts](../riftborn/README.md#accounts)). Without it, accounts are kept on the phone.
 
 ### About the signing key
 

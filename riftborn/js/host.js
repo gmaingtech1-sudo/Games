@@ -1,13 +1,16 @@
 /* Riftborn — platform bridge. The game runs in two places:
-   - a browser: saves go to localStorage, vibration uses navigator.vibrate;
-   - an Android app shell: it exposes window.AndroidHost, which saves to the
-     app's own storage, drives the vibration motor, and calls
+   - a browser: saves and accounts go to localStorage, vibration uses
+     navigator.vibrate;
+   - an Android app shell: it exposes window.AndroidHost, which keeps them in
+     the app's own storage, drives the vibration motor, and calls
      RB.host.receive() with lifecycle messages (pause, resume, back). */
 window.RB = window.RB || {};
 (function (RB) {
   'use strict';
 
-  const SAVE_KEY = 'riftborn-save-v1';
+  // The save you had before accounts existed; the first account takes it.
+  const LEGACY_SAVE = 'riftborn-save-v1';
+  let saveKey = LEGACY_SAVE;
   const handlers = {};
   let overlay = null;
 
@@ -22,9 +25,9 @@ window.RB = window.RB || {};
   function androidHost(bridge) {
     const call = (fn) => { try { return fn(); } catch (e) { return null; } };
     return {
-      load: () => call(() => bridge.loadSave()) || null,
-      write: (json) => call(() => bridge.writeSave(json)),
-      clear: () => call(() => bridge.clearSave()),
+      get: (k) => call(() => bridge.getItem(k)) || null,
+      set: (k, v) => call(() => bridge.setItem(k, v)),
+      remove: (k) => call(() => bridge.removeItem(k)),
       haptic: (pattern) => call(() => bridge.haptic(hapticStyle(pattern))),
       overlay: (open) => call(() => bridge.setOverlay(open)),
     };
@@ -32,9 +35,9 @@ window.RB = window.RB || {};
 
   function browserHost() {
     return {
-      load: () => { try { return localStorage.getItem(SAVE_KEY); } catch (e) { return null; } },
-      write: (json) => { try { localStorage.setItem(SAVE_KEY, json); } catch (e) { /* storage may be blocked */ } },
-      clear: () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ } },
+      get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+      set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* storage may be blocked */ } },
+      remove: (k) => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } },
       haptic: (pattern) => {
         if (!navigator.vibrate) return;
         try { navigator.vibrate(pattern); } catch (e) { /* ignore */ }
@@ -49,9 +52,17 @@ window.RB = window.RB || {};
   RB.host = {
     kind,
     native: kind !== 'browser',
-    loadSave: () => impl.load(),
-    writeSave: (json) => impl.write(json),
-    clearSave: () => impl.clear(),
+    // Small key/value storage that survives restarts (the app's own storage
+    // on Android, localStorage in a browser).
+    get: (k) => impl.get(k),
+    set: (k, v) => impl.set(k, v),
+    remove: (k) => impl.remove(k),
+    LEGACY_SAVE,
+    // Each account keeps its own save.
+    useSave(key) { saveKey = key; },
+    loadSave: () => impl.get(saveKey),
+    writeSave: (json) => impl.set(saveKey, json),
+    clearSave: () => impl.remove(saveKey),
     haptic: (pattern) => impl.haptic(pattern),
 
     // Tells the app whether a sheet is up, so Android's back button closes

@@ -45,7 +45,8 @@ window.RB = window.RB || {};
       hacks: {},         // riftId → time
       drops: {},         // dropId → time
       events: [],        // news to show on next look ("your Rift fell")
-      stats: { caught: 0, darts: 0, hacks: 0, claimed: 0, links: 0, fields: 0, wins: 0, fused: 0, meters: 0 },
+      stats: { caught: 0, darts: 0, hits: 0, hacks: 0, claimed: 0, links: 0, fields: 0, wins: 0, fused: 0, meters: 0 },
+      medals: {},        // medal id → tier reached (1 bronze … 5 onyx)
       settings: { sound: true, map: 'scanner', mapV: 2, ar: true, googleKey: '' },
       missions: null,    // today's field missions
       walk: { buddy: 0, stash: 0 },   // meters toward the next walking rewards
@@ -53,8 +54,9 @@ window.RB = window.RB || {};
     };
   }
 
-  function load() {
-    const raw = RB.host.loadSave();
+  // Load the current account's save (or the given JSON, e.g. from the cloud).
+  function load(json) {
+    const raw = json || RB.host.loadSave();
     if (!raw) return null;
     try {
       const s = JSON.parse(raw);
@@ -69,10 +71,19 @@ window.RB = window.RB || {};
       if (s.settings.mapV !== 2) { s.settings.map = 'scanner'; s.settings.mapV = 2; }
       delete s.settings.walk;   // tap-to-walk is gone: you move with GPS only
       save = s;
+      if (json) write();
       return s;
     } catch (e) {
       return null;
     }
+  }
+
+  // Write to the phone, and (online accounts) queue it for the cloud.
+  function write() {
+    save.updated = Date.now();
+    const json = JSON.stringify(save);
+    RB.host.writeSave(json);
+    if (RB.auth) RB.auth.queueSave(json);
   }
 
   function persist(now) {
@@ -80,11 +91,11 @@ window.RB = window.RB || {};
     if (now) {
       clearTimeout(saveTimer);
       saveTimer = null;
-      RB.host.writeSave(JSON.stringify(save));
+      write();
       return;
     }
     if (saveTimer) return;
-    saveTimer = setTimeout(() => { saveTimer = null; RB.host.writeSave(JSON.stringify(save)); }, 400);
+    saveTimer = setTimeout(() => { saveTimer = null; write(); }, 400);
   }
 
   function newGame(name, faction, starter) {
@@ -114,14 +125,24 @@ window.RB = window.RB || {};
     return { level: L, into, need, frac: L >= MAX_LEVEL ? 1 : into / need };
   }
 
+  // Agent titles, a new one every five levels.
+  const TITLES = ['Recruit', 'Scout', 'Tracker', 'Hunter', 'Ranger', 'Riftwalker', 'Vanguard', 'Legend', 'Riftborn'];
+  const title = (L) => TITLES[Math.min(TITLES.length - 1, Math.floor(L / 5))];
+  const levelReward = (L) => ({ orbs: 5 + L, darts: 10 + L * 2, shards: 3 + Math.floor(L / 2) });
+
+  // Listeners for XP gains (the HUD shows "+50 XP").
+  const xpListeners = [];
+  const onXP = (fn) => xpListeners.push(fn);
+
   // Returns the new level if this XP levelled you up, else 0.
   function addXP(n) {
     const before = level().level;
     save.agent.xp += Math.round(n);
+    for (const fn of xpListeners) fn(Math.round(n));
     const after = level().level;
     if (after > before) {
       // Level-up bonus.
-      give({ orbs: 5 + after, darts: 10 + after * 2, shards: 3 + Math.floor(after / 2) });
+      give(levelReward(after));
       persist();
       return after;
     }
@@ -525,10 +546,58 @@ window.RB = window.RB || {};
     } else if (result.dna) {
       up = addXP(20 + result.dna);
     }
-    if (result.hits) track('darts', result.hits);
+    if (result.hits) { track('darts', result.hits); save.stats.hits += result.hits; }
     if (result.caught || result.fled) save.gone[spawn.id] = spawn.expires;
     persist();
     return { creature: c, up };
+  }
+
+  /* ------------------ Medals ------------------ */
+
+  // Like Ingress badges: each one has five tiers for how much you've done.
+  const TIERS = [
+    { name: 'Bronze', color: '#CD8A4E', xp: 500 },
+    { name: 'Silver', color: '#C9D2DC', xp: 2000 },
+    { name: 'Gold', color: '#FFC83A', xp: 6000 },
+    { name: 'Platinum', color: '#9FE8FF', xp: 15000 },
+    { name: 'Onyx', color: '#B45CFF', xp: 40000 },
+  ];
+  const MEDALS = [
+    { id: 'trekker', name: 'Trekker', icon: '👟', stat: 'meters', what: 'km walked', div: 1000, tiers: [10000, 100000, 300000, 1000000, 2500000] },
+    { id: 'collector', name: 'Collector', icon: '🦖', stat: 'caught', what: 'creatures caught', tiers: [10, 100, 500, 2000, 8000] },
+    { id: 'hacker', name: 'Hacker', icon: '🔓', stat: 'hacks', what: 'Rifts hacked', tiers: [20, 200, 1000, 5000, 20000] },
+    { id: 'sharpshooter', name: 'Sharpshooter', icon: '🎯', stat: 'hits', what: 'dart hits', tiers: [50, 500, 2500, 10000, 40000] },
+    { id: 'builder', name: 'Builder', icon: '🏗️', stat: 'claimed', what: 'Rifts claimed', tiers: [5, 50, 200, 1000, 5000] },
+    { id: 'connector', name: 'Connector', icon: '🔗', stat: 'links', what: 'links made', tiers: [5, 50, 250, 1000, 5000] },
+    { id: 'mind', name: 'Mind Controller', icon: '🔺', stat: 'fields', what: 'control fields', tiers: [2, 25, 100, 500, 2000] },
+    { id: 'brawler', name: 'Brawler', icon: '⚔️', stat: 'wins', what: 'battles won', tiers: [5, 50, 200, 1000, 5000] },
+    { id: 'geneticist', name: 'Geneticist', icon: '🧬', stat: 'fused', what: 'fusions', tiers: [3, 30, 150, 500, 2000] },
+  ];
+
+  // Progress on every medal: { m, tier (0 = none yet), value, next }.
+  function medals() {
+    return MEDALS.map((m) => {
+      const v = save.stats[m.stat] || 0;
+      let tier = 0;
+      while (tier < 5 && v >= m.tiers[tier]) tier++;
+      return { m, tier, value: v, next: tier < 5 ? m.tiers[tier] : null };
+    });
+  }
+
+  // Award newly reached medal tiers (with XP). Returns what was earned.
+  function checkMedals() {
+    const out = [];
+    for (const x of medals()) {
+      const had = save.medals[x.m.id] || 0;
+      if (x.tier > had) {
+        save.medals[x.m.id] = x.tier;
+        let up = 0;
+        for (let t = had; t < x.tier; t++) up = addXP(TIERS[t].xp) || up;
+        out.push({ medal: x.m, tier: x.tier, up });
+      }
+    }
+    if (out.length) persist();
+    return out;
   }
 
   /* ------------------ Field missions ------------------ */
@@ -640,7 +709,8 @@ window.RB = window.RB || {};
     FACTIONS, NEUTRAL, RANGE, MAX_TEAM, HACK_MS, DROP_MS, claimCost, upgradeCost, maxRiftLevel, maxGuards, linkRange,
     get save() { return save; },
     load, persist, newGame, reset,
-    level, addXP, faction, enemyId, xpFor,
+    level, addXP, onXP, title, levelReward, TITLES, MAX_LEVEL, faction, enemyId, xpFor,
+    medals, checkMedals, TIERS,
     give, take,
     addCreature, creature, dna, addDNA, levelUp, release, team, toggleTeam, canFuse, fuse, markDex,
     riftState, riftColor, hackReady, hack, claim, upgrade, recharge, setGuards, neutralize,

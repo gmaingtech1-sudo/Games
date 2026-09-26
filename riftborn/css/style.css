@@ -593,7 +593,8 @@ canvas.gl { position: absolute; inset: 0; width: 100% !important; height: 100% !
   text-align: left;
 }
 .row:disabled { opacity: 0.5; }
-.row > span:not(.go):not(.dot) { flex: 1; min-width: 0; }
+.row > span:not(.go):not(.dot):not(.rank) { flex: 1; min-width: 0; }
+.row > .rank { flex: none; }
 .row b { display: block; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row small { color: var(--muted); font-size: 12px; }
 .row small i { font-style: normal; font-weight: 700; }
@@ -832,3 +833,24 @@ code { font-size: 12px; word-break: break-all; }
 .surge { margin-top: 12px; padding: 14px; border-radius: 16px; text-align: center; background: linear-gradient(135deg, color-mix(in srgb, var(--fac) 22%, transparent), rgba(255, 176, 32, 0.12)); border: 1px solid var(--line); }
 .surge canvas { width: 100%; height: 110px; }
 .mission .bar { flex: none; height: 8px; }
+
+.auth-form input { font-size: 17px; letter-spacing: 0.02em; text-align: left; }
+.form-error { min-height: 20px; margin: 0; color: #FF8A9A; font-size: 14px; }
+.xp-pop {
+  position: fixed; left: 70px; top: calc(var(--safe-t) + 62px); z-index: 45; pointer-events: none;
+  font-weight: 700; font-size: 15px; color: var(--fac); text-shadow: 0 0 10px color-mix(in srgb, var(--fac) 70%, transparent), 0 1px 2px #000;
+  animation: xpfloat 1.4s ease-out forwards;
+}
+@keyframes xpfloat { from { opacity: 0; transform: translateY(6px); } 15% { opacity: 1; } to { opacity: 0; transform: translateY(-26px); } }
+.agent-text small em { font-style: normal; color: var(--muted); font-weight: 500; }
+.medals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; }
+.medal { padding: 10px 6px; border-radius: 14px; text-align: center; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); }
+.medal .ic { display: grid; place-items: center; width: 46px; height: 46px; margin: 0 auto 4px; border-radius: 50%; font-size: 22px; border: 3px solid var(--t, #3a3450); box-shadow: 0 0 12px color-mix(in srgb, var(--t, #000) 50%, transparent); background: #120A1C; }
+.medal.none .ic { filter: grayscale(1); opacity: 0.45; }
+.medal b { display: block; font-size: 12px; }
+.medal small { display: block; color: var(--muted); font-size: 10px; }
+.levels .row.cur { border-color: var(--fac); box-shadow: 0 0 12px color-mix(in srgb, var(--fac) 40%, transparent); }
+.levels .row.locked { opacity: 0.55; }
+.lb .row b { font-size: 14px; }
+.lb .rank { width: 28px; text-align: center; font-weight: 700; color: var(--muted); }
+.lb .row.me { border-color: var(--fac); }
