@@ -21,15 +21,23 @@ It's plain HTML, CSS and JavaScript on top of [three.js](https://threejs.org) (i
 ### Accounts
 
 - **On this phone (works out of the box):** accounts are stored on the device, with passwords stored only as salted hashes. Several agents can share one phone, each with its own progress. Log in with your email or codename. The leaderboard shows the agents on this phone.
-- **Online (optional, with Firebase):** your progress is saved to your account, so you can log in on any phone and carry on. There's a shared leaderboard of all agents, and a **Forgot password?** email.
+- **Online (optional, with your own free Firebase project):** your progress is saved to your account, so you can log in on any phone and carry on. There's a shared leaderboard of all agents, and a **Forgot password?** email.
 
 The agent you had before accounts existed is linked to the first account made on that phone.
 
-To turn on online accounts, create a free [Firebase](https://console.firebase.google.com/) project:
+#### Turning on online accounts
 
-1. **Add project**, then in **Build → Authentication → Sign-in method**, enable **Email/Password**.
-2. In **Build → Firestore Database**, create a database. Under **Rules**, paste the contents of [`firestore.rules`](firestore.rules) and **Publish**. Only you can read or write your save, and anyone signed in can read the leaderboard.
-3. In **Project settings → General**, copy the **Web API key** and **Project ID** into `config.js` (`firebase: { apiKey: '…', projectId: '…' }`) on your web copy, or build the APK with `FIREBASE_API_KEY=… FIREBASE_PROJECT_ID=… ./build.sh`.
+You need a free [Firebase](https://console.firebase.google.com/) project, which takes a Google account but no card. Set it up from the game: tap **Play on any phone: set up online accounts** on the title screen, or **Menu → Account → Set up online accounts**. That screen walks you through it:
+
+1. Create a project in the [Firebase console](https://console.firebase.google.com/). Google Analytics can be off.
+2. Open **Authentication**, tap **Get started**, and turn on **Email/Password** under **Sign-in method**.
+3. Open **Firestore Database**, tap **Create database** and pick **production mode**.
+4. In Firestore's **Rules** tab, paste the Riftborn rules over everything and tap **Publish**. The game's **Copy rules** button copies them, or take them from [`firestore.rules`](firestore.rules). Only you can read or write your save, and anyone signed in can read the leaderboard.
+5. In **Project settings → General**, copy the **Project ID** and **Web API key** into the game (the whole `firebaseConfig` snippet works too) and tap **Check and turn on**.
+
+The check tries your project and says exactly which step is still missing. Once it passes, make your online account: the agent you were playing on the phone moves to it with all its progress. If online saving ever stops working, **Menu → Account** says why.
+
+Setting it up in the game turns on online accounts for that phone or browser. To give every copy of the game the same project, put the two values in `config.js` (`firebase: { apiKey: '…', projectId: '…' }`) on your web copy, or build the APK with `FIREBASE_API_KEY=… FIREBASE_PROJECT_ID=… ./build.sh`. Builds with a project built in don't show the setup screen.
 
 The Web API key only identifies the project and is meant to sit in apps; the Firestore rules are what protect your data. Progress is checked on the phone, not on a server, so a determined player could edit their own save and leaderboard entry.
 

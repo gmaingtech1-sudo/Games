@@ -43,9 +43,19 @@
       engage,
       assault,
       changed: () => { refreshEntities(true); updateHud(); },
+      goOnline,
+      // Online accounts were turned on or off.
+      accountsChanged: () => { if (mode === 'onboard') onboarding(RB.auth.user ? S.save : null); },
     });
     bindDom();
     onboarding(save);
+    // Back from logging out to go online.
+    if (location.hash === '#signup' || location.hash === '#login') {
+      const to = location.hash.slice(1);
+      history.replaceState(null, '', location.pathname + location.search);
+      if (!RB.auth.user && to === 'signup') showSignup();
+      else if (!RB.auth.user) { step('login'); focusSoon('li-email'); }
+    }
     if (RB.auth.user) pullCloud();
     S.onXP(xpPop);
     window.addEventListener('resize', resize);
@@ -111,8 +121,50 @@
     $('ob-mode').textContent = u
       ? `Logged in as ${u.name}${u.email ? ` (${u.email})` : ''} · ${u.mode === 'cloud' ? 'online account' : 'account on this phone'}`
       : RB.auth.online() ? 'Online accounts: your progress follows you to any phone.' : 'Accounts are kept on this phone.';
+    // Online accounts can be set up here unless this build has them built in.
+    $('ob-online').hidden = RB.auth.builtIn();
+    $('ob-online').textContent = RB.auth.online() ? `Online accounts: ${RB.auth.projectId} · change` : 'Play on any phone: set up online accounts';
     $('li-forgot').hidden = !RB.auth.online();
     step('title');
+  }
+
+  // The sign-up form. With online accounts on, the agent last played on
+  // this phone moves to the new account, so say so.
+  function showSignup() {
+    step('signup');
+    const mv = RB.auth.movable();
+    const hint = $('su-hint');
+    hint.hidden = !RB.auth.online();
+    hint.textContent = mv
+      ? `Online accounts are on. ${mv.name} moves to the account you make here, with all your progress.`
+      : 'This makes an online account: your progress follows you to any phone.';
+    if (mv && !$('su-name').value) $('su-name').value = mv.name;
+    focusSoon(mv ? 'su-email' : 'su-name');
+  }
+
+  // Put the cursor in a form's first box, unless you're already typing.
+  function focusSoon(id) {
+    setTimeout(() => {
+      const a = document.activeElement;
+      if (!a || a.tagName !== 'INPUT') $(id).focus();
+    }, 50);
+  }
+
+  // Online accounts were just set up: log out of the phone account (the
+  // page reloads to the sign-up form, or to logging in if this agent has
+  // already moved online) or go straight to signing up.
+  async function goOnline() {
+    if (RB.auth.user) {
+      const to = RB.auth.movable() ? 'signup' : 'login';
+      if (S.save) S.persist(true);
+      await RB.auth.logOut();
+      location.hash = to;
+      location.reload();
+      return;
+    }
+    UI.close();
+    onboarding(null);
+    showSignup();
   }
 
   // Online accounts: take the cloud save if it's newer than this phone's.
@@ -130,7 +182,15 @@
   async function afterLogin(u) {
     let save = S.load();
     if (u.mode === 'cloud') { await pullCloud(); save = S.save && S.load(); }
-    if (RB.auth.takeAdopted() && save) setTimeout(() => UI.toast(`Your agent ${esc(save.agent.name)} is now linked to this account.`, 'good'), 600);
+    const adopted = RB.auth.takeAdopted(), moved = RB.auth.takeMoved();
+    if (save && (adopted || moved)) {
+      // Upload it now rather than in 20 seconds.
+      if (u.mode === 'cloud') { S.persist(true); RB.auth.flush(); }
+      const text = moved
+        ? `${esc(save.agent.name)} moved to your online account. Your progress now follows you to any phone.`
+        : `Your agent ${esc(save.agent.name)} is now linked to this account.`;
+      setTimeout(() => UI.toast(text, 'good'), 600);
+    }
     if (save) { enterMap(); return; }
     draft.name = u.name;
     step('faction');
@@ -161,10 +221,15 @@
 
   function bindDom() {
     $('ob-begin').addEventListener('click', () => { sfx.unlock(); sfx.tap(); draft.name = RB.auth.user.name; step('faction'); });
-    $('ob-signup').addEventListener('click', () => { sfx.unlock(); sfx.tap(); step('signup'); setTimeout(() => $('su-name').focus(), 50); });
-    $('ob-login').addEventListener('click', () => { sfx.unlock(); sfx.tap(); step('login'); setTimeout(() => $('li-email').focus(), 50); });
+    $('ob-signup').addEventListener('click', () => { sfx.unlock(); sfx.tap(); showSignup(); });
+    $('ob-online').addEventListener('click', () => { sfx.unlock(); sfx.tap(); UI.onlineSheet(); });
+    $('ob-login').addEventListener('click', () => { sfx.unlock(); sfx.tap(); step('login'); focusSoon('li-email'); });
     $('ob-logout').addEventListener('click', async () => { sfx.tap(); await RB.auth.logOut(); location.reload(); });
-    document.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => { sfx.tap(); step(b.dataset.goto); }));
+    document.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => {
+      sfx.tap();
+      if (b.dataset.goto === 'signup') showSignup();
+      else step(b.dataset.goto);
+    }));
     $('signup-form').addEventListener('submit', (e) => { e.preventDefault(); submitAuth('signup'); });
     $('login-form').addEventListener('submit', (e) => { e.preventDefault(); submitAuth('login'); });
     $('li-forgot').addEventListener('click', async () => {
@@ -407,7 +472,7 @@
   }
 
   // "+50 XP" floating up by your level bar.
-  let publishedLevel = 0, publishedXP = 0, publishedAt = 0;
+  let publishedLevel = 0, publishedXP = 0, publishedAt = 0, syncShown = '';
   function xpPop(n) {
     if (mode !== 'map' || n <= 0) return;
     const el = document.createElement('div');
@@ -440,6 +505,13 @@
     $('hud-darts').textContent = s.items.darts;
     $('hud-shards').textContent = s.items.shards;
     $('btn-missions').classList.toggle('ready', S.missionsReady());
+    // Say once when online saving is blocked, and why. (A weak signal
+    // just means it tries again later.)
+    const problem = RB.auth.syncNeedsFix ? RB.auth.syncError : '';
+    if (problem !== syncShown) {
+      syncShown = problem;
+      if (problem) UI.toast(`⚠️ ${esc(problem)}`, 'bad');
+    }
     const attr = M.attribution;
     $('map-attrib').hidden = !attr;
     if ($('map-attrib').textContent !== attr) $('map-attrib').textContent = attr;

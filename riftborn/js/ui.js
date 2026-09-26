@@ -1,6 +1,7 @@
 /* Riftborn — the panels that slide up over the map: Rifts, caches, wild
    creatures, the Lab (your creatures, the Riftdex and fusion), your bag,
-   your agent profile, the menu and the guide. */
+   your agent profile and account, online accounts setup, the menu and the
+   guide. */
 window.RB = window.RB || {};
 (function (RB) {
   'use strict';
@@ -12,7 +13,7 @@ window.RB = window.RB || {};
   const sfx = RB.sfx;
   const $ = (id) => document.getElementById(id);
 
-  let hooks = {};          // set by main: engage, assault, changed, player()
+  let hooks = {};          // set by main: engage, assault, changed, player(), goOnline, accountsChanged
   let current = null;      // { name, refresh }
   let anim = null;         // animated portrait in the sheet
 
@@ -527,13 +528,16 @@ window.RB = window.RB || {};
     try {
       rows = await RB.auth.leaderboard();
     } catch (e) {
-      open('board', `<h2>Leaderboard</h2><p class="far">Couldn’t load the leaderboard. Check your internet connection.</p><button class="btn" data-back>Back</button>`, (el) => on(el, '[data-back]', () => profile()));
+      const why = e.status === 403
+        ? 'Your Firestore rules are blocking the leaderboard. Paste the Riftborn rules in Firebase → Firestore Database → Rules and tap Publish.'
+        : 'Couldn’t load the leaderboard. Check your internet connection.';
+      open('board', `<h2>Leaderboard</h2><p class="far">${why}</p><button class="btn" data-back>Back</button>`, (el) => on(el, '[data-back]', () => profile()));
       return;
     }
     if (!current || current.name !== 'board') return;
     open('board', `
       <h2>Leaderboard</h2>
-      <p class="muted small">${me && me.mode === 'cloud' ? 'Top agents everywhere, by XP.' : 'Agents on this phone, by XP. With online accounts (see the README) everyone shares one leaderboard.'}</p>
+      <p class="muted small">${me && me.mode === 'cloud' ? 'Top agents everywhere, by XP.' : 'Agents on this phone, by XP. With online accounts (Menu → Account) everyone shares one leaderboard.'}</p>
       ${rows.length ? `<div class="list lb">${rows.map((r, i) => `<div class="row ${me && r.uid === me.uid ? 'me' : ''}">
         <span class="rank">${i + 1}</span>
         <span class="dot" style="--c:${(S.FACTIONS[r.faction] || {}).color || '#888'};margin:0 4px"></span>
@@ -545,19 +549,154 @@ window.RB = window.RB || {};
 
   function account() {
     const u = RB.auth.user;
+    const own = !RB.auth.builtIn();          // online accounts are set up in the game
+    const agent = S.save ? S.save.agent.name : u.name;
+    const problem = u.mode === 'cloud' && RB.auth.syncError;
+    // With online accounts on, a phone agent can move online (once).
+    const goes = u.mode === 'local' && RB.auth.online();
+    const moves = goes && !!RB.auth.movable();
     open('account', `
       <h2>Account</h2>
       <div class="row"><span><b>${esc(u.name)}</b><small>${esc(u.email || 'No email')} · ${u.mode === 'cloud' ? 'online account' : 'account on this phone'}</small></span></div>
       <p class="muted small">${u.mode === 'cloud'
         ? `Your progress is saved to your account and follows you to any phone.${RB.auth.lastSync ? ` Last synced ${new Date(RB.auth.lastSync).toLocaleTimeString()}.` : ''}`
         : 'Your account and progress are stored on this phone. Uninstalling the app or clearing the browser’s data deletes them.'}</p>
+      ${problem ? `<p class="form-error">⚠️ ${esc(problem)}</p>` : ''}
+      ${goes ? `<p class="muted small">${moves
+        ? `Online accounts are on. Make an online account and ${esc(agent)} moves to it with all your progress.`
+        : `Online accounts are on. ${esc(agent)} already moved to an online account: log in to it to carry on.`}</p>` : ''}
       <div class="actions">
         ${u.mode === 'cloud' ? '<button class="btn" data-sync>Sync now</button>' : ''}
+        ${goes ? `<button class="btn btn-main" data-go>${moves ? `Take ${esc(agent)} online` : 'Log in online'}</button>` : ''}
+        ${own ? `<button class="btn" data-online>🌐 ${RB.auth.online() ? 'Online accounts: on' : 'Set up online accounts'}</button>` : ''}
         <button class="btn btn-danger" data-logout>Log out</button>
       </div>
     `, (el) => {
-      on(el, '[data-sync]', async () => { S.persist(true); await RB.auth.flush(); toast('Progress saved to your account.', 'good'); account(); });
+      on(el, '[data-sync]', async () => {
+        S.persist(true);
+        await RB.auth.flush();
+        const err = RB.auth.syncError;
+        toast(err ? esc(err) : 'Progress saved to your account.', err ? 'bad' : 'good');
+        account();
+      });
+      on(el, '[data-go]', () => hooks.goOnline());
+      on(el, '[data-online]', () => onlineSheet());
       on(el, '[data-logout]', async () => { S.persist(true); await RB.auth.logOut(); location.reload(); });
+    });
+  }
+
+  // Online accounts through the player's own free Firebase project: they
+  // make it in the Firebase console and paste two values here.
+  function onlineSheet() {
+    const u = RB.auth.user;
+    const isOn = RB.auth.online();
+    if (u && u.mode === 'cloud') {
+      open('online', `
+        <h2>Online accounts</h2>
+        <p class="muted">Online accounts are on, using the Firebase project <b>${esc(RB.auth.projectId)}</b>. You’re logged in as ${esc(u.name)}.</p>
+        <div class="actions"><button class="btn btn-danger" data-off>Turn off online accounts</button></div>
+        <p class="muted small">Turning them off logs you out. Your online agent stays in your Firebase project for when you turn them back on.</p>
+      `, (el) => {
+        on(el, '[data-off]', async (b) => {
+          if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Tap again to log out and turn them off'; return; }
+          S.persist(true);
+          await RB.auth.logOut();
+          RB.auth.clearSetup();
+          location.reload();
+        });
+      });
+      return;
+    }
+    const had = RB.auth.setup || {};
+    let rules = '';
+    fetch('firestore.rules').then((r) => (r.ok ? r.text() : '')).catch(() => '').then((t) => {
+      rules = t;
+      const pre = $('fb-rules');
+      if (pre) pre.textContent = t || 'Couldn’t load the rules. They’re in firestore.rules next to the game.';
+    });
+    const box = (id, label, value, hint) => `<div class="field"><span>${label}</span>
+      <div class="paste-row"><input id="${id}" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${hint}" aria-label="${label}" value="${esc(value || '')}"><button class="btn" type="button" data-paste="${id}">Paste</button></div></div>`;
+    open('online', `
+      <h2>Online accounts</h2>
+      <p class="muted">${isOn ? `Online accounts are on, using the Firebase project <b>${esc(RB.auth.projectId)}</b>.` : 'Right now accounts and progress stay on this phone.'} With your own free Firebase project, agents can log in on any phone, progress is saved online, and everyone shares one leaderboard. It takes about 5 minutes and a Google account. No card needed.</p>
+      <ol class="steps">
+        <li>Open <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">console.firebase.google.com</a> and create a project. Google Analytics can be off.</li>
+        <li>Open <b>Authentication</b> and tap <b>Get started</b>. Under <b>Sign-in method</b>, turn on <b>Email/Password</b> and save.</li>
+        <li>Open <b>Firestore Database</b> and tap <b>Create database</b>. Keep the suggested settings, pick <b>production mode</b>, and create it.</li>
+        <li>In Firestore’s <b>Rules</b> tab, paste the Riftborn rules over everything and tap <b>Publish</b>.
+          <button class="btn btn-small" type="button" data-copy>📋 Copy rules</button></li>
+        <li>Tap ⚙️ → <b>Project settings</b>. Copy the <b>Project ID</b> and the <b>Web API key</b> into the boxes below.</li>
+      </ol>
+      <details class="rules"><summary>Show the rules</summary><pre id="fb-rules">Loading…</pre></details>
+      ${box('fb-project', 'Project ID', had.projectId, 'riftborn-1a2b3')}
+      ${box('fb-key', 'Web API key', had.apiKey, 'AIza…')}
+      <div id="fb-result" role="status" aria-live="polite"></div>
+      <div class="actions">
+        <button class="btn btn-main" type="button" data-check>Check and turn on</button>
+        ${isOn ? '<button class="btn btn-danger" type="button" data-off>Turn off online accounts</button>' : ''}
+      </div>
+      <p class="muted small">Firebase’s free plan is plenty for Riftborn. The Web API key isn’t a secret: it only names your project, and the rules keep each agent’s save private. Both are kept on this phone.</p>
+    `, (el) => {
+      const out = $('fb-result');
+      const check = el.querySelector('[data-check]');
+      let ready = false;         // checked and saved: the button moves on to signing up
+      const edited = () => { ready = false; check.textContent = 'Check and turn on'; };
+      el.querySelectorAll('.paste-row input').forEach((i) => i.addEventListener('input', edited));
+
+      on(el, '[data-copy]', async () => {
+        if (rules && await RB.host.copy(rules)) {
+          toast('Rules copied. Paste them in Firestore Database → Rules.', 'good');
+        } else {
+          el.querySelector('.rules').open = true;
+          toast('Couldn’t copy them. Select the rules below and copy them yourself.', 'bad');
+        }
+      });
+      on(el, '[data-paste]', async (b) => {
+        const input = $(b.dataset.paste);
+        const text = ((await RB.host.paste()) || '').trim();
+        if (text) { input.value = text; edited(); }
+        else { input.focus(); toast('Long-press the box and tap Paste.'); }
+      });
+      on(el, '[data-check]', async () => {
+        if (ready) { hooks.goOnline(); return; }
+        let cfg;
+        try {
+          cfg = RB.auth.parseSetup($('fb-project').value, $('fb-key').value);
+        } catch (e) {
+          out.innerHTML = `<p class="form-error">${esc(e.message)}</p>`;
+          sfx.error();
+          return;
+        }
+        check.disabled = true;
+        check.textContent = 'Checking your project…';
+        out.innerHTML = '';
+        const res = await RB.auth.checkSetup(cfg);
+        if (!check.isConnected) return;         // the sheet was closed meanwhile
+        check.disabled = false;
+        if (res.cfg.projectId) $('fb-project').value = res.cfg.projectId;
+        out.innerHTML = `<ul class="checks">${res.steps.map((x) => `<li class="${x.ok ? 'ok' : 'bad'}">${esc(x.text)}</li>`).join('')}</ul>`;
+        if (!res.ok) {
+          check.textContent = 'Check again';
+          sfx.error();
+          out.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          return;
+        }
+        RB.auth.saveSetup(res.cfg);
+        sfx.claim();
+        ready = true;
+        out.insertAdjacentHTML('beforeend', '<p class="ok-note">All set! Online accounts are on.</p>');
+        check.textContent = !u ? 'Make your online account'
+          : RB.auth.movable() ? `Take ${S.save ? S.save.agent.name : u.name} online` : 'Log in online';
+        check.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        if (hooks.accountsChanged) hooks.accountsChanged();
+      });
+      on(el, '[data-off]', (b) => {
+        if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Tap again to turn them off'; return; }
+        RB.auth.clearSetup();
+        toast('Online accounts are off. Accounts are kept on this phone again.');
+        close();
+        if (hooks.accountsChanged) hooks.accountsChanged();
+      });
     });
   }
 
@@ -734,5 +873,6 @@ window.RB = window.RB || {};
     setHooks(h) { hooks = h; },
     toast, open, close, isOpen, refresh, tick, levelUp,
     spawnSheet, dropSheet, riftSheet, lab, creatureSheet, bag, profile, scan, menu, guide, missionsSheet,
+    account, onlineSheet,
   };
 })(window.RB);

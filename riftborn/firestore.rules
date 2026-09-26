@@ -14,5 +14,10 @@ service cloud.firestore {
         && request.resource.data.name is string && request.resource.data.name.size() <= 16
         && request.resource.data.level is int && request.resource.data.xp is int;
     }
+    // Nothing is stored here. The game's setup check reads it to see that
+    // these rules are published.
+    match /setup/rules-v1 {
+      allow get: if true;
+    }
   }
 }

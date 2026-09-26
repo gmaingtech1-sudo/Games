@@ -25,14 +25,15 @@ It's the same game as the web version in [`../riftborn`](../riftborn), packaged 
 
 - The game files, including the 3D engine, are inside the APK. The app serves them to its WebView from a private `https://appassets.androidplatform.net/` address, which counts as a secure page, so GPS and the camera work. Only the map tiles (Google Maps with a key, Esri or OpenStreetMap otherwise) and fonts come from the internet.
 - The game's location and camera requests are passed on to Android's own permission prompts. Your location and camera picture stay on the phone.
-- Accounts and progress are saved in the app's own storage (and to your account online, when the build has a Firebase project).
+- Accounts and progress are saved in the app's own storage (and to your account online, once online accounts are turned on).
+- The game's **Copy** and **Paste** buttons use Android's clipboard, and a long press in a text box brings up Paste.
 - The screen stays on while you play.
 - Vibration uses the phone's tuned click and tick effects on Android 10+.
 - The back button closes a panel or leaves an encounter before it leaves the app.
 
 | File | What it does |
 | --- | --- |
-| `src/app/riftborn/game/MainActivity.java` | The native side: WebView setup, serving the game files, location and camera permissions, saving, vibration, back button, pause/resume |
+| `src/app/riftborn/game/MainActivity.java` | The native side: WebView setup, serving the game files, location and camera permissions, saving, vibration, the clipboard, back button, pause/resume |
 | `AndroidManifest.xml` | App name, icon, permissions (location, camera, internet for map tiles and fonts, vibration), portrait screen |
 | `res/` | Launcher icons (including the Android 8+ adaptive icon and the Android 13+ themed icon) and the dark theme |
 | `build.sh` | Builds `dist/riftborn.apk` |
@@ -52,7 +53,7 @@ sudo apt install openjdk-21-jdk-headless aapt dalvik-exchange zipalign apksigner
 
 To build with Google Maps turned on, pass your key: `GOOGLE_MAPS_KEY=AIza... ./build.sh`. Restrict the key to the Map Tiles API and to `https://appassets.androidplatform.net/*` (see [Google Maps](../riftborn/README.md#google-maps)). Players can also add a key in the app under **Menu → Google Maps**.
 
-To build with online accounts (cloud saves on any phone, a shared leaderboard), pass your Firebase project: `FIREBASE_API_KEY=… FIREBASE_PROJECT_ID=… ./build.sh` (see [Accounts](../riftborn/README.md#accounts)). Without it, accounts are kept on the phone.
+To build with online accounts (cloud saves on any phone, a shared leaderboard), pass your Firebase project: `FIREBASE_API_KEY=… FIREBASE_PROJECT_ID=… ./build.sh` (see [Accounts](../riftborn/README.md#accounts)). Without it, accounts are kept on the phone until a player sets up online accounts in the app.
 
 ### About the signing key
 

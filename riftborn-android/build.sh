@@ -24,7 +24,7 @@ rm -rf "$BUILD"
 mkdir -p "$BUILD/gen" "$BUILD/classes" "$BUILD/assets/game" dist
 
 echo "1/5 Copying the game from ../riftborn"
-cp -R ../riftborn/index.html ../riftborn/config.js ../riftborn/css ../riftborn/js ../riftborn/icons ../riftborn/vendor "$BUILD/assets/game/"
+cp -R ../riftborn/index.html ../riftborn/config.js ../riftborn/firestore.rules ../riftborn/css ../riftborn/js ../riftborn/icons ../riftborn/vendor "$BUILD/assets/game/"
 # Optional: bake a Google Maps key into this build (GOOGLE_MAPS_KEY=... ./build.sh).
 if [ -n "${GOOGLE_MAPS_KEY:-}" ]; then
   sed -i "s#googleMapsKey: ''#googleMapsKey: '${GOOGLE_MAPS_KEY}'#" "$BUILD/assets/game/config.js"

@@ -172,11 +172,13 @@
       <button id="ob-logout" class="link-btn" type="button" hidden>Log out</button>
     </div>
     <p id="ob-mode" class="fineprint"></p>
+    <button id="ob-online" class="link-btn fineprint" type="button" hidden></button>
   </div>
 
   <div class="ob-step" data-step="signup" hidden>
     <h2>Sign up</h2>
     <p class="muted">Make your agent account.</p>
+    <p id="su-hint" class="su-hint" hidden></p>
     <form id="signup-form" class="ob-form auth-form" novalidate>
       <input id="su-name" type="text" maxlength="16" autocomplete="nickname" spellcheck="false" placeholder="Agent codename" aria-label="Agent codename">
       <input id="su-email" type="email" autocomplete="email" spellcheck="false" placeholder="Email" aria-label="Email">

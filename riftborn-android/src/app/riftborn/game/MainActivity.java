@@ -2,6 +2,8 @@ package app.riftborn.game;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -37,10 +39,10 @@ import java.util.Map;
  * and the camera require) without a web server. Map tiles and fonts still
  * come from the internet. window.AndroidHost is the bridge the game's
  * js/host.js looks for: it keeps saves, accounts and the login session in
- * SharedPreferences and drives
- * the vibration motor. The activity sends back pause, resume and back
- * messages, and asks Android for location and camera access when the page
- * wants them.
+ * SharedPreferences, drives the vibration motor, and reaches the clipboard
+ * for the game's Copy and Paste buttons. The activity sends back pause,
+ * resume and back messages, and asks Android for location and camera
+ * access when the page wants them.
  */
 public class MainActivity extends Activity {
 
@@ -55,6 +57,7 @@ public class MainActivity extends Activity {
     private WebView web;
     private SharedPreferences prefs;
     private Vibrator vibrator;
+    private ClipboardManager clipboard;
     private volatile boolean overlayOpen;
 
     // Page requests held while Android asks the player.
@@ -67,6 +70,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         prefs = getSharedPreferences("riftborn", MODE_PRIVATE);
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+        clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         // You're walking around looking at the map; don't let the screen dim.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
@@ -75,11 +79,13 @@ public class MainActivity extends Activity {
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         web.setVerticalScrollBarEnabled(false);
         web.setHorizontalScrollBarEnabled(false);
-        // Long presses and drags belong to the game, not text selection.
+        // Long presses and drags belong to the game, not text selection,
+        // except in text boxes, where a long press brings up Paste.
         web.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                return true;
+                WebView.HitTestResult hit = web.getHitTestResult();
+                return hit == null || hit.getType() != WebView.HitTestResult.EDIT_TEXT_TYPE;
             }
         });
         web.setLongClickable(false);
@@ -208,6 +214,7 @@ public class MainActivity extends Activity {
             if (path.endsWith(".png")) return "image/png";
             if (path.endsWith(".svg")) return "image/svg+xml";
             if (path.endsWith(".json") || path.endsWith(".webmanifest")) return "application/json";
+            if (path.endsWith(".rules")) return "text/plain";
             return "application/octet-stream";
         }
     }
@@ -291,6 +298,31 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void setOverlay(boolean open) {
             overlayOpen = open;
+        }
+
+        // The game's Copy button (the Firestore rules for online accounts).
+        @JavascriptInterface
+        public void copyText(final String text) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Riftborn", text));
+                }
+            });
+        }
+
+        // The game's Paste buttons. Android only shares the clipboard with
+        // the app on screen, which is us when the player taps Paste.
+        @JavascriptInterface
+        public String pasteText() {
+            try {
+                ClipData clip = clipboard.getPrimaryClip();
+                if (clip == null || clip.getItemCount() == 0) return "";
+                CharSequence text = clip.getItemAt(0).coerceToText(MainActivity.this);
+                return text == null ? "" : text.toString();
+            } catch (RuntimeException e) {
+                return ""; // the game asks for a long press instead
+            }
         }
 
         @JavascriptInterface

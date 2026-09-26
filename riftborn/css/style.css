@@ -854,3 +854,26 @@ code { font-size: 12px; word-break: break-all; }
 .lb .row b { font-size: 14px; }
 .lb .rank { width: 28px; text-align: center; font-weight: 700; color: var(--muted); }
 .lb .row.me { border-color: var(--fac); }
+
+/* Online accounts setup */
+.sheet-card a { color: var(--fac); }
+.btn-small { display: inline-flex; min-height: 36px; padding: 6px 12px; font-size: 14px; margin-top: 6px; }
+.steps { margin: 10px 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.steps li::marker { color: var(--fac); font-weight: 700; }
+.rules summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 0; }
+.rules pre {
+  max-height: 200px; overflow: auto; margin: 6px 0 0; padding: 10px; border-radius: 10px;
+  background: rgba(0, 0, 0, 0.4); border: 1px solid var(--line); font-size: 11px; line-height: 1.35;
+  -webkit-user-select: text; user-select: text;
+}
+.paste-row { display: flex; gap: 8px; }
+.paste-row input { flex: 1; min-width: 0; }
+.paste-row .btn { flex: none; min-height: 48px; padding: 0 14px; }
+.checks { list-style: none; margin: 10px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.checks li { position: relative; padding: 8px 10px 8px 32px; border-radius: 10px; font-size: 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); }
+.checks li::before { position: absolute; left: 11px; top: 8px; font-weight: 700; }
+.checks li.ok::before { content: "✓"; color: var(--good); }
+.checks li.bad { border-color: rgba(255, 90, 110, 0.45); }
+.checks li.bad::before { content: "✗"; color: #FF8A9A; }
+.ok-note { color: var(--good); font-weight: 700; }
+.su-hint { margin: 0; padding: 10px 12px; border-radius: 12px; font-size: 14px; color: var(--ink); background: color-mix(in srgb, var(--fac) 16%, transparent); border: 1px solid color-mix(in srgb, var(--fac) 45%, transparent); }
