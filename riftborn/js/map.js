@@ -24,6 +24,7 @@ window.RB = window.RB || {};
   const TILE_URL = {
     day: (s, z, x, y) => `https://${s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}@2x.png`,
     night: (s, z, x, y) => `https://${s}.basemaps.cartocdn.com/dark_nolabels/${z}/${x}/${y}@2x.png`,
+    scanner: (s, z, x, y) => `https://${s}.basemaps.cartocdn.com/dark_nolabels/${z}/${x}/${y}@2x.png`,
   };
 
   let container = null, renderer = null, scene = null, camera = null;
@@ -98,6 +99,7 @@ window.RB = window.RB || {};
     mg.setAttribute('position', new T.BufferAttribute(pos, 3));
     motes = new T.Points(mg, new T.PointsMaterial({ map: G.glow(), size: 2.2, color: '#C9A8FF', transparent: true, opacity: 0.7, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false }));
     scene.add(motes);
+    buildXM();
 
     bindInput();
   }
@@ -118,7 +120,7 @@ window.RB = window.RB || {};
 
   function mapStyle() {
     const m = S.save.settings.map;
-    if (m === 'grid') return 'grid';
+    if (m === 'grid' || m === 'scanner') return m;
     if (m === 'day' || m === 'night') return m;
     const h = new Date().getHours() + new Date().getMinutes() / 60;
     return h >= 6.5 && h < 19.5 ? 'day' : 'night';
@@ -126,6 +128,10 @@ window.RB = window.RB || {};
 
   function applyStyle(st) {
     style = st;
+    if (st === 'scanner') { applyScanner(); return; }
+    motes.material.color.set('#C9A8FF');
+    motes.material.size = 2.2;
+    xm.visible = false;
     const night = st !== 'day';
     const horizon = night ? '#241838' : '#CFE4F2';
     scene.background = G.gradient(night
@@ -144,11 +150,59 @@ window.RB = window.RB || {};
     tiles.clear();
   }
 
+  // The Ingress-style scanner: a near-black world with faint teal streets,
+  // no labels, a dark horizon and glowing XM on the ground.
+  function applyScanner() {
+    scene.background = G.gradient([[0, '#000000'], [0.7, '#020708'], [1, '#08191B']]);
+    scene.fog = new T.Fog('#061416', 280, 900);
+    hemi.color.set('#6FA8A4');
+    hemi.groundColor.set('#050A0A');
+    hemi.intensity = 0.95;
+    sun.color.set('#CFE8FF');
+    sun.intensity = 1.1;
+    groundMat.map = groundTexture('scanner');
+    groundMat.needsUpdate = true;
+    motes.material.color.set('#9FF4FF');
+    motes.material.opacity = 0.75;
+    motes.material.size = 1.6;
+    xm.visible = true;
+    for (const tl of tiles.values()) disposeTile(tl);
+    tiles.clear();
+  }
+
+  // XM: little glowing globs scattered on the ground around you, the same
+  // in the same place every time.
+  let xm = null;
+  function buildXM() {
+    const N = 900;
+    const pos = new Float32Array(N * 3);
+    const r = RB.util.rng('xm');
+    for (let i = 0; i < N; i++) pos.set([(r() - 0.5) * 600, 0.6 + r() * 0.6, (r() - 0.5) * 600], i * 3);
+    const g = new T.BufferGeometry();
+    g.setAttribute('position', new T.BufferAttribute(pos, 3));
+    xm = new T.Points(g, new T.PointsMaterial({ map: G.glow(), size: 4.5, color: '#B8F6FF', transparent: true, opacity: 0.8, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false }));
+    xm.visible = false;
+    scene.add(xm);
+  }
+
   // Offline ground: grass by day, dark rift soil at night, or the grid.
   const groundTex = {};
   function groundTexture(st) {
     if (groundTex[st]) return groundTex[st];
     const c = G.canvas(512, 512), g = c.getContext('2d');
+    if (st === 'scanner') {
+      // Black with a faint teal survey grid, for when tiles can't load.
+      g.fillStyle = '#030607';
+      g.fillRect(0, 0, 512, 512);
+      g.strokeStyle = 'rgba(80,200,190,0.22)';
+      g.lineWidth = 2;
+      g.strokeRect(0, 0, 512, 512);
+      const tx = G.texture(c);
+      tx.wrapS = tx.wrapT = T.RepeatWrapping;
+      tx.repeat.set(6000 / 50, 6000 / 50);
+      tx.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      return (groundTex[st] = tx);
+    }
     const base = st === 'day' ? '#7FA55C' : st === 'night' ? '#1C1830' : '#120C24';
     g.fillStyle = base;
     g.fillRect(0, 0, 512, 512);
@@ -219,7 +273,8 @@ window.RB = window.RB || {};
       if (tiles.has(it.key)) continue;
       const url = google ? RB.gmaps.tileUrl(style, z, it.x, it.y) : TILE_URL[style]('abcd'[(it.x + it.y) % 4], z, it.x, it.y);
       if (!url) continue;   // Google session still starting
-      const mat = new T.MeshBasicMaterial({ color: style === 'day' ? '#F4FFF0' : '#FFFFFF', transparent: true, opacity: 0, toneMapped: false });
+      const tint = style === 'day' ? '#F4FFF0' : style === 'scanner' && !google ? '#8FFFEA' : '#FFFFFF';
+      const mat = new T.MeshBasicMaterial({ color: tint, transparent: true, opacity: 0, toneMapped: false });
       const mesh = new T.Mesh(new T.PlaneGeometry(1, 1), mat);
       mesh.rotation.x = -Math.PI / 2;
       mesh.scale.set(it.b.x - it.a.x, it.b.z - it.a.z, 1);
@@ -453,6 +508,11 @@ window.RB = window.RB || {};
     shadowCatcher.position.set(me.x, 0.15, me.z);
     ground.position.set(me.x - (me.x % 50), -0.2, me.z - (me.z % 50));
     motes.position.set(me.x, 0, me.z);
+    if (xm.visible) {
+      // Keep the XM field centred on you in 100 m steps so it doesn't slide.
+      xm.position.set(me.x - (me.x % 100), 0, me.z - (me.z % 100));
+      xm.material.opacity = 0.6 + Math.sin(t * 2) * 0.2;
+    }
     motes.rotation.y += dt * 0.02;
 
     for (const o of live.rifts.values()) o.update(dt);
@@ -461,7 +521,7 @@ window.RB = window.RB || {};
 
     tileTimer -= dt;
     if (tileTimer <= 0) { tileTimer = 0.5; updateTiles(); }
-    renderer.toneMappingExposure = style === 'day' ? 1.0 : 1.15;
+    renderer.toneMappingExposure = style === 'day' || style === 'scanner' ? 1.0 : 1.15;
     for (const tl of tiles.values()) if (tl.tex && tl.mesh.material.opacity < 1) tl.mesh.material.opacity = Math.min(1, tl.mesh.material.opacity + dt * 3);
     renderer.render(scene, camera);
   }

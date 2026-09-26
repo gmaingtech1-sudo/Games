@@ -30,6 +30,20 @@ window.RB = window.RB || {};
       { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#FFFFFF' }] },
       { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#FFE3A0' }] },
     ]),
+    // Ingress-style scanner: black, faint teal roads, no labels at all.
+    scanner: [
+      { elementType: 'labels', stylers: [{ visibility: 'off' }] },
+      { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+      { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+      { featureType: 'administrative', elementType: 'geometry', stylers: [{ visibility: 'off' }] },
+      { elementType: 'geometry', stylers: [{ color: '#050809' }] },
+      { featureType: 'landscape.man_made', elementType: 'geometry', stylers: [{ color: '#0A1113' }] },
+      { featureType: 'poi.park', elementType: 'geometry', stylers: [{ visibility: 'on' }, { color: '#07130F' }] },
+      { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1E3A3A' }] },
+      { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#27504D' }] },
+      { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2F6660' }] },
+      { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#021018' }] },
+    ],
     night: CLEAN.concat([
       { elementType: 'geometry', stylers: [{ color: '#1C1733' }] },
       { elementType: 'labels.text.fill', stylers: [{ color: '#8E86B8' }] },

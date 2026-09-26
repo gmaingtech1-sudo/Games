@@ -555,7 +555,7 @@ window.RB = window.RB || {};
       <h2>Menu</h2>
       <div class="actions">
         <button class="btn" data-set="sound">Sound: ${st.sound ? 'on' : 'off'}</button>
-        <button class="btn" data-set="map">Map: ${({ auto: 'day and night follow your clock', day: 'always day', night: 'always night', grid: 'no street map (offline)' })[st.map] || 'auto'}</button>
+        <button class="btn" data-set="map">Map: ${({ scanner: 'scanner (like Ingress)', auto: 'day and night follow your clock', day: 'always day', night: 'always night', grid: 'no street map (offline)' })[st.map] || 'scanner'}</button>
         <button class="btn" data-set="ar">AR camera: ${st.ar === false ? 'off' : 'on'}</button>
         <button class="btn" data-gmaps>Google Maps: ${RB.gmaps.key() ? (RB.gmaps.status.state === 'error' ? 'key problem' : 'on') : 'off (add a key)'}</button>
         <button class="btn" data-guide>How to play</button>
@@ -566,7 +566,7 @@ window.RB = window.RB || {};
       on(el, '[data-set]', (b) => {
         const k = b.dataset.set;
         if (k === 'sound') { st.sound = !st.sound; sfx.on = st.sound; }
-        if (k === 'map') st.map = ({ auto: 'day', day: 'night', night: 'grid', grid: 'auto' })[st.map] || 'day';
+        if (k === 'map') st.map = ({ scanner: 'auto', auto: 'day', day: 'night', night: 'grid', grid: 'scanner' })[st.map] || 'scanner';
         if (k === 'ar') st.ar = st.ar === false;
         S.persist();
         menu();

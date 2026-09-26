@@ -29,7 +29,11 @@ Like Ingress, you play by walking around in real life. Your agent follows your p
 
 ### The map
 
-The camera hovers behind your agent, looking out across the streets to the horizon. Drag sideways to swing it around you (tap **N** to face north again), and pinch or scroll to zoom. The sky, light and map colours follow your clock: day from 6:30 to 19:30, night otherwise (**Menu → Map** to pick one).
+The camera hovers behind your agent, looking out across the streets to the horizon. Drag sideways to swing it around you (tap **N** to face north again), and pinch or scroll to zoom. The map looks like the Ingress scanner by default: a near-black world with faint teal streets, no labels, a dark horizon and glowing XM on the ground. Ingress draws its own map from OpenStreetMap data (Niantic's map isn't open to other apps), so Riftborn recreates the look from the same OpenStreetMap data, or from Google Maps if you've added a key. **Menu → Map** switches between:
+
+- **Scanner (like Ingress):** the default.
+- **Day and night follow your clock:** a bright street map by day (6:30 to 19:30) and a dark one at night, like Pokémon GO.
+- **Always day**, **always night**, or **no street map** (plain ground, for offline).
 
 | Thing | What it is |
 | --- | --- |
@@ -98,7 +102,7 @@ Battles happen in a 3D arena under the Rift. Your team fights the guardians one 
 - **The world:** there's no server. The globe is cut into cells about 120 m across, and each cell's Rift, cache and creatures are generated from its coordinates with a seeded random number generator. Everyone playing in the same place sees the same Rifts. Creatures reroll every 10 minutes per cell, and a few Rifts change hands each day, so the Rift war keeps moving.
 - **Your progress** (creatures, items, the Rifts you took, your links and fields) is saved on your phone.
 - **The 3D creatures** are modelled in code, so there are no model or image files. Each of six body plans (raptor, rex, horned, plated, longneck, flyer) is a bone rig with a skinned mesh swept along it: tail, body, neck and head in one smooth skin, plus legs, arms or wings. The skin texture is generated per species (pale belly, darker back, stripes or spots, scales in a bump map), and eyes, teeth, claws, horns, frills, plates and crests ride on the bones. Legs walk with inverse kinematics so the feet plant on the ground; tails sway, heads look around, jaws open to roar, wings flap. Lighting uses a generated sky for soft reflections.
-- **The map** lays street tiles on the ground in 3D, with fog to the horizon and sun shadows: Google's roadmap through the Map Tiles API when you've added a key, otherwise CARTO's tiles of OpenStreetMap data (Voyager by day, Dark Matter at night). Offline, or with **Menu → Map → no street map**, it shows plain ground instead and plays the same.
+- **The map** lays street tiles on the ground in 3D (tinted teal for the scanner look), with fog to the horizon and sun shadows: Google's roadmap through the Map Tiles API when you've added a key, otherwise CARTO's tiles of OpenStreetMap data (Voyager by day, Dark Matter at night). Offline, or with **Menu → Map → no street map**, it shows plain ground instead and plays the same.
 - **The AR** is the same approach as [Pet Cam](../pet-cam): `getUserMedia` shows the rear camera, and the motion sensors (`deviceorientation`) tell the game which way the phone points. The 3D camera is turned to match every frame, so the creature stays at a real spot in the room, and an invisible floor catches its shadow over the camera picture. Without motion sensors you drag to look around. Without a camera, you get a glowing rift plain instead. **Menu → AR camera: off** uses the rift plain always.
 - **Sound** is synthesized with WebAudio.
 

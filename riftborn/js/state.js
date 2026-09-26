@@ -46,7 +46,7 @@ window.RB = window.RB || {};
       drops: {},         // dropId → time
       events: [],        // news to show on next look ("your Rift fell")
       stats: { caught: 0, darts: 0, hacks: 0, claimed: 0, links: 0, fields: 0, wins: 0, fused: 0, meters: 0 },
-      settings: { sound: true, map: 'auto', ar: true, googleKey: '' },
+      settings: { sound: true, map: 'scanner', mapV: 2, ar: true, googleKey: '' },
       missions: null,    // today's field missions
       walk: { buddy: 0, stash: 0 },   // meters toward the next walking rewards
       lastPos: null,
@@ -65,6 +65,8 @@ window.RB = window.RB || {};
       s.settings = Object.assign(b.settings, s.settings);
       s.walk = Object.assign(b.walk, s.walk);
       if (s.settings.map === 'streets') s.settings.map = 'auto';
+      // The Ingress-style scanner map became the default in map version 2.
+      if (s.settings.mapV !== 2) { s.settings.map = 'scanner'; s.settings.mapV = 2; }
       delete s.settings.walk;   // tap-to-walk is gone: you move with GPS only
       save = s;
       return s;
