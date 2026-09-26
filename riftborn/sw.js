@@ -1,10 +1,11 @@
 /* Riftborn — offline support. Serves the cached game instantly and refreshes
    the cache in the background, so updates land on the next launch. Map tiles
    and fonts come from other sites and are left to the browser's own cache. */
-const CACHE = 'riftborn-v2';
+const CACHE = 'riftborn-v3';
 const SHELL = [
   './',
   'index.html',
+  'config.js',
   'css/style.css',
   'vendor/three.min.js',
   'js/core.js',
@@ -17,6 +18,7 @@ const SHELL = [
   'js/world.js',
   'js/state.js',
   'js/ar.js',
+  'js/gmaps.js',
   'js/map.js',
   'js/encounter.js',
   'js/battle.js',

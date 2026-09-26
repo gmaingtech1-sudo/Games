@@ -138,6 +138,7 @@
     $('btn-bag').addEventListener('click', () => { sfx.tap(); UI.bag(); });
     $('btn-scan').addEventListener('click', () => { sfx.tap(); scanPulse(); UI.scan(ents); });
     $('btn-menu').addEventListener('click', () => { sfx.tap(); UI.menu(); });
+    $('btn-missions').addEventListener('click', () => { sfx.tap(); UI.missionsSheet(); });
     $('btn-profile').addEventListener('click', () => { sfx.tap(); UI.profile(); });
     $('btn-profile2').addEventListener('click', () => { sfx.tap(); UI.profile(); });
     $('btn-center').addEventListener('click', () => { sfx.tap(); M.recenter(); $('btn-center').classList.remove('show'); });
@@ -190,7 +191,7 @@
     S.tick();
     refreshEntities(true);
     updateHud();
-    for (const e of save.events.splice(0)) UI.toast(esc(e), 'bad');
+    showNews();
     S.persist();
     if (fresh) {
       const sp = C.byId(draft.starter);
@@ -263,7 +264,7 @@
       const dt = Math.max(0.5, (p.timestamp - gps.last.t) / 1000);
       const speed = p.coords.speed != null ? p.coords.speed : d / dt;
       gps.tooFast = speed > TOO_FAST;
-      if (d < 150 && !gps.tooFast) S.save.stats.meters += d;
+      if (d < 150 && !gps.tooFast) walkRewards(S.walked(d));
     }
     gps.last = { lat: ll.lat, lng: ll.lng, t: p.timestamp };
     gps.target = ll;
@@ -337,6 +338,18 @@
     sfx.hack();
   }
 
+  // Messages from the game rules: missions done, Rifts lost.
+  function showNews() {
+    for (const e of S.save.events.splice(0)) UI.toast(esc(e), e.startsWith('Mission') ? 'good' : 'bad');
+  }
+
+  function walkRewards(news) {
+    for (const n of news) {
+      if (n.kind === 'buddy') UI.toast(`🐾 Your buddy ${esc(C.byId(n.sp).name)} found 5 DNA while you walked.`, 'good');
+      else { sfx.crate(); UI.toast(`🎒 1 km walked! Supply stash: 🔮 ${n.loot.orbs} · 🎯 ${n.loot.darts} · 💠 ${n.loot.shards}`, 'good'); }
+    }
+  }
+
   function updateHud() {
     const s = S.save;
     const L = S.level();
@@ -347,7 +360,10 @@
     $('hud-orbs').textContent = s.items.orbs;
     $('hud-darts').textContent = s.items.darts;
     $('hud-shards').textContent = s.items.shards;
-    $('map-attrib').hidden = s.settings.map === 'grid';
+    $('btn-missions').classList.toggle('ready', S.missionsReady());
+    const attr = M.attribution;
+    $('map-attrib').hidden = !attr;
+    if ($('map-attrib').textContent !== attr) $('map-attrib').textContent = attr;
   }
 
   // The little tracker of the closest creatures, bottom left.
@@ -464,13 +480,13 @@
         hudTimer = 0;
         updateHud();
         updateNearby();
+        showNews();
         S.save.lastPos = { lat: pos.lat, lng: pos.lng };
       }
       tickTimer += dt;
       if (tickTimer > 30) {
         tickTimer = 0;
         if (S.tick()) refreshEntities(true);
-        for (const e of S.save.events.splice(0)) UI.toast(esc(e), 'bad');
         S.persist();
       }
     }

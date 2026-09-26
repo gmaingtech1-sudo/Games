@@ -40,6 +40,25 @@ The camera hovers behind your agent, looking out across the streets to the horiz
 
 The row of creatures above the bottom bar shows the closest ones. **Scan** (the big button) lists everything around you by distance.
 
+### Google Maps
+
+Riftborn can draw your streets with Google Maps, restyled for the game (no shop or transit labels, a dark night style). Google needs an API key, so you bring your own:
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create a project and add billing. Google gives a free monthly allowance, and you pay only beyond it.
+2. Under **APIs & Services → Library**, enable the **Map Tiles API**.
+3. Under **APIs & Services → Credentials**, create an API key. Restrict it to the **Map Tiles API**, and under **Website restrictions** add your site (for example `https://<your-user>.github.io/*`). For the Android app, add `https://appassets.androidplatform.net/*`.
+4. In the game, open **Menu → Google Maps**, paste the key and tap **Save key**. It's stored on your phone only.
+
+For the Android app you can also build the key in: `GOOGLE_MAPS_KEY=AIza... ./build.sh` in `../riftborn-android`. Don't commit a key to the repository.
+
+Without a key, or if Google refuses it (the menu says why), the game uses the free CARTO map. Google's copyright line for the area in view is shown in the corner, as Google requires.
+
+### Field missions and walking
+
+- **📋 Missions:** three new missions every day, like catching creatures, hacking Rifts, opening caches, landing darts, winning a battle or walking a distance. Each pays orbs, darts, shards and XP. Finish all three for a **Rift Surge**: 60 DNA of a rare creature plus extra supplies.
+- **Walking buddy:** the first creature on your team (★ in the Lab) walks with you and finds 5 of its DNA every 250 m.
+- **Supply stash:** every kilometre you walk you find a stash of orbs, darts and shards. **Agent** shows how far to the next one.
+
 ### Rifts
 
 | Action | How |
@@ -79,7 +98,7 @@ Battles happen in a 3D arena under the Rift. Your team fights the guardians one 
 - **The world:** there's no server. The globe is cut into cells about 120 m across, and each cell's Rift, cache and creatures are generated from its coordinates with a seeded random number generator. Everyone playing in the same place sees the same Rifts. Creatures reroll every 10 minutes per cell, and a few Rifts change hands each day, so the Rift war keeps moving.
 - **Your progress** (creatures, items, the Rifts you took, your links and fields) is saved on your phone.
 - **The 3D creatures** are modelled in code, so there are no model or image files. Each of six body plans (raptor, rex, horned, plated, longneck, flyer) is a bone rig with a skinned mesh swept along it: tail, body, neck and head in one smooth skin, plus legs, arms or wings. The skin texture is generated per species (pale belly, darker back, stripes or spots, scales in a bump map), and eyes, teeth, claws, horns, frills, plates and crests ride on the bones. Legs walk with inverse kinematics so the feet plant on the ground; tails sway, heads look around, jaws open to roar, wings flap. Lighting uses a generated sky for soft reflections.
-- **The map** lays CARTO's street tiles of OpenStreetMap data on the ground in 3D (Voyager by day, Dark Matter at night), with fog to the horizon and sun shadows. Offline, or with **Menu → Map → no street map**, it shows plain ground instead and plays the same.
+- **The map** lays street tiles on the ground in 3D, with fog to the horizon and sun shadows: Google's roadmap through the Map Tiles API when you've added a key, otherwise CARTO's tiles of OpenStreetMap data (Voyager by day, Dark Matter at night). Offline, or with **Menu → Map → no street map**, it shows plain ground instead and plays the same.
 - **The AR** is the same approach as [Pet Cam](../pet-cam): `getUserMedia` shows the rear camera, and the motion sensors (`deviceorientation`) tell the game which way the phone points. The 3D camera is turned to match every frame, so the creature stays at a real spot in the room, and an invisible floor catches its shadow over the camera picture. Without motion sensors you drag to look around. Without a camera, you get a glowing rift plain instead. **Menu → AR camera: off** uses the rift plain always.
 - **Sound** is synthesized with WebAudio.
 
@@ -124,6 +143,8 @@ Stay aware of your surroundings. Don't go onto private property, and never play 
 | `js/world.js` | Generates Rifts, caches and creatures from real coordinates |
 | `js/state.js` | Your save and the game rules: items, XP, DNA, Rifts, links, fields |
 | `js/map.js` | The 3D map screen |
+| `js/gmaps.js` | Google Maps tiles: sessions, day and night styles, copyright line |
+| `config.js` | Build settings (an optional built-in Google Maps key; leave it empty in the repository) |
 | `js/ar.js` | Camera, motion sensors and the 3D-to-screen projection |
 | `js/encounter.js` | The AR encounter: darts, orbs, catching |
 | `js/battle.js` | Turn-based Rift battles in the 3D arena |

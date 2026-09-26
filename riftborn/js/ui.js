@@ -451,6 +451,7 @@ window.RB = window.RB || {};
   function profile() {
     const a = S.save.agent, L = S.level(), F = S.faction(), s = S.save.stats;
     const held = Object.values(S.save.rifts).filter((o) => o.mine && o.faction === a.faction).length;
+    const buddy = S.team()[0];
     open('profile', `
       <div class="agent-card" style="--c:${F.color}">
         <div class="agent-glyph">${F.glyph}</div>
@@ -468,8 +469,51 @@ window.RB = window.RB || {};
         <div><b>${s.hacks}</b><small>Hacks</small></div>
         <div><b>${fmtDist(s.meters)}</b><small>Walked</small></div>
       </div>
+      ${buddy ? `<h3>Walking buddy</h3>
+      <div class="row"><canvas data-sp="${buddy.sp}"></canvas><span><b>${esc(C.byId(buddy.sp).name)}</b><small>Finds 5 DNA every ${S.BUDDY_M} m you walk · next in ${fmtDist(S.BUDDY_M - S.save.walk.buddy)}</small></span></div>
+      <p class="muted small">Supply stash every ${fmtDist(S.STASH_M)}: next in ${fmtDist(S.STASH_M - S.save.walk.stash)}. Your buddy is the first creature on your team (★ in the Lab).</p>` : ''}
       <p class="muted small center">“${esc(F.motto)}”</p>
     `);
+  }
+
+  function missionsSheet() {
+    const ms = S.missions();
+    const allClaimed = ms.list.every((m) => m.claimed);
+    const r = S.missionReward;
+    const surge = C.byId(ms.surge);
+    open('missions', `
+      <h2>Field missions</h2>
+      <p class="muted small">New missions every day. Each pays 🔮 ${r.orbs} · 🎯 ${r.darts} · 💠 ${r.shards} and 300 XP. Finish all three for a Rift Surge.</p>
+      <div class="list">${ms.list.map((m, i) => `
+        <div class="mission ${m.got >= m.need ? 'done' : ''}">
+          <div class="mission-top"><b>${esc(m.text)}</b><small>${m.kind === 'walk' ? `${fmtDist(m.got)} / ${fmtDist(m.need)}` : `${m.got} / ${m.need}`}</small></div>
+          <span class="bar"><i style="width:${pct(m.got / m.need)}"></i></span>
+          ${m.claimed ? '<small class="muted">Claimed ✓</small>' : m.got >= m.need ? `<button class="btn btn-main" data-claim="${i}">Claim reward</button>` : ''}
+        </div>`).join('')}</div>
+      <div class="surge">
+        <canvas data-sp="${surge.id}" data-sil="${S.save.dex[surge.id] ? 0 : 1}"></canvas>
+        <b>Rift Surge</b>
+        <p class="muted small">60 ${S.save.dex[surge.id] ? esc(surge.name) : 'mystery creature'} DNA · 🔮 10 · 💠 10 · 800 XP</p>
+        ${ms.bonus ? '<small class="muted">Claimed ✓ Come back tomorrow.</small>' : `<button class="btn ${allClaimed ? 'btn-main' : ''}" data-bonus ${allClaimed ? '' : 'disabled'}>Claim Rift Surge</button>`}
+      </div>
+    `, (el) => {
+      on(el, '[data-claim]', (b) => {
+        const res = S.claimMission(+b.dataset.claim);
+        if (!res.ok) return;
+        sfx.collect();
+        toast(`Mission reward: ${loot(res.loot)}`, 'good');
+        reportUp(res);
+        missionsSheet();
+      });
+      on(el, '[data-bonus]', () => {
+        const res = S.claimBonus();
+        if (!res.ok) return;
+        sfx.caught();
+        toast(`Rift Surge! +60 ${esc(C.byId(res.sp).name)} DNA, 🔮 10, 💠 10`, 'good');
+        reportUp(res);
+        missionsSheet();
+      });
+    });
   }
 
   function scan(ents) {
@@ -513,10 +557,11 @@ window.RB = window.RB || {};
         <button class="btn" data-set="sound">Sound: ${st.sound ? 'on' : 'off'}</button>
         <button class="btn" data-set="map">Map: ${({ auto: 'day and night follow your clock', day: 'always day', night: 'always night', grid: 'no street map (offline)' })[st.map] || 'auto'}</button>
         <button class="btn" data-set="ar">AR camera: ${st.ar === false ? 'off' : 'on'}</button>
+        <button class="btn" data-gmaps>Google Maps: ${RB.gmaps.key() ? (RB.gmaps.status.state === 'error' ? 'key problem' : 'on') : 'off (add a key)'}</button>
         <button class="btn" data-guide>How to play</button>
         <button class="btn btn-danger" data-reset>Start over as a new agent</button>
       </div>
-      <p class="muted small center">Stay aware of your surroundings. Never play while driving or cycling.<br>Map data © OpenStreetMap contributors © CARTO.</p>
+      <p class="muted small center">Stay aware of your surroundings. Never play while driving or cycling.<br>${RB.gmaps.active() ? 'Map data ©Google' : 'Map data © OpenStreetMap contributors © CARTO'}.</p>
     `, (el) => {
       on(el, '[data-set]', (b) => {
         const k = b.dataset.set;
@@ -527,10 +572,46 @@ window.RB = window.RB || {};
         menu();
       });
       on(el, '[data-guide]', () => guide());
+      on(el, '[data-gmaps]', () => googleSheet());
       on(el, '[data-reset]', (b) => {
         if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Tap again: this deletes everything'; return; }
         S.reset();
         location.reload();
+      });
+    });
+  }
+
+  // Google Maps key. It's stored on this phone only.
+  function googleSheet() {
+    const st = S.save.settings;
+    const built = !!(window.RB_CONFIG && window.RB_CONFIG.googleMapsKey);
+    const gs = RB.gmaps.status;
+    open('gmaps', `
+      <h2>Google Maps</h2>
+      <p class="muted">Riftborn can draw your streets with Google Maps instead of the free map. It needs a Google Maps Platform API key with the <b>Map Tiles API</b> turned on.</p>
+      <label class="field"><span>API key</span>
+        <input id="gm-key" type="text" autocomplete="off" spellcheck="false" placeholder="${built ? 'Using the key built into this app' : 'AIza…'}" value="${esc(st.googleKey || '')}">
+      </label>
+      ${gs.text ? `<p class="${gs.state === 'error' ? 'far' : 'muted small'}">${esc(gs.text)}</p>` : ''}
+      <div class="actions">
+        <button class="btn btn-main" data-save>Save key</button>
+        ${st.googleKey ? '<button class="btn" data-clear>Remove key</button>' : ''}
+      </div>
+      <p class="muted small">How to get one: in the Google Cloud console, create a project, add billing, enable the <b>Map Tiles API</b>, then create an API key under APIs &amp; Services → Credentials. Restrict it to the Map Tiles API, and to your website (or to <code>https://appassets.androidplatform.net/*</code> for the Android app). Google gives a free monthly allowance; you only pay beyond it.</p>
+    `, (el) => {
+      on(el, '[data-save]', () => {
+        st.googleKey = $('gm-key').value.trim();
+        S.persist();
+        RB.gmaps.reset();
+        toast(st.googleKey ? 'Key saved. Loading Google Maps…' : 'Key removed.', 'good');
+        close();
+      });
+      on(el, '[data-clear]', () => {
+        st.googleKey = '';
+        S.persist();
+        RB.gmaps.reset();
+        toast('Key removed. Back to the free map.');
+        close();
       });
     });
   }
@@ -549,6 +630,8 @@ window.RB = window.RB || {};
         <p><b>Orbs:</b> flick an orb up at it. Throw when the coloured ring is small for a bonus. Calm creatures are easier to catch.</p>
         <h3>🧬 Lab</h3>
         <p>Spend DNA to level up creatures. Fuse DNA from two species to create <b>hybrids</b> you can't find in the wild.</p>
+        <h3>📋 Missions &amp; walking</h3>
+        <p>Three new field missions every day (the 📋 button). Finish all three for a Rift Surge. Your first team creature is your walking buddy: it finds DNA every ${S.BUDDY_M} m you walk, and every kilometre you find a supply stash.</p>
         <h3>📦 Caches</h3>
         <p>Supply caches refill every 10 minutes. Great for darts.</p>
         <h3>🧭 Moving</h3>
@@ -560,6 +643,6 @@ window.RB = window.RB || {};
   RB.ui = {
     setHooks(h) { hooks = h; },
     toast, open, close, isOpen, refresh, tick, levelUp,
-    spawnSheet, dropSheet, riftSheet, lab, creatureSheet, bag, profile, scan, menu, guide,
+    spawnSheet, dropSheet, riftSheet, lab, creatureSheet, bag, profile, scan, menu, guide, missionsSheet,
   };
 })(window.RB);

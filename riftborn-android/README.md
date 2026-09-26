@@ -23,7 +23,7 @@ If you turned location off by mistake: **Settings → Apps → Riftborn → Perm
 
 It's the same game as the web version in [`../riftborn`](../riftborn), packaged into a small native app:
 
-- The game files, including the 3D engine, are inside the APK. The app serves them to its WebView from a private `https://appassets.androidplatform.net/` address, which counts as a secure page, so GPS and the camera work. Only the map tiles and fonts come from the internet.
+- The game files, including the 3D engine, are inside the APK. The app serves them to its WebView from a private `https://appassets.androidplatform.net/` address, which counts as a secure page, so GPS and the camera work. Only the map tiles (Google Maps with a key, CARTO otherwise) and fonts come from the internet.
 - The game's location and camera requests are passed on to Android's own permission prompts. Your location and camera picture stay on the phone.
 - Your progress is saved in the app's own storage.
 - The screen stays on while you play.
@@ -49,6 +49,8 @@ sudo apt install openjdk-21-jdk-headless aapt dalvik-exchange zipalign apksigner
 ```
 
 `build.sh` copies the game in from `../riftborn` each time, so after changing the game just run it again.
+
+To build with Google Maps turned on, pass your key: `GOOGLE_MAPS_KEY=AIza... ./build.sh`. Restrict the key to the Map Tiles API and to `https://appassets.androidplatform.net/*` (see [Google Maps](../riftborn/README.md#google-maps)). Players can also add a key in the app under **Menu → Google Maps**.
 
 ### About the signing key
 

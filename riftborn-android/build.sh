@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Builds dist/riftborn.apk: the web game from ../riftborn packaged into the
-# small native Android shell in src/.
+# small native Android shell in src/. Set GOOGLE_MAPS_KEY to build with
+# Google Maps turned on.
 #
 # Needs a JDK and the Android build tools. On Ubuntu/Debian:
 #   sudo apt install openjdk-21-jdk-headless aapt dalvik-exchange zipalign apksigner android-sdk-platform-23 zip
@@ -23,7 +24,12 @@ rm -rf "$BUILD"
 mkdir -p "$BUILD/gen" "$BUILD/classes" "$BUILD/assets/game" dist
 
 echo "1/5 Copying the game from ../riftborn"
-cp -R ../riftborn/index.html ../riftborn/css ../riftborn/js ../riftborn/icons ../riftborn/vendor "$BUILD/assets/game/"
+cp -R ../riftborn/index.html ../riftborn/config.js ../riftborn/css ../riftborn/js ../riftborn/icons ../riftborn/vendor "$BUILD/assets/game/"
+# Optional: bake a Google Maps key into this build (GOOGLE_MAPS_KEY=... ./build.sh).
+if [ -n "${GOOGLE_MAPS_KEY:-}" ]; then
+  sed -i "s#googleMapsKey: ''#googleMapsKey: '${GOOGLE_MAPS_KEY}'#" "$BUILD/assets/game/config.js"
+  echo "    with your Google Maps key"
+fi
 
 echo "2/5 Compiling resources"
 aapt2 compile --dir res -o "$BUILD/res.zip"

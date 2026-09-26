@@ -809,3 +809,26 @@ canvas.gl { position: absolute; inset: 0; width: 100% !important; height: 100% !
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+.field { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
+.field span { color: var(--muted); font-size: 13px; }
+.field input {
+  min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.35); font-size: 15px; -webkit-user-select: text; user-select: text;
+}
+code { font-size: 12px; word-break: break-all; }
+
+.missions-btn { position: relative; font-size: 18px; }
+.missions-btn.ready::after {
+  content: ""; position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--gold); box-shadow: 0 0 10px var(--gold); animation: bob 1.4s ease-in-out infinite;
+}
+.mission { padding: 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.mission.done { border-color: color-mix(in srgb, var(--fac) 60%, transparent); }
+.mission-top { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.mission-top b { font-size: 15px; }
+.mission-top small { color: var(--muted); white-space: nowrap; }
+.mission .btn { min-height: 40px; }
+.surge { margin-top: 12px; padding: 14px; border-radius: 16px; text-align: center; background: linear-gradient(135deg, color-mix(in srgb, var(--fac) 22%, transparent), rgba(255, 176, 32, 0.12)); border: 1px solid var(--line); }
+.surge canvas { width: 100%; height: 110px; }
+.mission .bar { flex: none; height: 8px; }

@@ -172,6 +172,7 @@ window.RB = window.RB || {};
 
   const tiles = new Map();
   let tilesFailed = 0;
+  let provider = 'carto';
   let tileTimer = 0;
   const loader = new T.TextureLoader();
   loader.setCrossOrigin('anonymous');
@@ -189,7 +190,8 @@ window.RB = window.RB || {};
   }
 
   function updateTiles() {
-    if (style === 'grid' || tilesFailed > 10 || navigator.onLine === false) {
+    const google = RB.gmaps.active();
+    if (style === 'grid' || (!google && tilesFailed > 10) || navigator.onLine === false) {
       if (tiles.size) { for (const tl of tiles.values()) disposeTile(tl); tiles.clear(); }
       return;
     }
@@ -199,19 +201,24 @@ window.RB = window.RB || {};
     const dLat = reach / 110574, dLng = reach / (111320 * Math.cos(c.lat * Math.PI / 180));
     const x0 = Math.floor(lng2x(c.lng - dLng, z)), x1 = Math.floor(lng2x(c.lng + dLng, z));
     const y0 = Math.floor(lat2y(c.lat + dLat, z)), y1 = Math.floor(lat2y(c.lat - dLat, z));
+    // Google Maps when there's a working key, the free CARTO map otherwise.
+    provider = google ? 'google' : 'carto';
+    if (google) RB.gmaps.updateCopyright(style, z, { north: c.lat + dLat, south: c.lat - dLat, east: c.lng + dLng, west: c.lng - dLng });
     const want = new Set();
     const list = [];
     for (let x = x0; x <= x1; x++) {
       for (let y = y0; y <= y1; y++) {
         const a = toV(y2lat(y, z), x2lng(x, z)), b = toV(y2lat(y + 1, z), x2lng(x + 1, z));
         const mid = a.clone().add(b).multiplyScalar(0.5);
-        list.push({ key: `${style}/${z}/${x}/${y}`, x, y, a, b, d: mid.distanceTo(cam.target) });
+        list.push({ key: `${provider}/${style}/${z}/${x}/${y}`, x, y, a, b, d: mid.distanceTo(cam.target) });
       }
     }
     list.sort((p, q) => p.d - q.d);
     for (const it of list.slice(0, 48)) {
       want.add(it.key);
       if (tiles.has(it.key)) continue;
+      const url = google ? RB.gmaps.tileUrl(style, z, it.x, it.y) : TILE_URL[style]('abcd'[(it.x + it.y) % 4], z, it.x, it.y);
+      if (!url) continue;   // Google session still starting
       const mat = new T.MeshBasicMaterial({ color: style === 'day' ? '#F4FFF0' : '#FFFFFF', transparent: true, opacity: 0, toneMapped: false });
       const mesh = new T.Mesh(new T.PlaneGeometry(1, 1), mat);
       mesh.rotation.x = -Math.PI / 2;
@@ -219,7 +226,6 @@ window.RB = window.RB || {};
       mesh.position.set((it.a.x + it.b.x) / 2, 0, (it.a.z + it.b.z) / 2);
       const tl = { mesh, tex: null };
       tiles.set(it.key, tl);
-      const url = TILE_URL[style]('abcd'[(it.x + it.y) % 4], z, it.x, it.y);
       loader.load(url, (tex) => {
         if (tiles.get(it.key) !== tl) { tex.dispose(); return; }
         tex.colorSpace = T.SRGBColorSpace;
@@ -229,9 +235,13 @@ window.RB = window.RB || {};
         mat.needsUpdate = true;
         scene.add(mesh);
         tilesFailed = 0;
-      }, undefined, () => { tilesFailed++; });
+        if (google) RB.gmaps.tileLoaded();
+      }, undefined, () => { if (google) RB.gmaps.tileFailed(); else tilesFailed++; });
     }
-    for (const [k, tl] of tiles) if (!want.has(k)) { disposeTile(tl); tiles.delete(k); }
+    // Drop tiles out of reach, but keep the old provider's tiles until the
+    // new ones cover the ground.
+    const covered = [...want].every((k) => tiles.has(k) && tiles.get(k).tex);
+    for (const [k, tl] of tiles) if (!want.has(k) && (k.startsWith(provider) || covered)) { disposeTile(tl); tiles.delete(k); }
   }
 
   /* ======================= Entities ======================= */
@@ -536,6 +546,11 @@ window.RB = window.RB || {};
     zoom(f) { cam.dist = clamp(cam.dist * f, MIN_D, MAX_D); },
     get view() { const c = toLL(cam.target); return { lat: c.lat, lng: c.lng, far: cam.dist > 240 }; },
     get radiusM() { return clamp(cam.dist * 6, 400, 1400); },
+    get attribution() {
+      if (style === 'grid' || !tiles.size) return '';
+      if (provider === 'google') return `Google · ${RB.gmaps.copyright || 'Map data ©Google'}`;
+      return '© OpenStreetMap contributors © CARTO';
+    },
     get rotated() { return Math.abs(Math.sin(cam.yaw / 2)) > 0.03; },
   };
 })(window.RB);

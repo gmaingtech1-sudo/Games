@@ -495,7 +495,7 @@ window.RB = window.RB || {};
   function showResult() {
     if (!E) return;
     const r = E.result;
-    const out = S.finishEncounter(E.spawn, { caught: !!r.caught, fled: !!r.fled, dna: E.dna, bonusXP: E.bonusXP });
+    const out = S.finishEncounter(E.spawn, { caught: !!r.caught, fled: !!r.fled, dna: E.dna, hits: E.hits, bonusXP: E.bonusXP });
     E.final = out;
     const el = $('enc-result');
     const rc = C.RARITY[E.sp.rar];
@@ -521,7 +521,7 @@ window.RB = window.RB || {};
     const e = E;
     if (!e) return;
     if (e.phase !== 'free' && e.phase !== 'appear') return;
-    if (e.dna) S.finishEncounter(e.spawn, { dna: e.dna });
+    if (e.dna) S.finishEncounter(e.spawn, { dna: e.dna, hits: e.hits });
     stop();
     e.done(null);
   }

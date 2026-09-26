@@ -46,7 +46,9 @@ window.RB = window.RB || {};
       drops: {},         // dropId → time
       events: [],        // news to show on next look ("your Rift fell")
       stats: { caught: 0, darts: 0, hacks: 0, claimed: 0, links: 0, fields: 0, wins: 0, fused: 0, meters: 0 },
-      settings: { sound: true, map: 'auto', ar: true },
+      settings: { sound: true, map: 'auto', ar: true, googleKey: '' },
+      missions: null,    // today's field missions
+      walk: { buddy: 0, stash: 0 },   // meters toward the next walking rewards
       lastPos: null,
     };
   }
@@ -61,6 +63,7 @@ window.RB = window.RB || {};
       for (const k of Object.keys(b)) if (s[k] === undefined) s[k] = b[k];
       s.stats = Object.assign(b.stats, s.stats);
       s.settings = Object.assign(b.settings, s.settings);
+      s.walk = Object.assign(b.walk, s.walk);
       if (s.settings.map === 'streets') s.settings.map = 'auto';
       delete s.settings.walk;   // tap-to-walk is gone: you move with GPS only
       save = s;
@@ -298,6 +301,7 @@ window.RB = window.RB || {};
     if (Math.random() < (enemy ? 0.45 : 0.7)) { addKey(rift); key = true; }
     save.hacks[rift.id] = now;
     save.stats.hacks++;
+    track('hack');
     const up = addXP(enemy ? 100 : 50);
     persist();
     return { ok: true, loot, key, up };
@@ -316,6 +320,7 @@ window.RB = window.RB || {};
     save.rifts[rift.id] = { faction: save.agent.faction, level: 1, health: 100, t: Date.now(), mine: true, guard: best ? [best.id] : [] };
     addKey(rift);
     save.stats.claimed++;
+    track('claim');
     const up = addXP(300);
     persist();
     return { ok: true, up };
@@ -363,6 +368,7 @@ window.RB = window.RB || {};
     save.rifts[rift.id] = { faction: null, level: 0, health: 0, t: Date.now(), mine: false };
     for (const g of st.guard) addDNA(g.sp, 15 + g.lvl);
     save.stats.wins++;
+    track('win');
     validateLinks();
     const up = addXP(400 + st.level * 50);
     persist();
@@ -487,6 +493,7 @@ window.RB = window.RB || {};
     const loot = { darts: randInt(4, 9), orbs: randInt(2, 4), shards: randInt(0, 2) };
     give(loot);
     save.drops[drop.id] = Date.now();
+    track('drop');
     const up = addXP(30);
     return { ok: true, loot, up };
   }
@@ -510,13 +517,121 @@ window.RB = window.RB || {};
       c = addCreature(spawn.sp, spawnLevel(spawn), spawn.ivs);
       addDNA(spawn.sp, 25);
       save.stats.caught++;
+      track('catch');
+      track(`el:${sp.el}`);
       up = addXP(C.RARITY[sp.rar].xp + (result.bonusXP || 0));
     } else if (result.dna) {
       up = addXP(20 + result.dna);
     }
+    if (result.hits) track('darts', result.hits);
     if (result.caught || result.fled) save.gone[spawn.id] = spawn.expires;
     persist();
     return { creature: c, up };
+  }
+
+  /* ------------------ Field missions ------------------ */
+
+  // Three missions a day, the same for everyone on that day. Finish all
+  // three for a Rift Surge bonus.
+  const MISSIONS = [
+    { kind: 'catch', need: [3, 6], text: (n) => `Catch ${n} creatures` },
+    { kind: 'hack', need: [3, 6], text: (n) => `Hack ${n} Rifts` },
+    { kind: 'drop', need: [2, 4], text: (n) => `Open ${n} supply caches` },
+    { kind: 'walk', need: [1000, 2500], text: (n) => `Walk ${(n / 1000).toFixed(1)} km` },
+    { kind: 'darts', need: [8, 16], text: (n) => `Land ${n} dart hits` },
+    { kind: 'win', need: [1, 1], text: () => 'Win a Rift battle' },
+    { kind: 'claim', need: [1, 2], text: (n) => `Claim ${n} Rift${n > 1 ? 's' : ''} for your faction` },
+    { kind: 'el', need: [2, 3], text: (n, el) => `Catch ${n} ${C.ELEMENTS[el].name} creatures` },
+  ];
+
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+
+  function missions() {
+    const day = today();
+    if (save.missions && save.missions.day === day) return save.missions;
+    const r = rng(`missions:${day}`);
+    const pool = MISSIONS.slice();
+    const list = [];
+    while (list.length < 3) {
+      const m = pool.splice(Math.floor(r() * pool.length), 1)[0];
+      const n = randInt(m.need[0], m.need[1], r);
+      const need = m.kind === 'walk' ? Math.round(n / 100) * 100 : n;
+      const els = Object.keys(C.ELEMENTS).filter((e) => e !== 'void');
+      const el = m.kind === 'el' ? els[Math.floor(r() * els.length)] : null;
+      list.push({ kind: m.kind === 'el' ? `el:${el}` : m.kind, text: m.text(need, el), need, got: 0, claimed: false });
+    }
+    const pick = C.WILD.filter((sp) => sp.rar >= 1 && sp.rar <= 2);
+    save.missions = { day, list, bonus: false, surge: pick[Math.floor(r() * pick.length)].id };
+    persist();
+    return save.missions;
+  }
+
+  // Count progress; returns missions that just got finished.
+  function track(kind, n) {
+    if (!save) return [];
+    const ms = missions();
+    const done = [];
+    for (const m of ms.list) {
+      if (m.kind !== kind || m.got >= m.need) continue;
+      m.got = Math.min(m.need, m.got + (n || 1));
+      if (m.got >= m.need) done.push(m);
+    }
+    if (done.length) save.events.push(...done.map((m) => `Mission complete: ${m.text}. Claim your reward in Missions.`));
+    return done;
+  }
+
+  const missionReward = { orbs: 5, darts: 10, shards: 3 };
+
+  function claimMission(i) {
+    const m = missions().list[i];
+    if (!m || m.claimed || m.got < m.need) return { ok: false };
+    m.claimed = true;
+    give(missionReward);
+    const up = addXP(300);
+    persist();
+    return { ok: true, loot: missionReward, up };
+  }
+
+  function claimBonus() {
+    const ms = missions();
+    if (ms.bonus || !ms.list.every((m) => m.claimed)) return { ok: false };
+    ms.bonus = true;
+    give({ shards: 10, orbs: 10 });
+    addDNA(ms.surge, 60);
+    markDex(ms.surge, 'seen');
+    const up = addXP(800);
+    persist();
+    return { ok: true, sp: ms.surge, up };
+  }
+
+  const missionsReady = () => { const ms = missions(); return ms.list.some((m) => m.got >= m.need && !m.claimed) || (!ms.bonus && ms.list.every((m) => m.claimed)); };
+
+  /* ------------------ Walking rewards ------------------ */
+
+  // Your buddy (first creature on your team) finds 5 of its DNA every 250 m
+  // you walk, and every kilometre you find a supply stash.
+  const BUDDY_M = 250, STASH_M = 1000;
+
+  function walked(m) {
+    save.stats.meters += m;
+    save.walk.buddy += m;
+    save.walk.stash += m;
+    track('walk', m);
+    const news = [];
+    const buddy = team()[0];
+    while (save.walk.buddy >= BUDDY_M) {
+      save.walk.buddy -= BUDDY_M;
+      if (buddy) { addDNA(buddy.sp, 5); news.push({ kind: 'buddy', sp: buddy.sp }); }
+    }
+    while (save.walk.stash >= STASH_M) {
+      save.walk.stash -= STASH_M;
+      const loot = { orbs: 3, darts: 6, shards: 2 };
+      give(loot);
+      addXP(100);
+      news.push({ kind: 'stash', loot });
+    }
+    persist();
+    return news;
   }
 
   RB.state = {
@@ -529,5 +644,6 @@ window.RB = window.RB || {};
     riftState, riftColor, hackReady, hack, claim, upgrade, recharge, setGuards, neutralize,
     linkTargets, link, validateLinks, aether, tick,
     dropReady, openDrop, spawnLevel, isGone, finishEncounter,
+    missions, claimMission, claimBonus, missionsReady, missionReward, walked, BUDDY_M, STASH_M,
   };
 })(window.RB);
