@@ -73,10 +73,18 @@ window.PC = window.PC || {};
     if (video) { video.srcObject = null; video.hidden = true; }
   }
 
-  // Pauses the feed while the app is in the background, resumes after.
+  // Turns the camera off while the app is in the background (so the
+  // "camera in use" light goes out) and back on when it returns.
+  let resumeCamera = false;
   function pauseCamera(paused) {
-    if (!stream) return;
-    stream.getVideoTracks().forEach((t) => { t.enabled = !paused; });
+    if (paused && stream) {
+      stream.getTracks().forEach((t) => t.stop());
+      stream = null;
+      resumeCamera = true;
+    } else if (!paused && resumeCamera && video) {
+      resumeCamera = false;
+      startCamera(video);
+    }
   }
 
   /* ------------------ Motion sensors ------------------ */

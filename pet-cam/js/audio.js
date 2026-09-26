@@ -64,8 +64,7 @@ window.PC = window.PC || {};
   }
 
   function buzz(pattern) {
-    if (!on || !navigator.vibrate) return;
-    try { navigator.vibrate(pattern); } catch (e) { /* ignore */ }
+    if (on) PC.host.haptic(pattern);
   }
 
   PC.sfx = {

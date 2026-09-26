@@ -113,12 +113,14 @@
   </div>
 </section>
 
+<script src="js/host.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/ar.js"></script>
 <script src="js/pet.js"></script>
 <script src="js/main.js"></script>
 <script>
-  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  // The Android app ships its files inside the APK, so it needs no service worker.
+  if ('serviceWorker' in navigator && location.protocol === 'https:' && !PC.host.native) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 </script>

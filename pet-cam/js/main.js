@@ -934,6 +934,7 @@
 
   let photoUrl = null;
   let photoFile = null;
+  let photoB64 = null;
 
   function takePhoto() {
     sfx.shutter();
@@ -976,26 +977,71 @@
     gainXP(3);
     if (world.placed && awake()) buddy.happyT = 1;
 
+    const name = `pet-cam-${save.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'pet'}-${Date.now()}.jpg`;
+    if (PC.host.canSavePhoto) {
+      // The Android app saves and shares through the native side.
+      const url = out.toDataURL('image/jpeg', 0.92);
+      photoB64 = url.slice(url.indexOf(',') + 1);
+      photoFile = { name };
+      $('photo-img').src = url;
+      $('photo-save').removeAttribute('href');
+      $('photo-share').hidden = false;
+      openSheet('photo-sheet');
+      return;
+    }
     out.toBlob((blob) => {
       if (!blob) return;
       if (photoUrl) URL.revokeObjectURL(photoUrl);
       photoUrl = URL.createObjectURL(blob);
-      const name = `pet-cam-${save.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}.jpg`;
       photoFile = new File([blob], name, { type: 'image/jpeg' });
       $('photo-img').src = photoUrl;
       $('photo-save').href = photoUrl;
       $('photo-save').download = name;
       const canShare = navigator.canShare && navigator.canShare({ files: [photoFile] });
       $('photo-share').hidden = !canShare;
-      $('photo-sheet').hidden = false;
+      openSheet('photo-sheet');
     }, 'image/jpeg', 0.92);
   }
 
   async function sharePhoto() {
     if (!photoFile) return;
+    if (PC.host.canSavePhoto) {
+      if (!PC.host.sharePhoto(photoB64, photoFile.name)) toast('Couldn\'t share the photo');
+      return;
+    }
     try {
       await navigator.share({ files: [photoFile], title: `${save.name} on Pet Cam` });
     } catch (e) { /* cancelled */ }
+  }
+
+  function savePhoto(e) {
+    if (!PC.host.canSavePhoto) return;  // the browser downloads it through the link
+    e.preventDefault();
+    if (!photoFile) return;
+    PC.host.savePhoto(photoB64, photoFile.name);
+  }
+
+  /* ======================= Sheets and the back button ======================= */
+
+  function syncOverlay() {
+    PC.host.setOverlay(!$('photo-sheet').hidden || !$('menu-sheet').hidden || world.ballReady);
+  }
+
+  function openSheet(id) {
+    $(id).hidden = false;
+    syncOverlay();
+  }
+
+  function closeSheet(id) {
+    $(id).hidden = true;
+    syncOverlay();
+  }
+
+  // Android's back button: close whatever is open, one thing at a time.
+  function handleBack() {
+    if (!$('photo-sheet').hidden) closeSheet('photo-sheet');
+    else if (!$('menu-sheet').hidden) closeSheet('menu-sheet');
+    else if (world.ballReady) { world.ballReady = false; updateDock(); }
   }
 
   /* ======================= HUD ======================= */
@@ -1040,6 +1086,7 @@
 
   function updateDock() {
     $('btn-ball').classList.toggle('on', world.ballReady);
+    syncOverlay();
     $('nap-label').textContent = buddy.state === 'sleep' ? 'Wake' : 'Nap';
   }
 
@@ -1058,7 +1105,7 @@
       $('menu-stats').appendChild(document.createTextNode(line));
     });
     $('menu-sound').textContent = `Sound: ${sfx.on ? 'on' : 'off'}`;
-    $('menu-sheet').hidden = false;
+    openSheet('menu-sheet');
   }
 
   /* ======================= Start ======================= */
@@ -1110,10 +1157,11 @@
     $('btn-photo').addEventListener('click', takePhoto);
     $('btn-menu').addEventListener('click', openMenu);
 
-    $('photo-close').addEventListener('click', () => { $('photo-sheet').hidden = true; });
+    $('photo-close').addEventListener('click', () => closeSheet('photo-sheet'));
     $('photo-share').addEventListener('click', sharePhoto);
+    $('photo-save').addEventListener('click', savePhoto);
 
-    $('menu-close').addEventListener('click', () => { $('menu-sheet').hidden = true; });
+    $('menu-close').addEventListener('click', () => closeSheet('menu-sheet'));
     $('menu-sound').addEventListener('click', () => {
       sfx.on = !sfx.on;
       save.sound = sfx.on;
@@ -1128,7 +1176,7 @@
       buddy.carry = null;
       setState('hidden');
       updateDock();
-      $('menu-sheet').hidden = true;
+      closeSheet('menu-sheet');
     });
     $('menu-new').addEventListener('click', () => {
       if (!confirm(`Say goodbye to ${save.name} and adopt a new pet?`)) return;
@@ -1138,19 +1186,24 @@
       location.reload();
     });
 
-    document.addEventListener('visibilitychange', () => {
+    const hide = () => {
       if (!save || !running) return;
-      if (document.hidden) {
-        P.save(save);
-        ar.pauseCamera(true);
-      } else {
-        P.catchUp(save);
-        ar.pauseCamera(false);
-        lastT = performance.now();
-        updateHud();
-      }
-    });
+      P.save(save);
+      ar.pauseCamera(true);
+    };
+    const show = () => {
+      if (!save || !running) return;
+      P.catchUp(save);
+      ar.pauseCamera(false);
+      lastT = performance.now();
+      updateHud();
+    };
+    document.addEventListener('visibilitychange', () => (document.hidden ? hide() : show()));
     window.addEventListener('pagehide', () => { if (save && running) P.save(save); });
+    PC.host.on('pause', hide);
+    PC.host.on('resume', show);
+    PC.host.on('back', handleBack);
+    PC.host.on('photo-saved', (m) => toast(m.ok ? 'Saved to your photos' : 'Couldn\'t save the photo'));
   }
 
   /* ======================= Adopt / welcome ======================= */

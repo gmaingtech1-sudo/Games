@@ -1,10 +1,11 @@
 /* Pet Cam — offline support. Serves the cached game instantly and refreshes
    the cache in the background, so updates land on the next launch. */
-const CACHE = 'pet-cam-v1';
+const CACHE = 'pet-cam-v2';
 const SHELL = [
   './',
   'index.html',
   'css/style.css',
+  'js/host.js',
   'js/audio.js',
   'js/ar.js',
   'js/pet.js',

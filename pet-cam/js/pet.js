@@ -9,7 +9,6 @@ window.PC = window.PC || {};
 
   const TAU = Math.PI * 2;
   const INK = '#2B2140';
-  const SAVE_KEY = 'pet-cam-save-v1';
 
   const SPECIES = {
     mochi: { label: 'Mochi' },
@@ -65,16 +64,16 @@ window.PC = window.PC || {};
   }
 
   function load() {
-    try { return revive(JSON.parse(localStorage.getItem(SAVE_KEY))); } catch (e) { return null; }
+    try { return revive(JSON.parse(PC.host.loadSave())); } catch (e) { return null; }
   }
 
   function save(s) {
     s.last = Date.now();
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch (e) { /* storage may be blocked */ }
+    PC.host.writeSave(JSON.stringify(s));
   }
 
   function clear() {
-    try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
+    PC.host.clearSave();
   }
 
   // Advance needs by `hours` (also used to catch up after the app was closed).

@@ -2,7 +2,7 @@
 
 An AR pet that lives in your phone's camera. Point your phone at the floor, tap, and your pet pops out into your room. Turn around and it stays where you left it. Pet it, toss it treats, play fetch, and take photos together.
 
-It's plain HTML, CSS and JavaScript. There's no build step, nothing to install, and no AR library. The camera feed stays on your phone.
+It's plain HTML, CSS and JavaScript. There's no build step, nothing to install, and no AR library. The camera feed stays on your phone. There's also an installable Android app in [`../pet-cam-android`](../pet-cam-android).
 
 ## Playing
 
@@ -55,6 +55,7 @@ Then open <http://localhost:8000>. Browsers only allow the camera on `localhost`
 | --- | --- |
 | `index.html` | Layout: the camera view and HUD, the action dock, photo and menu sheets, and the adopt screen |
 | `css/style.css` | All styling. Mobile-first, handles notches (safe areas), and respects reduced-motion settings |
+| `js/host.js` | Where saves, vibration and photos go: the browser, or the Android app when running inside it |
 | `js/audio.js` | Sound effects made with WebAudio (no audio files), plus vibration |
 | `js/ar.js` | Camera, motion sensors, the floor-to-screen projection maths, and the pretend room |
 | `js/pet.js` | The pet's needs, friendship levels and saving, plus the drawings for each kind |
@@ -62,6 +63,8 @@ Then open <http://localhost:8000>. Browsers only allow the camera on `localhost`
 | `sw.js`, `manifest.webmanifest`, `icons/` | Installable app + offline support |
 
 Progress is saved in the browser's `localStorage`.
+
+If you change the game, run `./build.sh` in `../pet-cam-android` so the Android app gets the change too.
 
 ### Tuning
 

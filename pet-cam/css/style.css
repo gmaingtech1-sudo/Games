@@ -148,6 +148,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round
   font-weight: 800;
   text-align: center;
   pointer-events: none;
+  z-index: 20;
 }
 
 .hint { top: calc(var(--safe-t) + 92px); }
