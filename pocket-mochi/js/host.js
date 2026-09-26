@@ -1,10 +1,8 @@
-/* Pocket Mochi — platform bridge. The game runs in three places:
+/* Pocket Mochi — platform bridge. The game runs in two places:
    - a browser: saves go to localStorage, vibration uses navigator.vibrate;
-   - the Expo app (a React Native WebView): the app injects window.__PM_NATIVE__
-     before this script runs, and saves/haptics are posted to it as messages;
    - the Android app: it exposes window.AndroidHost, which saves to the app's
-     own storage and drives the vibration motor.
-   Both apps call PM.host.receive() with lifecycle messages (pause, resume, back). */
+     own storage and drives the vibration motor, and it calls PM.host.receive()
+     with lifecycle messages (pause, resume, back). */
 (function (PM) {
   'use strict';
 
@@ -19,21 +17,6 @@
     if (pattern <= 12) return 'light';
     if (pattern <= 30) return 'medium';
     return 'heavy';
-  }
-
-  function expoHost(boot) {
-    const post = (msg) => {
-      try {
-        if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(msg));
-      } catch (e) { /* host went away */ }
-    };
-    return {
-      load: () => boot.save || null,
-      write: (json) => post({ t: 'save', data: json }),
-      clear: () => { boot.save = null; post({ t: 'wipe' }); },
-      haptic: (pattern) => post({ t: 'haptic', style: hapticStyle(pattern) }),
-      overlay: (open) => post({ t: 'overlay', open }),
-    };
   }
 
   function androidHost(bridge) {
@@ -60,10 +43,8 @@
     };
   }
 
-  const kind = window.__PM_NATIVE__ ? 'expo' : window.AndroidHost ? 'android' : 'browser';
-  const impl = kind === 'expo' ? expoHost(window.__PM_NATIVE__)
-    : kind === 'android' ? androidHost(window.AndroidHost)
-    : browserHost();
+  const kind = window.AndroidHost ? 'android' : 'browser';
+  const impl = kind === 'android' ? androidHost(window.AndroidHost) : browserHost();
 
   PM.host = {
     kind,

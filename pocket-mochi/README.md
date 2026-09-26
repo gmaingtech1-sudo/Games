@@ -2,7 +2,7 @@
 
 A virtual pet made for phones. You adopt an egg, hatch it with a few taps, and then look after a squishy mochi creature: feed it, pet it, wash it, put it to bed and play mini-games with it. Its needs keep changing while the app is closed, so check in during the day.
 
-It's plain HTML, CSS and JavaScript. There's no build step and nothing to install. There's also an installable Android app in [`../pocket-mochi-android`](../pocket-mochi-android) and an Expo Go version in [`../pocket-mochi-expo`](../pocket-mochi-expo).
+It's plain HTML, CSS and JavaScript. There's no build step and nothing to install. There's also an installable Android app in [`../pocket-mochi-android`](../pocket-mochi-android).
 
 ## Playing
 
@@ -51,7 +51,7 @@ Then open <http://localhost:8000>. To try it on your phone, connect it to the sa
 | --- | --- |
 | `index.html` | Layout: top bar, need meters, the room canvas, action dock, shop/settings sheets, adopt screen |
 | `css/style.css` | All styling. Mobile-first, respects safe areas (notches) and reduced-motion settings |
-| `js/host.js` | Where saves and vibration go: the browser, the Android app, or the Expo app, depending on where the game is running |
+| `js/host.js` | Where saves and vibration go: the browser, or the Android app when running inside it |
 | `js/audio.js` | Sound effects synthesized with WebAudio (no audio files), plus vibration |
 | `js/art.js` | Canvas drawings: the room, snacks, hats, poop, particles |
 | `js/pet.js` | The care model (needs, growth, poop, sickness, offline catch-up) and the animated pet renderer |
@@ -61,7 +61,7 @@ Then open <http://localhost:8000>. To try it on your phone, connect it to the sa
 
 Progress is saved in the browser's `localStorage`, so each phone/browser has its own pet.
 
-If you change the game, rebuild the apps so they get the change too: run `./build.sh` in `../pocket-mochi-android` and `npm run bundle-game` in `../pocket-mochi-expo`.
+If you change the game, run `./build.sh` in `../pocket-mochi-android` so the Android app gets the change too.
 
 ### Tuning
 

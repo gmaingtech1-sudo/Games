@@ -57,8 +57,8 @@
 
   /* ---------------- storage ---------------- */
 
-  // PM.host decides where saves live: localStorage in a browser, the phone's
-  // app storage inside the Expo app.
+  // PM.host decides where saves live: localStorage in a browser, the app's
+  // own storage inside the Android app.
   function load() {
     try {
       const raw = PM.host.loadSave();
