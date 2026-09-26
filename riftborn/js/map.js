@@ -1,455 +1,520 @@
-/* Riftborn — the map screen: a dark street map of where you really are
-   (or a neon grid when offline), with Rifts, their links and control
-   fields, supply caches, wild creatures, and you. Drag to pan, pinch or
-   scroll to zoom, tap something to interact. */
+/* Riftborn — the map, in 3D. A camera hovers behind your agent and looks
+   out across your real streets (map tiles laid on the ground) towards a
+   hazy horizon, like Pokémon GO. Rifts rise as crystal towers with light
+   beams, links and control fields glow on the ground, supply crates blink,
+   and creatures walk around their spawn points. The sky and light follow
+   the time of day. Drag to turn the view, pinch or scroll to zoom, tap
+   things to interact. */
 window.RB = window.RB || {};
 (function (RB) {
   'use strict';
 
-  const { clamp, TAU } = RB.util;
+  const T = window.THREE;
+  const G = RB.gfx;
   const W = RB.world;
   const S = RB.state;
   const C = RB.creatures;
+  const P = RB.props;
+  const { clamp } = RB.util;
 
-  const TILE_URL = (s, z, x, y) => `https://${s}.basemaps.cartocdn.com/dark_all/${z}/${x}/${y}@2x.png`;
-  const MIN_MPP = 0.25, MAX_MPP = 6;
-  const SIGHT = 300;          // creatures further than this aren't shown
+  const SIGHT = 300;              // creatures further than this aren't shown
+  const MIN_D = 55, MAX_D = 320;  // camera distance range (m)
+  const PITCH = 0.56;             // camera angle below the horizon (rad)
+  const AGENT_SCALE = 5;          // the map isn't to scale: props are big
+  const TILE_URL = {
+    day: (s, z, x, y) => `https://${s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}@2x.png`,
+    night: (s, z, x, y) => `https://${s}.basemaps.cartocdn.com/dark_nolabels/${z}/${x}/${y}@2x.png`,
+  };
 
-  let canvas = null, ctx = null, dpr = 1, Wd = 1, Ht = 1;
-  const view = { lat: 0, lng: 0, mpp: 0.9, follow: true };
+  let container = null, renderer = null, scene = null, camera = null;
+  let handlers = {};
+  const cam = { yaw: 0, dist: 95, target: new T.Vector3() };
   const player = { lat: 0, lng: 0, heading: null, walkTo: null, moving: 0 };
   let ents = { rifts: [], drops: [], spawns: [] };
-  let handlers = { tap: null, tapGround: null, panned: null };
   let t = 0;
+  let sun, hemi, shadowCatcher, ground, groundMat;
+  let agent, rangeRing, rangeFill, pulseRing, walkMarker, motes;
+  let style = '';
+  const live = { rifts: new Map(), drops: new Map(), spawns: new Map() };
+  const picks = [];
+  let links = null, fields = null, linkKey = '';
 
-  /* ------------------ Setup ------------------ */
+  const toV = (lat, lng, h) => { const p = W.toXY(lat, lng); return new T.Vector3(p[0], h || 0, -p[1]); };
+  const toLL = (v) => W.toLL(v.x, -v.z);
+
+  /* ======================= Setup ======================= */
 
   function init(el, h) {
-    canvas = el;
-    ctx = canvas.getContext('2d');
+    container = el;
     handlers = Object.assign(handlers, h);
+    renderer = G.main();
+    scene = new T.Scene();
+    camera = new T.PerspectiveCamera(52, 1, 1, 4000);
+    scene.environment = G.environment(renderer);
+
+    hemi = new T.HemisphereLight('#CFE3FF', '#5A6B4A', 1.1);
+    sun = new T.DirectionalLight('#FFF1DC', 2.4);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    const sc = sun.shadow.camera;
+    sc.left = -90; sc.right = 90; sc.top = 90; sc.bottom = -90; sc.near = 10; sc.far = 500;
+    sun.shadow.bias = -0.0008;
+    sun.shadow.normalBias = 0.05;
+    scene.add(hemi, sun, sun.target);
+
+    // Ground under the map tiles (and instead of them offline).
+    groundMat = new T.MeshLambertMaterial({ color: '#FFFFFF' });
+    ground = new T.Mesh(new T.PlaneGeometry(6000, 6000), groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.2;
+    scene.add(ground);
+    shadowCatcher = new T.Mesh(new T.PlaneGeometry(400, 400), new T.ShadowMaterial({ opacity: 0.32 }));
+    shadowCatcher.rotation.x = -Math.PI / 2;
+    shadowCatcher.position.y = 0.15;
+    shadowCatcher.receiveShadow = true;
+    shadowCatcher.renderOrder = 1;
+    scene.add(shadowCatcher);
+
+    // You
+    agent = P.avatar(S.faction().color);
+    agent.root.scale.setScalar(AGENT_SCALE);
+    scene.add(agent.root);
+    rangeRing = P.ringMarker(S.faction().color, S.RANGE * 1.1, 0.7);
+    rangeRing.position.y = 0.4;
+    scene.add(rangeRing);
+    rangeFill = new T.Mesh(new T.CircleGeometry(S.RANGE, 64), G.additive(S.faction().color, null, 0.06));
+    rangeFill.rotation.x = -Math.PI / 2;
+    rangeFill.position.y = 0.35;
+    scene.add(rangeFill);
+    pulseRing = P.ringMarker(S.faction().color, 10, 0.8);
+    pulseRing.position.y = 0.45;
+    scene.add(pulseRing);
+    walkMarker = P.ringMarker('#FFFFFF', 5, 0.9);
+    walkMarker.position.y = 0.5;
+    walkMarker.visible = false;
+    scene.add(walkMarker);
+
+    // Floating rift energy around you.
+    const N = 260;
+    const pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) { pos[i * 3] = (Math.random() - 0.5) * 360; pos[i * 3 + 1] = Math.random() * 30; pos[i * 3 + 2] = (Math.random() - 0.5) * 360; }
+    const mg = new T.BufferGeometry();
+    mg.setAttribute('position', new T.BufferAttribute(pos, 3));
+    motes = new T.Points(mg, new T.PointsMaterial({ map: G.glow(), size: 2.2, color: '#C9A8FF', transparent: true, opacity: 0.7, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false }));
+    scene.add(motes);
+
     bindInput();
   }
 
+  function show() {
+    G.attach(container);
+    resize();
+  }
+
   function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    Wd = canvas.clientWidth;
-    Ht = canvas.clientHeight;
-    canvas.width = Math.round(Wd * dpr);
-    canvas.height = Math.round(Ht * dpr);
+    G.fit();
+    const el = renderer.domElement;
+    camera.aspect = el.clientWidth / Math.max(1, el.clientHeight);
+    camera.updateProjectionMatrix();
   }
 
-  function setPlayer(p) {
-    Object.assign(player, p);
-    if (view.follow) { view.lat = player.lat; view.lng = player.lng; }
+  /* ======================= Time of day ======================= */
+
+  function mapStyle() {
+    const m = S.save.settings.map;
+    if (m === 'grid') return 'grid';
+    if (m === 'day' || m === 'night') return m;
+    const h = new Date().getHours() + new Date().getMinutes() / 60;
+    return h >= 6.5 && h < 19.5 ? 'day' : 'night';
   }
 
-  function recenter() {
-    view.follow = true;
-    view.lat = player.lat;
-    view.lng = player.lng;
+  function applyStyle(st) {
+    style = st;
+    const night = st !== 'day';
+    const horizon = night ? '#241838' : '#CFE4F2';
+    scene.background = G.gradient(night
+      ? [[0, '#05040C'], [0.55, '#140E28'], [1, horizon]]
+      : [[0, '#3E86D8'], [0.6, '#8EC0EC'], [1, horizon]]);
+    scene.fog = new T.Fog(horizon, 280, 900);
+    hemi.color.set(night ? '#6E62B8' : '#CFE3FF');
+    hemi.groundColor.set(night ? '#1A1426' : '#5A6B4A');
+    hemi.intensity = night ? 0.9 : 1.1;
+    sun.color.set(night ? '#9FB0FF' : '#FFF1DC');
+    sun.intensity = night ? 0.9 : 2.4;
+    groundMat.map = groundTexture(st);
+    groundMat.needsUpdate = true;
+    motes.material.opacity = night ? 0.85 : 0.35;
+    for (const tl of tiles.values()) disposeTile(tl);
+    tiles.clear();
   }
 
-  function setEntities(e) { ents = e; }
-
-  /* ------------------ Projection ------------------ */
-
-  function toScreen(lat, lng) {
-    const p = W.toXY(lat, lng), c = W.toXY(view.lat, view.lng);
-    return [Wd / 2 + (p[0] - c[0]) / view.mpp, Ht * 0.55 - (p[1] - c[1]) / view.mpp];
+  // Offline ground: grass by day, dark rift soil at night, or the grid.
+  const groundTex = {};
+  function groundTexture(st) {
+    if (groundTex[st]) return groundTex[st];
+    const c = G.canvas(512, 512), g = c.getContext('2d');
+    const base = st === 'day' ? '#7FA55C' : st === 'night' ? '#1C1830' : '#120C24';
+    g.fillStyle = base;
+    g.fillRect(0, 0, 512, 512);
+    const r = RB.util.rng(`ground:${st}`);
+    for (let i = 0; i < 2600; i++) {
+      const x = r() * 512, y = r() * 512, rad = 2 + r() * 10;
+      g.fillStyle = st === 'day' ? (r() < 0.5 ? 'rgba(40,70,20,0.18)' : 'rgba(200,220,120,0.12)') : (r() < 0.5 ? 'rgba(0,0,0,0.2)' : 'rgba(120,90,200,0.08)');
+      g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fill();
+    }
+    g.strokeStyle = st === 'day' ? 'rgba(255,255,255,0.12)' : 'rgba(160,110,255,0.35)';
+    g.lineWidth = st === 'grid' ? 3 : 1.5;
+    g.strokeRect(0, 0, 512, 512);
+    const tx = G.texture(c);
+    tx.wrapS = tx.wrapT = T.RepeatWrapping;
+    tx.repeat.set(6000 / 50, 6000 / 50);
+    tx.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    return (groundTex[st] = tx);
   }
 
-  function fromScreen(sx, sy) {
-    const c = W.toXY(view.lat, view.lng);
-    return W.toLL(c[0] + (sx - Wd / 2) * view.mpp, c[1] - (sy - Ht * 0.55) * view.mpp);
-  }
-
-  /* ------------------ Tiles ------------------ */
+  /* ======================= Map tiles ======================= */
 
   const tiles = new Map();
   let tilesFailed = 0;
-
-  function tile(z, x, y) {
-    const key = `${z}/${x}/${y}`;
-    let tl = tiles.get(key);
-    if (tl) return tl;
-    tl = { img: new Image(), ok: false };
-    tl.img.crossOrigin = 'anonymous';
-    tl.img.onload = () => { tl.ok = true; tilesFailed = 0; };
-    tl.img.onerror = () => { tilesFailed++; };
-    tl.img.src = TILE_URL('abcd'[(x + y) % 4], z, x, y);
-    tiles.set(key, tl);
-    if (tiles.size > 400) tiles.delete(tiles.keys().next().value);
-    return tl;
-  }
+  let tileTimer = 0;
+  const loader = new T.TextureLoader();
+  loader.setCrossOrigin('anonymous');
 
   const lng2x = (lng, z) => (lng + 180) / 360 * Math.pow(2, z);
   const lat2y = (lat, z) => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, z);
   const x2lng = (x, z) => x / Math.pow(2, z) * 360 - 180;
   const y2lat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / Math.pow(2, z); return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); };
 
-  function drawTiles() {
-    const cosLat = Math.cos(view.lat * Math.PI / 180);
-    const z = clamp(Math.round(Math.log2(156543.03 * cosLat / view.mpp)), 3, 19);
-    const tl = fromScreen(0, 0), br = fromScreen(Wd, Ht);
-    const x0 = Math.floor(lng2x(tl.lng, z)), x1 = Math.floor(lng2x(br.lng, z));
-    const y0 = Math.floor(lat2y(tl.lat, z)), y1 = Math.floor(lat2y(br.lat, z));
-    if ((x1 - x0 + 1) * (y1 - y0 + 1) > 60) return false;
-    let drew = 0;
+  function disposeTile(tl) {
+    scene.remove(tl.mesh);
+    tl.mesh.geometry.dispose();
+    tl.mesh.material.dispose();
+    if (tl.tex) tl.tex.dispose();
+  }
+
+  function updateTiles() {
+    if (style === 'grid' || tilesFailed > 10 || navigator.onLine === false) {
+      if (tiles.size) { for (const tl of tiles.values()) disposeTile(tl); tiles.clear(); }
+      return;
+    }
+    const z = cam.dist < 150 ? 17 : 16;
+    const c = toLL(cam.target);
+    const reach = 700;
+    const dLat = reach / 110574, dLng = reach / (111320 * Math.cos(c.lat * Math.PI / 180));
+    const x0 = Math.floor(lng2x(c.lng - dLng, z)), x1 = Math.floor(lng2x(c.lng + dLng, z));
+    const y0 = Math.floor(lat2y(c.lat + dLat, z)), y1 = Math.floor(lat2y(c.lat - dLat, z));
+    const want = new Set();
+    const list = [];
     for (let x = x0; x <= x1; x++) {
       for (let y = y0; y <= y1; y++) {
-        const a = toScreen(y2lat(y, z), x2lng(x, z));
-        const b = toScreen(y2lat(y + 1, z), x2lng(x + 1, z));
-        const tl2 = tile(z, x, y);
-        if (tl2.ok) {
-          ctx.drawImage(tl2.img, a[0], a[1], b[0] - a[0] + 0.6, b[1] - a[1] + 0.6);
-          drew++;
-        } else {
-          // Use a lower zoom tile as a placeholder while this one loads.
-          const pz = z - 2, px = x >> 2, py = y >> 2;
-          const pt = tiles.get(`${pz}/${px}/${py}`);
-          if (pt && pt.ok) {
-            const pa = toScreen(y2lat(py, pz), x2lng(px, pz));
-            const pb = toScreen(y2lat(py + 1, pz), x2lng(px + 1, pz));
-            ctx.save();
-            ctx.beginPath(); ctx.rect(a[0], a[1], b[0] - a[0], b[1] - a[1]); ctx.clip();
-            ctx.drawImage(pt.img, pa[0], pa[1], pb[0] - pa[0], pb[1] - pa[1]);
-            ctx.restore();
-          }
-        }
+        const a = toV(y2lat(y, z), x2lng(x, z)), b = toV(y2lat(y + 1, z), x2lng(x + 1, z));
+        const mid = a.clone().add(b).multiplyScalar(0.5);
+        list.push({ key: `${style}/${z}/${x}/${y}`, x, y, a, b, d: mid.distanceTo(cam.target) });
       }
     }
-    // Keep a coarser layer warm for placeholders.
-    if (z - 2 >= 3) {
-      for (let x = x0 >> 2; x <= x1 >> 2; x++) for (let y = y0 >> 2; y <= y1 >> 2; y++) tile(z - 2, x, y);
+    list.sort((p, q) => p.d - q.d);
+    for (const it of list.slice(0, 48)) {
+      want.add(it.key);
+      if (tiles.has(it.key)) continue;
+      const mat = new T.MeshBasicMaterial({ color: style === 'day' ? '#F4FFF0' : '#FFFFFF', transparent: true, opacity: 0, toneMapped: false });
+      const mesh = new T.Mesh(new T.PlaneGeometry(1, 1), mat);
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.scale.set(it.b.x - it.a.x, it.b.z - it.a.z, 1);
+      mesh.position.set((it.a.x + it.b.x) / 2, 0, (it.a.z + it.b.z) / 2);
+      const tl = { mesh, tex: null };
+      tiles.set(it.key, tl);
+      const url = TILE_URL[style]('abcd'[(it.x + it.y) % 4], z, it.x, it.y);
+      loader.load(url, (tex) => {
+        if (tiles.get(it.key) !== tl) { tex.dispose(); return; }
+        tex.colorSpace = T.SRGBColorSpace;
+        tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        tl.tex = tex;
+        mat.map = tex;
+        mat.needsUpdate = true;
+        scene.add(mesh);
+        tilesFailed = 0;
+      }, undefined, () => { tilesFailed++; });
     }
-    return drew > 0;
+    for (const [k, tl] of tiles) if (!want.has(k)) { disposeTile(tl); tiles.delete(k); }
   }
 
-  function drawGrid() {
-    // Neon grid every 50 m, brighter every 250 m.
-    const c = W.toXY(view.lat, view.lng);
-    const x0 = c[0] - Wd / 2 * view.mpp, x1 = c[0] + Wd / 2 * view.mpp;
-    const y0 = c[1] - Ht * 0.45 * view.mpp, y1 = c[1] + Ht * 0.55 * view.mpp;
-    const step = view.mpp > 3 ? 250 : 50;
-    ctx.lineWidth = 1;
-    for (let gx = Math.floor(x0 / step) * step; gx <= x1; gx += step) {
-      const sx = Wd / 2 + (gx - c[0]) / view.mpp;
-      ctx.strokeStyle = Math.round(gx) % 250 === 0 ? 'rgba(150,110,255,0.28)' : 'rgba(150,110,255,0.1)';
-      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, Ht); ctx.stroke();
+  /* ======================= Entities ======================= */
+
+  function setPlayer(p) { Object.assign(player, p); }
+
+  // The world origin moved: rebuild everything placed in local meters.
+  function reset() {
+    const none = new Set();
+    prune(live.rifts, none); prune(live.drops, none); prune(live.spawns, none);
+    for (const tl of tiles.values()) disposeTile(tl);
+    tiles.clear();
+    linkKey = '';
+    cam.target.set(0, 0, 0);
+  }
+  function recenter() { cam.yaw = 0; }
+
+  function setEntities(e) {
+    ents = e;
+    const now = Date.now();
+    const seen = new Set();
+    for (const r of e.rifts) {
+      seen.add(r.id);
+      let o = live.rifts.get(r.id);
+      if (!o) {
+        o = P.rift();
+        o.root.position.copy(toV(r.lat, r.lng));
+        o.pick.userData.ent = r;
+        scene.add(o.root);
+        picks.push(o.pick);
+        live.rifts.set(r.id, o);
+      }
+      const st = S.riftState(r, now);
+      o.set(st, S.riftColor(st), W.distM(player, r) <= S.RANGE && S.hackReady(r, now) === 0);
     }
-    for (let gy = Math.floor(y0 / step) * step; gy <= y1; gy += step) {
-      const sy = Ht * 0.55 - (gy - c[1]) / view.mpp;
-      ctx.strokeStyle = Math.round(gy) % 250 === 0 ? 'rgba(150,110,255,0.28)' : 'rgba(150,110,255,0.1)';
-      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(Wd, sy); ctx.stroke();
+    prune(live.rifts, seen);
+    seen.clear();
+    for (const d of e.drops) {
+      seen.add(d.id);
+      let o = live.drops.get(d.id);
+      if (!o) {
+        o = P.crate();
+        o.root.scale.setScalar(1.5);
+        o.root.position.copy(toV(d.lat, d.lng));
+        o.root.rotation.y = (d.lat * 1e5) % 6;
+        o.pick.userData.ent = d;
+        scene.add(o.root);
+        picks.push(o.pick);
+        live.drops.set(d.id, o);
+      }
+      o.set(S.dropReady(d, now) === 0);
+    }
+    prune(live.drops, seen);
+    syncSpawns();
+    syncLinks();
+  }
+
+  function prune(map, seen) {
+    for (const [id, o] of map) {
+      if (seen.has(id)) continue;
+      scene.remove(o.root);
+      const i = picks.indexOf(o.pick);
+      if (i >= 0) picks.splice(i, 1);
+      if (o.dispose) o.dispose();
+      map.delete(id);
     }
   }
 
-  /* ------------------ Drawing ------------------ */
-
-  function glowLine(a, b, color, width) {
-    ctx.save();
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 10;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
-    ctx.restore();
-    // Energy pulses travelling along the link.
-    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    const n = Math.max(1, Math.floor(len / 90));
-    ctx.fillStyle = '#FFFFFF';
-    for (let i = 0; i < n; i++) {
-      const u = ((t * 0.25 + i / n) % 1);
-      ctx.globalAlpha = Math.sin(u * Math.PI) * 0.9;
-      ctx.beginPath(); ctx.arc(a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, 2, 0, TAU); ctx.fill();
+  // Creatures within sight get a live 3D model that wanders near its spot.
+  function syncSpawns() {
+    const seen = new Set();
+    for (const s of ents.spawns) {
+      if (S.isGone(s) || W.distM(player, s) > SIGHT) continue;
+      seen.add(s.id);
+      if (live.spawns.has(s.id)) continue;
+      const sp = C.byId(s.sp);
+      const inst = RB.beasts.instance(s.sp, {});
+      const scale = clamp(sp.size * 3.6, 7, 22);
+      inst.root.scale.setScalar(scale);
+      const fly = sp.plan === 'flyer';
+      const root = new T.Group();
+      root.position.copy(toV(s.lat, s.lng));
+      root.add(inst.root);
+      const ring = P.ringMarker(C.RARITY[sp.rar].color, scale * 0.55, 0.9);
+      ring.position.y = 0.3;
+      root.add(ring);
+      if (sp.rar >= 2) {
+        const aura = G.sprite(C.ELEMENTS[sp.el].color, 1.6, 0.35);
+        aura.position.y = 0.55;
+        inst.root.add(aura);
+      }
+      const pick = new T.Mesh(new T.SphereGeometry(Math.max(6, scale * 0.6), 8, 6), new T.MeshBasicMaterial({ visible: false }));
+      pick.position.y = fly ? scale * 1.1 : scale * 0.5;
+      pick.userData.ent = s;
+      root.add(pick);
+      picks.push(pick);
+      scene.add(root);
+      live.spawns.set(s.id, { root, inst, ring, pick, fly, scale, pos: new T.Vector3(), target: null, wait: Math.random() * 3, dir: Math.random() * 6, dispose: () => inst.dispose() });
     }
-    ctx.globalAlpha = 1;
+    prune(live.spawns, seen);
   }
 
-  function drawFieldsAndLinks() {
-    const col = S.faction().color;
-    for (const f of S.save.fields) {
-      const p = f.ll.map((ll) => toScreen(ll[0], ll[1]));
-      ctx.fillStyle = col + '2E';
-      ctx.beginPath(); ctx.moveTo(p[0][0], p[0][1]); ctx.lineTo(p[1][0], p[1][1]); ctx.lineTo(p[2][0], p[2][1]); ctx.closePath(); ctx.fill();
+  function updateSpawn(o, dt) {
+    const lp = o.pos;
+    if (o.fly) {
+      o.dir += dt * 0.35;
+      const r = 12;
+      lp.set(Math.cos(o.dir) * r, o.scale * 0.8 + Math.sin(t * 1.3 + o.scale) * 1.5, Math.sin(o.dir) * r);
+      o.inst.root.position.copy(lp);
+      o.inst.root.rotation.y = Math.atan2(-Math.sin(o.dir), Math.cos(o.dir));
+      o.inst.update(dt, { flap: 0.3 });
+      o.ring.position.set(lp.x, 0.3, lp.z);
+      o.pick.position.set(lp.x, lp.y + o.scale * 0.5, lp.z);
+      return;
     }
-    for (const l of S.save.links) glowLine(toScreen(l.al[0], l.al[1]), toScreen(l.bl[0], l.bl[1]), col, 2.2);
-  }
-
-  function inRange(e) {
-    return W.distM(player, e) <= S.RANGE;
-  }
-
-  function drawRift(r, now) {
-    const [x, y] = toScreen(r.lat, r.lng);
-    if (x < -60 || y < -60 || x > Wd + 60 || y > Ht + 60) return;
-    const st = S.riftState(r, now);
-    const col = S.riftColor(st);
-    const size = clamp(24 / Math.sqrt(view.mpp), 16, 34);
-    const near = inRange(r);
-    const pulse = 0.5 + 0.5 * Math.sin(t * 2.4 + r.lat * 1e4);
-    // Beam of light
-    const beam = ctx.createLinearGradient(x, y - size * 3.2, x, y);
-    beam.addColorStop(0, col + '00');
-    beam.addColorStop(1, col + (near ? '99' : '55'));
-    ctx.fillStyle = beam;
-    ctx.beginPath();
-    ctx.moveTo(x - size * 0.35, y);
-    ctx.lineTo(x - size * 0.12, y - size * 3.2);
-    ctx.lineTo(x + size * 0.12, y - size * 3.2);
-    ctx.lineTo(x + size * 0.35, y);
-    ctx.fill();
-    // Ground ring
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(1, 0.55);
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 2.5;
-    ctx.shadowColor = col;
-    ctx.shadowBlur = 12;
-    ctx.globalAlpha = 0.6 + pulse * 0.4;
-    ctx.beginPath(); ctx.arc(0, 0, size * (0.9 + pulse * 0.12), 0, TAU); ctx.stroke();
-    ctx.restore();
-    // The tear itself: a spinning crystal.
-    ctx.save();
-    ctx.translate(x, y - size * 0.95 - Math.sin(t * 2 + r.lng * 1e4) * 3);
-    ctx.shadowColor = col;
-    ctx.shadowBlur = 16;
-    ctx.fillStyle = '#140B22';
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 2;
-    const sq = Math.cos(t * 1.5 + r.lat * 1e3);
-    ctx.beginPath();
-    ctx.moveTo(0, -size * 0.7);
-    ctx.lineTo(size * 0.42 * sq, 0);
-    ctx.lineTo(0, size * 0.7);
-    ctx.lineTo(-size * 0.42 * sq, 0);
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = col;
-    ctx.globalAlpha = 0.4 + pulse * 0.5;
-    ctx.beginPath(); ctx.ellipse(0, 0, Math.abs(size * 0.18 * sq) + 1, size * 0.35, 0, 0, TAU); ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.restore();
-    // Level badge
-    if (st.faction && size > 18) {
-      ctx.font = `700 ${Math.round(size * 0.42)}px "Chakra Petch", system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const bx = x + size * 0.7, by = y - size * 1.5;
-      ctx.fillStyle = '#0D0818';
-      ctx.beginPath(); ctx.arc(bx, by, size * 0.34, 0, TAU); ctx.fill();
-      ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(st.mine ? '★' : `${st.level}`, bx, by + 1);
-    }
-    if (near && S.hackReady(r, now) === 0) {
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.globalAlpha = 0.5 + pulse * 0.5;
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 5]);
-      ctx.beginPath(); ctx.arc(x, y - size * 0.95, size * 1.05, 0, TAU); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.globalAlpha = 1;
-    }
-    r._s = [x, y - size * 0.9, size * 1.2];
-  }
-
-  function drawDrop(d, now) {
-    const [x, y] = toScreen(d.lat, d.lng);
-    if (x < -40 || y < -40 || x > Wd + 40 || y > Ht + 40) return;
-    const ready = S.dropReady(d, now) === 0;
-    const size = clamp(15 / Math.sqrt(view.mpp), 10, 22);
-    const hover = Math.sin(t * 2.5 + d.lat * 1e4) * 3;
-    const col = ready ? '#FFB020' : '#6A6385';
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath(); ctx.ellipse(x, y, size * 0.8, size * 0.3, 0, 0, TAU); ctx.fill();
-    ctx.save();
-    ctx.translate(x, y - size * 1.3 + hover);
-    if (ready) { ctx.shadowColor = col; ctx.shadowBlur = 14; }
-    // Isometric crate
-    ctx.fillStyle = ready ? '#C97B12' : '#4A4460';
-    ctx.strokeStyle = '#120A1C';
-    ctx.lineWidth = 1.5;
-    const s = size * 0.8;
-    ctx.beginPath(); ctx.moveTo(0, -s * 0.5); ctx.lineTo(s, 0); ctx.lineTo(0, s * 0.5); ctx.lineTo(-s, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = ready ? '#8A520A' : '#342F45';
-    ctx.beginPath(); ctx.moveTo(-s, 0); ctx.lineTo(0, s * 0.5); ctx.lineTo(0, s * 1.4); ctx.lineTo(-s, s * 0.9); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = ready ? '#A8660E' : '#3E3852';
-    ctx.beginPath(); ctx.moveTo(s, 0); ctx.lineTo(0, s * 0.5); ctx.lineTo(0, s * 1.4); ctx.lineTo(s, s * 0.9); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = col;
-    ctx.fillRect(-s * 0.15, -s * 0.3, s * 0.3, s * 0.6);
-    ctx.restore();
-    d._s = [x, y - size, size * 1.3];
-  }
-
-  function drawSpawn(sp, now) {
-    const [x, y] = toScreen(sp.lat, sp.lng);
-    if (x < -60 || y < -60 || x > Wd + 60 || y > Ht + 60) return;
-    const spec = C.byId(sp.sp);
-    const h = clamp(30 / Math.sqrt(view.mpp) * (0.75 + Math.min(spec.size, 6) * 0.08), 18, 52);
-    const rc = C.RARITY[spec.rar].color;
-    const near = inRange(sp);
-    // Rarity ring on the ground.
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(1, 0.4);
-    ctx.strokeStyle = rc;
-    ctx.globalAlpha = near ? 0.95 : 0.55;
-    ctx.lineWidth = spec.rar >= 2 ? 3 : 2;
-    ctx.beginPath(); ctx.arc(0, 0, h * 0.55, 0, TAU); ctx.stroke();
-    ctx.restore();
-    // Idle wander: pace back and forth a little.
-    const ph = t * 0.5 + sp.seed;
-    const dx = Math.sin(ph) * h * 0.25;
-    const face = Math.cos(ph) >= 0 ? 1 : -1;
-    const fly = spec.plan === 'flyer';
-    C.draw(ctx, sp.sp, {
-      x: x + dx, y: y - (fly ? h * 0.35 + Math.sin(t * 2 + sp.seed) * 4 : 0), h,
-      t: t + sp.seed, walk: 0.6, phase: (t + sp.seed) * 5, face, seed: sp.seed,
-      alpha: near ? 1 : 0.8, shadow: !fly, aura: spec.rar >= 2 ? undefined : false,
-    });
-    sp._s = [x + dx, y - h * 0.5, h * 0.7];
-  }
-
-  function drawPlayer() {
-    const [x, y] = toScreen(player.lat, player.lng);
-    const col = S.faction().color;
-    const r = S.RANGE / view.mpp;
-    // Reach circle
-    ctx.fillStyle = col + '14';
-    ctx.strokeStyle = col + '88';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.stroke();
-    // Scan pulse
-    const u = (t * 0.45) % 1;
-    ctx.strokeStyle = col;
-    ctx.globalAlpha = (1 - u) * 0.5;
-    ctx.beginPath(); ctx.arc(x, y, r * (0.2 + u * 1.6), 0, TAU); ctx.stroke();
-    ctx.globalAlpha = 1;
-    // Walk target
-    if (player.walkTo) {
-      const w = toScreen(player.walkTo.lat, player.walkTo.lng);
-      ctx.setLineDash([3, 6]);
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(w[0], w[1]); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.beginPath(); ctx.arc(w[0], w[1], 6 + Math.sin(t * 6) * 1.5, 0, TAU); ctx.stroke();
-    }
-    // Avatar: a hovering agent marker
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.beginPath(); ctx.ellipse(0, 0, 11, 4, 0, 0, TAU); ctx.fill();
-    const bob = Math.sin(t * 3) * 2 + (player.moving ? Math.abs(Math.sin(t * 9)) * -3 : 0);
-    ctx.translate(0, -16 + bob);
-    if (player.heading != null) {
-      ctx.save();
-      ctx.rotate(player.heading * Math.PI / 180);
-      const g = ctx.createLinearGradient(0, 0, 0, -60);
-      g.addColorStop(0, col + '66');
-      g.addColorStop(1, col + '00');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-24, -60); ctx.lineTo(24, -60); ctx.closePath(); ctx.fill();
-      ctx.restore();
-    }
-    ctx.shadowColor = col;
-    ctx.shadowBlur = 14;
-    ctx.fillStyle = '#120A1C';
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(0, 0, 11, 0, TAU); ctx.fill(); ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = col;
-    ctx.font = '700 13px "Chakra Petch", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(S.faction().glyph, 0, 1);
-    ctx.restore();
-  }
-
-  function render(dt, now) {
-    t += dt;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const bg = ctx.createRadialGradient(Wd / 2, Ht * 0.55, 10, Wd / 2, Ht * 0.55, Math.max(Wd, Ht));
-    bg.addColorStop(0, '#1C1236');
-    bg.addColorStop(1, '#07050F');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, Wd, Ht);
-    let street = false;
-    if (S.save.settings.map === 'streets' && tilesFailed < 12 && navigator.onLine !== false) street = drawTiles();
-    if (street) {
-      ctx.fillStyle = 'rgba(40, 10, 70, 0.28)';
-      ctx.fillRect(0, 0, Wd, Ht);
+    let speed = 0;
+    if (!o.target) {
+      o.wait -= dt;
+      if (o.wait <= 0) {
+        const a = Math.random() * Math.PI * 2, r = 3 + Math.random() * 9;
+        o.target = new T.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r);
+      }
     } else {
-      drawGrid();
+      const d = o.target.clone().sub(lp);
+      d.y = 0;
+      const len = d.length();
+      speed = Math.min(2.2, 0.6 + o.scale * 0.12);
+      if (len < 0.3) { o.target = null; o.wait = 2 + Math.random() * 5; speed = 0; }
+      else {
+        lp.addScaledVector(d, Math.min(1, speed * dt / len));
+        const want = Math.atan2(d.x, d.z);
+        const diff = ((want - o.inst.root.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        o.inst.root.rotation.y += diff * Math.min(1, dt * 4);
+      }
     }
-    drawFieldsAndLinks();
-    drawPlayer();
-    const all = [];
-    for (const d of ents.drops) all.push([d, drawDrop]);
-    for (const r of ents.rifts) all.push([r, drawRift]);
-    for (const s of ents.spawns) { s._s = null; if (!S.isGone(s) && W.distM(player, s) < SIGHT) all.push([s, drawSpawn]); }
-    all.sort((a, b) => b[0].lat - a[0].lat);
-    for (const [e, fn] of all) { e._s = null; fn(e, now); }
-    // Faint vignette
-    const v = ctx.createRadialGradient(Wd / 2, Ht / 2, Math.min(Wd, Ht) * 0.35, Wd / 2, Ht / 2, Math.max(Wd, Ht) * 0.75);
-    v.addColorStop(0, 'rgba(0,0,0,0)');
-    v.addColorStop(1, 'rgba(5,2,15,0.65)');
-    ctx.fillStyle = v;
-    ctx.fillRect(0, 0, Wd, Ht);
+    o.inst.root.position.copy(lp);
+    o.ring.position.set(lp.x, 0.3, lp.z);
+    o.pick.position.set(lp.x, o.scale * 0.5, lp.z);
+    o.inst.update(dt, { speed });
   }
 
-  /* ------------------ Input ------------------ */
+  function syncLinks() {
+    const key = S.save.links.map((l) => l.a + l.b).join() + '|' + S.save.fields.length + '|' + S.faction().color;
+    if (key === linkKey) return;
+    linkKey = key;
+    for (const g of [links, fields]) if (g) { scene.remove(g); g.traverse((m) => { if (m.geometry) m.geometry.dispose(); }); }
+    const col = S.faction().color;
+    links = new T.Group();
+    fields = new T.Group();
+    const lm = G.additive(col, null, 0.85);
+    const gm = G.additive(col, null, 0.2);
+    for (const l of S.save.links) {
+      const a = toV(l.al[0], l.al[1], 3), b = toV(l.bl[0], l.bl[1], 3);
+      const len = a.distanceTo(b);
+      const m = new T.Mesh(new T.BoxGeometry(1.2, 1.2, len), lm);
+      m.position.copy(a).add(b).multiplyScalar(0.5);
+      m.lookAt(b);
+      links.add(m);
+      const glow = new T.Mesh(new T.BoxGeometry(5, 0.2, len), gm);
+      glow.position.copy(m.position).setY(0.6);
+      glow.quaternion.copy(m.quaternion);
+      links.add(glow);
+    }
+    const fm = G.additive(col, null, 0.2);
+    for (const f of S.save.fields) {
+      const g = new T.BufferGeometry();
+      const v = f.ll.map((ll) => toV(ll[0], ll[1], 0.6));
+      g.setAttribute('position', new T.Float32BufferAttribute([v[0].x, v[0].y, v[0].z, v[1].x, v[1].y, v[1].z, v[2].x, v[2].y, v[2].z], 3));
+      fields.add(new T.Mesh(g, fm));
+    }
+    scene.add(links, fields);
+  }
 
-  function hitTest(x, y) {
-    let best = null, bd = Infinity;
-    const consider = (e, bias) => {
-      if (!e._s) return;
-      const d = Math.hypot(x - e._s[0], y - e._s[1]) - bias;
-      if (d < e._s[2] + 10 && d < bd) { best = e; bd = d; }
-    };
-    for (const s of ents.spawns) if (!S.isGone(s)) consider(s, 6);
-    for (const r of ents.rifts) consider(r, 0);
-    for (const d of ents.drops) consider(d, 0);
-    return best;
+  /* ======================= Frame ======================= */
+
+  function render(dt) {
+    t += dt;
+    const want = mapStyle();
+    if (want !== style) applyStyle(want);
+    // The camera trails you.
+    const me = toV(player.lat, player.lng);
+    cam.target.lerp(me, cam.target.lengthSq() === 0 ? 1 : 1 - Math.exp(-dt * 6));
+    const horiz = Math.cos(PITCH) * cam.dist, up = Math.sin(PITCH) * cam.dist;
+    camera.position.set(cam.target.x - Math.sin(cam.yaw) * horiz, up, cam.target.z + Math.cos(cam.yaw) * horiz);
+    camera.lookAt(cam.target.x, AGENT_SCALE * 0.9, cam.target.z);
+    scene.fog.near = cam.dist * 2.2;
+    scene.fog.far = cam.dist * 6.5;
+
+    agent.root.position.copy(me);
+    let face = null;
+    if (player.walkTo) { const w = toV(player.walkTo.lat, player.walkTo.lng); face = Math.atan2(w.x - me.x, w.z - me.z); }
+    else if (player.heading != null) face = Math.PI - player.heading * Math.PI / 180;
+    if (face != null) {
+      const diff = ((face - agent.root.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      agent.root.rotation.y += diff * Math.min(1, dt * 6);
+    }
+    agent.update(dt, player.moving ? 1.6 : 0);
+    rangeRing.position.set(me.x, 0.4, me.z);
+    rangeFill.position.set(me.x, 0.35, me.z);
+    const u = (t * 0.45) % 1;
+    pulseRing.position.set(me.x, 0.45, me.z);
+    pulseRing.scale.setScalar(1 + u * 5.5);
+    pulseRing.material.opacity = (1 - u) * 0.35;
+    if (player.walkTo) {
+      walkMarker.visible = true;
+      walkMarker.position.copy(toV(player.walkTo.lat, player.walkTo.lng, 0.5));
+      walkMarker.scale.setScalar(1 + Math.sin(t * 6) * 0.15);
+    } else walkMarker.visible = false;
+
+    // Light and shadows centred on you.
+    sun.position.set(me.x + 120, 220, me.z + 60);
+    sun.target.position.copy(me);
+    shadowCatcher.position.set(me.x, 0.15, me.z);
+    ground.position.set(me.x - (me.x % 50), -0.2, me.z - (me.z % 50));
+    motes.position.set(me.x, 0, me.z);
+    motes.rotation.y += dt * 0.02;
+
+    for (const o of live.rifts.values()) o.update(dt);
+    for (const o of live.drops.values()) o.update(dt);
+    for (const o of live.spawns.values()) updateSpawn(o, dt);
+
+    tileTimer -= dt;
+    if (tileTimer <= 0) { tileTimer = 0.5; updateTiles(); }
+    renderer.toneMappingExposure = style === 'day' ? 1.0 : 1.15;
+    for (const tl of tiles.values()) if (tl.tex && tl.mesh.material.opacity < 1) tl.mesh.material.opacity = Math.min(1, tl.mesh.material.opacity + dt * 3);
+    renderer.render(scene, camera);
+  }
+
+  /* ======================= Input ======================= */
+
+  const ray = new T.Raycaster();
+  const plane = new T.Plane(new T.Vector3(0, 1, 0), 0);
+
+  function pickAt(x, y) {
+    const el = renderer.domElement;
+    const r = el.getBoundingClientRect();
+    const ndc = new T.Vector2(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hits = ray.intersectObjects(picks, false);
+    if (hits.length) return { ent: hits[0].object.userData.ent };
+    const p = new T.Vector3();
+    if (ray.ray.intersectPlane(plane, p)) return { ground: toLL(p) };
+    return null;
   }
 
   function bindInput() {
+    const el = G.main().domElement;
     const pts = new Map();
     let start = null, moved = false, pinch = null;
-    canvas.addEventListener('pointerdown', (e) => {
-      canvas.setPointerCapture(e.pointerId);
+    const active = () => el.parentNode === container;
+    el.addEventListener('pointerdown', (e) => {
+      if (!active()) return;
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* the pointer already ended */ }
       pts.set(e.pointerId, [e.clientX, e.clientY]);
-      if (pts.size === 1) { start = { x: e.clientX, y: e.clientY, t: performance.now(), lat: view.lat, lng: view.lng }; moved = false; }
+      if (pts.size === 1) { start = { x: e.clientX, y: e.clientY, t: performance.now(), yaw: cam.yaw }; moved = false; }
       if (pts.size === 2) {
         const [a, b] = [...pts.values()];
-        pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), mpp: view.mpp };
+        pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), dist: cam.dist, ang: Math.atan2(b[1] - a[1], b[0] - a[0]), yaw: cam.yaw };
         moved = true;
       }
     });
-    canvas.addEventListener('pointermove', (e) => {
-      if (!pts.has(e.pointerId)) return;
+    el.addEventListener('pointermove', (e) => {
+      if (!active() || !pts.has(e.pointerId)) return;
       pts.set(e.pointerId, [e.clientX, e.clientY]);
       if (pts.size === 2 && pinch) {
         const [a, b] = [...pts.values()];
         const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
-        view.mpp = clamp(pinch.mpp * pinch.d / Math.max(d, 1), MIN_MPP, MAX_MPP);
+        cam.dist = clamp(pinch.dist * pinch.d / Math.max(d, 1), MIN_D, MAX_D);
+        cam.yaw = pinch.yaw - (Math.atan2(b[1] - a[1], b[0] - a[0]) - pinch.ang);
         return;
       }
       if (pts.size === 1 && start) {
         const dx = e.clientX - start.x, dy = e.clientY - start.y;
         if (!moved && Math.hypot(dx, dy) > 10) moved = true;
         if (moved) {
-          const c = W.toXY(start.lat, start.lng);
-          const ll = W.toLL(c[0] - dx * view.mpp, c[1] + dy * view.mpp);
-          view.lat = ll.lat;
-          view.lng = ll.lng;
-          if (view.follow) { view.follow = false; if (handlers.panned) handlers.panned(); }
+          // Drag sideways to swing the camera around you, like Pokémon GO.
+          const lower = start.y - el.getBoundingClientRect().top > el.clientHeight * 0.5 ? -1 : 1;
+          cam.yaw = start.yaw + dx * 0.006 * lower;
+          if (handlers.panned) handlers.panned();
         }
       }
     });
@@ -458,27 +523,27 @@ window.RB = window.RB || {};
       pts.delete(e.pointerId);
       if (pts.size < 2) pinch = null;
       if (pts.size === 0 && start && !moved && e.type === 'pointerup' && performance.now() - start.t < 500) {
-        const r = canvas.getBoundingClientRect();
-        const x = e.clientX - r.left, y = e.clientY - r.top;
-        const hit = hitTest(x, y);
-        if (hit) handlers.tap && handlers.tap(hit);
-        else handlers.tapGround && handlers.tapGround(fromScreen(x, y));
+        const hit = pickAt(e.clientX, e.clientY);
+        if (hit && hit.ent) handlers.tap && handlers.tap(hit.ent);
+        else if (hit && hit.ground) handlers.tapGround && handlers.tapGround(hit.ground);
       }
       if (pts.size === 0) start = null;
     };
-    canvas.addEventListener('pointerup', end);
-    canvas.addEventListener('pointercancel', end);
-    canvas.addEventListener('wheel', (e) => {
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    el.addEventListener('wheel', (e) => {
+      if (!active()) return;
       e.preventDefault();
-      view.mpp = clamp(view.mpp * Math.exp(e.deltaY * 0.0015), MIN_MPP, MAX_MPP);
+      cam.dist = clamp(cam.dist * Math.exp(e.deltaY * 0.0012), MIN_D, MAX_D);
     }, { passive: false });
   }
 
   RB.map = {
-    view, player,
-    SIGHT, init, resize, render, setPlayer, setEntities, recenter,
-    zoom(f) { view.mpp = clamp(view.mpp * f, MIN_MPP, MAX_MPP); },
-    toScreen, fromScreen,
-    get radiusM() { return Math.hypot(Wd, Ht) * 0.6 * view.mpp; },
+    SIGHT, player, cam,
+    init, show, resize, render, setPlayer, setEntities, recenter, reset,
+    zoom(f) { cam.dist = clamp(cam.dist * f, MIN_D, MAX_D); },
+    get view() { const c = toLL(cam.target); return { lat: c.lat, lng: c.lng, far: cam.dist > 240 }; },
+    get radiusM() { return clamp(cam.dist * 6, 400, 1400); },
+    get rotated() { return Math.abs(Math.sin(cam.yaw / 2)) > 0.03; },
   };
 })(window.RB);

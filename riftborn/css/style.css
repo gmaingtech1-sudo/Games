@@ -189,7 +189,7 @@ h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.14em; color: 
 /* ---------------- Map ---------------- */
 
 #map-screen { position: fixed; inset: 0; overflow: hidden; background: var(--bg); }
-#map { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+canvas.gl { position: absolute; inset: 0; width: 100% !important; height: 100% !important; touch-action: none; display: block; }
 
 .hud {
   position: absolute;
@@ -592,7 +592,8 @@ h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.14em; color: 
 /* ---------------- AR encounter ---------------- */
 
 .ar-screen { position: fixed; inset: 0; background: #000; overflow: hidden; touch-action: none; }
-#cam, #ar-view { position: absolute; inset: 0; width: 100%; height: 100%; }
+#cam, #ar-view, .gl-host { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gl-host { pointer-events: none; }
 #cam { object-fit: cover; }
 
 .enc-top {

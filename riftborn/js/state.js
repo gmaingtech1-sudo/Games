@@ -46,7 +46,7 @@ window.RB = window.RB || {};
       drops: {},         // dropId → time
       events: [],        // news to show on next look ("your Rift fell")
       stats: { caught: 0, darts: 0, hacks: 0, claimed: 0, links: 0, fields: 0, wins: 0, fused: 0, meters: 0 },
-      settings: { sound: true, walk: 'gps', map: 'streets', ar: true },
+      settings: { sound: true, walk: 'gps', map: 'auto', ar: true },
       lastPos: null,
     };
   }
@@ -61,6 +61,7 @@ window.RB = window.RB || {};
       for (const k of Object.keys(b)) if (s[k] === undefined) s[k] = b[k];
       s.stats = Object.assign(b.stats, s.stats);
       s.settings = Object.assign(b.settings, s.settings);
+      if (s.settings.map === 'streets') s.settings.map = 'auto';
       save = s;
       return s;
     } catch (e) {

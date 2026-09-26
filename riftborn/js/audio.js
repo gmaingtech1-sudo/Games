@@ -89,10 +89,65 @@ window.RB = window.RB || {};
     wobble() { tone({ f: 260, f2: 200, dur: 0.1, type: 'triangle', vol: 0.18 }); buzz(18); },
     caught() { arp([523, 659, 784, 1047, 1319], 0.08, 'triangle', 0.15, 0.2); buzz([20, 50, 20, 50, 60]); },
     breakout() { noise({ dur: 0.25, freq: 900, vol: 0.4 }); tone({ f: 500, f2: 150, dur: 0.3, type: 'sawtooth', vol: 0.06 }); buzz(40); },
-    roar() {
-      noise({ dur: 0.7, freq: 260, vol: 0.5, filter: 'lowpass' });
-      tone({ f: 110, f2: 70, dur: 0.7, type: 'sawtooth', vol: 0.09 });
-      buzz(60);
+    // A growling roar: a rough low voice with a wobble, breathy noise
+    // swept down through a filter, and a rumble. Bigger bodies roar lower.
+    roar(size) {
+      const c = ensure();
+      if (!c) return;
+      const k = 1 / Math.sqrt(Math.max(0.8, size || 2));
+      const t = c.currentTime, dur = 0.8 + (1 - k) * 0.7;
+      const out = c.createGain();
+      out.gain.setValueAtTime(0.0001, t);
+      out.gain.exponentialRampToValueAtTime(0.5, t + 0.08);
+      out.gain.setValueAtTime(0.5, t + dur * 0.55);
+      out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      out.connect(master);
+      const voice = c.createOscillator();
+      voice.type = 'sawtooth';
+      voice.frequency.setValueAtTime(260 * k, t);
+      voice.frequency.linearRampToValueAtTime(330 * k, t + dur * 0.3);
+      voice.frequency.exponentialRampToValueAtTime(150 * k, t + dur);
+      const wobble = c.createOscillator();
+      const wobbleAmt = c.createGain();
+      wobble.frequency.value = 24 + k * 20;
+      wobbleAmt.gain.value = 40 * k;
+      wobble.connect(wobbleAmt);
+      wobbleAmt.connect(voice.frequency);
+      const shape = c.createBiquadFilter();
+      shape.type = 'bandpass';
+      shape.frequency.setValueAtTime(900 * k + 200, t);
+      shape.frequency.exponentialRampToValueAtTime(350 * k + 120, t + dur);
+      shape.Q.value = 1.2;
+      const vg = c.createGain();
+      vg.gain.value = 0.35;
+      voice.connect(shape);
+      shape.connect(vg);
+      vg.connect(out);
+      const len = Math.floor(c.sampleRate * dur);
+      const buf = c.createBuffer(1, len, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const breath = c.createBufferSource();
+      breath.buffer = buf;
+      const bf = c.createBiquadFilter();
+      bf.type = 'lowpass';
+      bf.frequency.setValueAtTime(2400 * k + 400, t);
+      bf.frequency.exponentialRampToValueAtTime(500 * k + 150, t + dur);
+      const bg = c.createGain();
+      bg.gain.value = 0.55;
+      breath.connect(bf);
+      bf.connect(bg);
+      bg.connect(out);
+      const rumble = c.createOscillator();
+      rumble.type = 'sine';
+      rumble.frequency.setValueAtTime(70 * k + 30, t);
+      rumble.frequency.exponentialRampToValueAtTime(40 * k + 20, t + dur);
+      const rg = c.createGain();
+      rg.gain.value = 0.5;
+      rumble.connect(rg);
+      rg.connect(out);
+      [voice, wobble, rumble, breath].forEach((n) => { n.start(t); n.stop(t + dur + 0.05); });
+      buzz(size > 3 ? [40, 30, 80] : 50);
     },
     flee() { tone({ f: 600, f2: 120, dur: 0.5, type: 'sine', vol: 0.12 }); },
     strike() { noise({ dur: 0.12, freq: 700, vol: 0.45 }); buzz(20); },

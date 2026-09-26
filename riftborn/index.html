@@ -22,7 +22,6 @@
 
 <!-- ============ Map ============ -->
 <main id="map-screen" hidden>
-  <canvas id="map" aria-label="Map of Rifts and creatures around you"></canvas>
   <div id="scan-pulse" class="scan-pulse" aria-hidden="true"></div>
 
   <header class="hud">
@@ -43,7 +42,7 @@
   <div class="map-side">
     <button id="btn-zoomin" class="round-btn" type="button" aria-label="Zoom in">+</button>
     <button id="btn-zoomout" class="round-btn" type="button" aria-label="Zoom out">−</button>
-    <button id="btn-center" class="round-btn center-btn" type="button" aria-label="Back to me">◎</button>
+    <button id="btn-center" class="round-btn center-btn" type="button" aria-label="Face north">N</button>
   </div>
 
   <div id="nearby" class="nearby" aria-label="Creatures nearby"></div>
@@ -61,6 +60,7 @@
 <!-- ============ AR encounter ============ -->
 <section id="ar-screen" class="ar-screen" hidden>
   <video id="cam" playsinline muted autoplay hidden></video>
+  <div id="ar-gl" class="gl-host"></div>
   <canvas id="ar-view"></canvas>
 
   <header class="enc-top">
@@ -98,6 +98,7 @@
 
 <!-- ============ Battle ============ -->
 <section id="battle-screen" class="battle-screen" hidden>
+  <div id="battle-gl" class="gl-host"></div>
   <canvas id="battle-view"></canvas>
   <header class="bt-top">
     <button id="bt-flee" class="round-btn" type="button" aria-label="Retreat">✕</button>
@@ -198,10 +199,14 @@
   </div>
 </section>
 
+<script src="vendor/three.min.js"></script>
 <script src="js/core.js"></script>
 <script src="js/host.js"></script>
 <script src="js/audio.js"></script>
+<script src="js/gfx.js"></script>
 <script src="js/creatures.js"></script>
+<script src="js/beasts.js"></script>
+<script src="js/props.js"></script>
 <script src="js/world.js"></script>
 <script src="js/state.js"></script>
 <script src="js/ar.js"></script>

@@ -28,25 +28,13 @@
   /* ======================= Boot ======================= */
 
   function boot() {
+    if (!RB.gfx.supported()) {
+      $('onboard').hidden = false;
+      document.querySelector('.tagline').textContent = 'Riftborn needs 3D graphics (WebGL), and this browser or device does not have it turned on.';
+      $('ob-begin').hidden = true;
+      return;
+    }
     const save = S.load();
-    M.init($('map'), {
-      tap: (e) => {
-        sfx.tap();
-        if (e.kind === 'spawn') UI.spawnSheet(e);
-        else if (e.kind === 'rift') UI.riftSheet(e);
-        else UI.dropSheet(e);
-      },
-      tapGround: (ll) => {
-        if (S.save.settings.walk === 'tap') {
-          walkTo = ll;
-          M.player.walkTo = ll;
-        } else if (!boot.hinted) {
-          boot.hinted = true;
-          UI.toast('You move with your real location. At home? Menu → Moving → tap the map to walk.');
-        }
-      },
-      panned: () => { $('btn-center').classList.add('show'); },
-    });
     RB.encounter.init();
     RB.battle.init();
     UI.setHooks({
@@ -62,6 +50,31 @@
     window.addEventListener('resize', resize);
     resize();
     requestAnimationFrame(frame);
+  }
+
+  // The 3D map is built once your faction is known.
+  let mapReady = false;
+  function initMap() {
+    if (mapReady) return;
+    mapReady = true;
+    M.init($('map-screen'), {
+      tap: (e) => {
+        sfx.tap();
+        if (e.kind === 'spawn') UI.spawnSheet(e);
+        else if (e.kind === 'rift') UI.riftSheet(e);
+        else UI.dropSheet(e);
+      },
+      tapGround: (ll) => {
+        if (S.save.settings.walk === 'tap') {
+          walkTo = ll;
+          M.player.walkTo = ll;
+        } else if (!boot.hinted) {
+          boot.hinted = true;
+          UI.toast('You move with your real location. At home? Menu → Moving → tap the map to walk.');
+        }
+      },
+      panned: () => { $('btn-center').classList.toggle('show', M.rotated); },
+    });
   }
 
   function resize() {
@@ -83,7 +96,7 @@
   function step(name) {
     document.querySelectorAll('.ob-step').forEach((s) => { s.hidden = s.dataset.step !== name; });
     if (name === 'starter') {
-      document.querySelectorAll('.starter canvas').forEach((cv) => C.portrait(cv, cv.dataset.sp));
+      document.querySelectorAll('.starter canvas').forEach((cv) => RB.beasts.portrait(cv, cv.dataset.sp));
     }
   }
 
@@ -169,12 +182,13 @@
     sfx.on = save.settings.sound;
     $('onboard').hidden = true;
     $('map-screen').hidden = false;
+    initMap();
     mode = 'map';
     const start = save.lastPos || DEFAULT_POS;
     pos.lat = start.lat;
     pos.lng = start.lng;
     W.setOrigin(pos.lat, pos.lng);
-    M.resize();
+    M.show();
     M.setPlayer({ lat: pos.lat, lng: pos.lng });
     M.recenter();
     startCompass();
@@ -237,10 +251,9 @@
     const ll = { lat: p.coords.latitude, lng: p.coords.longitude };
     if (gps.state !== 'ok') {
       gps.state = 'ok';
-      if (W.distM(W.origin, ll) > 20000) W.setOrigin(ll.lat, ll.lng);
+      if (W.distM(W.origin, ll) > 20000) { W.setOrigin(ll.lat, ll.lng); M.reset(); }
       pos.lat = ll.lat;
       pos.lng = ll.lng;
-      M.recenter();
       refreshEntities(true);
     }
     if (gps.last && p.coords.accuracy < 35) {
@@ -306,14 +319,14 @@
   }
 
   function refreshEntities(force) {
-    const center = { lat: M.view.lat, lng: M.view.lng };
+    const center = { lat: pos.lat, lng: pos.lng };
     if (!force && entAt && W.distM(entAt, center) < 40 && entTimer < 3) return;
     entTimer = 0;
     entAt = center;
     const r = clamp(M.radiusM, 250, 1400);
     const now = Date.now();
     const a = W.around(center.lat, center.lng, r, now);
-    if (M.view.mpp > 2.6 || gps.tooFast) a.spawns = [];
+    if (gps.tooFast) a.spawns = [];
     ents = a;
     M.setEntities(ents);
   }
@@ -336,7 +349,7 @@
     $('hud-orbs').textContent = s.items.orbs;
     $('hud-darts').textContent = s.items.darts;
     $('hud-shards').textContent = s.items.shards;
-    $('map-attrib').hidden = s.settings.map !== 'streets';
+    $('map-attrib').hidden = s.settings.map === 'grid';
   }
 
   // The little tracker of the closest creatures, bottom left.
@@ -352,7 +365,7 @@
     nearbyKey = key;
     const el = $('nearby');
     el.innerHTML = list.map((x, i) => `<button class="nb ${x.d <= S.RANGE ? 'in' : ''}" data-i="${i}" style="--r:${C.RARITY[C.byId(x.s.sp).rar].color}"><canvas data-sp="${x.s.sp}"></canvas><small>${x.d <= S.RANGE ? 'Here!' : fmtDist(x.d)}</small></button>`).join('');
-    el.querySelectorAll('canvas').forEach((cv) => C.portrait(cv, cv.dataset.sp));
+    el.querySelectorAll('canvas').forEach((cv) => RB.beasts.portraitLater(cv, cv.dataset.sp));
     el.querySelectorAll('.nb').forEach((b) => b.addEventListener('click', () => { sfx.tap(); UI.spawnSheet(list[+b.dataset.i].s); }));
   }
 
@@ -372,7 +385,7 @@
     RB.encounter.start(spawn, (res) => {
       mode = 'map';
       $('map-screen').hidden = false;
-      M.resize();
+      M.show();
       refreshEntities(true);
       updateHud();
       if (res && res.creature) UI.toast(`${esc(C.byId(res.creature.sp).name)} was added to your Lab.`, 'good');
@@ -389,7 +402,7 @@
     RB.battle.start(team, st.guard, { title: rift.name, winText: `${rift.name} is knocked back to unclaimed. Claim it for the ${S.faction().name}!` }, (out) => {
       mode = 'map';
       $('map-screen').hidden = false;
-      M.resize();
+      M.show();
       if (out && out.win) {
         const r = S.neutralize(rift);
         UI.toast(`Guardians defeated! DNA: ${r.dna.map((d) => `+${d.n} ${esc(C.byId(d.sp).name)}`).join(', ')}`, 'good');

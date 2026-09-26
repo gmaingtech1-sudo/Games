@@ -35,7 +35,7 @@ window.RB = window.RB || {};
     card.scrollTop = 0;
     current = { name, refresh };
     card.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => { sfx.tap(); close(); }));
-    card.querySelectorAll('canvas[data-sp]').forEach((cv) => C.portrait(cv, cv.dataset.sp, { silhouette: cv.dataset.sil === '1' }));
+    card.querySelectorAll('canvas[data-sp]').forEach((cv) => RB.beasts.portraitLater(cv, cv.dataset.sp, { silhouette: cv.dataset.sil === '1' }));
     if (bind) bind(card);
     RB.host.setOverlay(true);
   }
@@ -61,15 +61,8 @@ window.RB = window.RB || {};
   function tick(dt) {
     if (!anim || !anim.canvas.isConnected) return;
     anim.t += dt;
-    const cv = anim.canvas;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = cv.clientWidth, h = cv.clientHeight;
-    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-    const c = cv.getContext('2d');
-    c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    c.clearRect(0, 0, w, h);
-    const f = C.fit(anim.id, w, h, 0.06, true);
-    C.draw(c, anim.id, { x: f.x, y: f.y, h: f.h, t: anim.t, walk: 0, shadow: C.byId(anim.id).plan !== 'flyer', seed: 2, mouth: Math.max(0, Math.sin(anim.t * 0.9) - 0.85) * 6 });
+    // Slowly turn the model and let it roar now and then.
+    RB.beasts.portrait(anim.canvas, anim.id, { t: anim.t, dt, angle: 0.95 + Math.sin(anim.t * 0.4) * 0.5, mouth: Math.max(0, Math.sin(anim.t * 0.9) - 0.85) * 6 });
   }
 
   const loot = (l) => [
@@ -517,7 +510,7 @@ window.RB = window.RB || {};
       <div class="actions">
         <button class="btn" data-set="sound">Sound: ${st.sound ? 'on' : 'off'}</button>
         <button class="btn" data-set="walk">Moving: ${st.walk === 'gps' ? 'real GPS' : 'tap the map to walk'}</button>
-        <button class="btn" data-set="map">Map: ${st.map === 'streets' ? 'streets' : 'neon grid (offline)'}</button>
+        <button class="btn" data-set="map">Map: ${({ auto: 'day and night follow your clock', day: 'always day', night: 'always night', grid: 'no street map (offline)' })[st.map] || 'auto'}</button>
         <button class="btn" data-set="ar">AR camera: ${st.ar === false ? 'off' : 'on'}</button>
         <button class="btn" data-guide>How to play</button>
         <button class="btn btn-danger" data-reset>Start over as a new agent</button>
@@ -528,7 +521,7 @@ window.RB = window.RB || {};
         const k = b.dataset.set;
         if (k === 'sound') { st.sound = !st.sound; sfx.on = st.sound; }
         if (k === 'walk') { st.walk = st.walk === 'gps' ? 'tap' : 'gps'; hooks.walkMode(); }
-        if (k === 'map') st.map = st.map === 'streets' ? 'grid' : 'streets';
+        if (k === 'map') st.map = ({ auto: 'day', day: 'night', night: 'grid', grid: 'auto' })[st.map] || 'day';
         if (k === 'ar') st.ar = st.ar === false;
         S.persist();
         menu();

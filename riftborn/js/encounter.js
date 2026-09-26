@@ -1,18 +1,24 @@
-/* Riftborn — the AR encounter. A creature steps out of a rift tear into
-   your camera view. Two tools:
+/* Riftborn — the AR encounter. A creature steps out of a rift tear and
+   stands in your room as a live 3D model, lit and casting a soft shadow on
+   your real floor. Two tools:
    - Darts: keep it in the crosshair (move your phone) and fire when the
      moving target lines up. Hits collect DNA and calm it down.
    - Rift Orbs: flick one up at it. Throw while the ring is small for a
      better chance. Calmer creatures are easier to catch.
    The encounter ends when you catch it, it flees, time runs out, or you
-   leave. DNA you collected is yours either way. */
+   leave. DNA you collected is yours either way.
+
+   AR world coordinates are meters: x east, y north, z up (see ar.js). The
+   3D scene uses three.js axes, so a point [x, y, z] sits at (x, z, -y). */
 window.RB = window.RB || {};
 (function (RB) {
   'use strict';
 
+  const T = window.THREE;
   const { clamp, rand, TAU, lerp } = RB.util;
   const C = RB.creatures;
   const S = RB.state;
+  const GX = RB.gfx;
   const ar = RB.ar;
   const sfx = RB.sfx;
   const $ = (id) => document.getElementById(id);
@@ -23,6 +29,10 @@ window.RB = window.RB || {};
 
   let E = null;            // current encounter
   let canvas = null, ctx = null, dpr = 1;
+  let scene = null, camera = null, renderer = null, sun = null, catcher = null, plain = null, tear = null, orbMesh = null;
+
+  const to3 = (p) => new T.Vector3(p[0], p[2], -p[1]);
+  const from3 = (v) => [v.x, -v.z, v.y];
 
   /* ------------------ Setup ------------------ */
 
@@ -37,31 +47,88 @@ window.RB = window.RB || {};
     $('enc-done').addEventListener('click', () => finish());
   }
 
+  function buildScene() {
+    if (scene) return;
+    renderer = GX.main();
+    scene = new T.Scene();
+    scene.environment = GX.environment(renderer);
+    camera = new T.PerspectiveCamera(60, 1, 0.05, 600);
+    scene.add(new T.HemisphereLight('#EEF2FF', '#6A5A48', 1.3));
+    sun = new T.DirectionalLight('#FFF6EA', 2.2);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.bias = -0.0005;
+    sun.shadow.normalBias = 0.02;
+    scene.add(sun, sun.target);
+    // Soft contact shadow on your real floor.
+    catcher = new T.Mesh(new T.PlaneGeometry(60, 60), new T.ShadowMaterial({ opacity: 0.4 }));
+    catcher.rotation.x = -Math.PI / 2;
+    catcher.receiveShadow = true;
+    scene.add(catcher);
+    // The Rift plain, when there's no camera.
+    plain = new T.Group();
+    const c = GX.canvas(256, 256), g = c.getContext('2d');
+    g.fillStyle = '#150E28';
+    g.fillRect(0, 0, 256, 256);
+    g.strokeStyle = 'rgba(170,120,255,0.55)';
+    g.lineWidth = 3;
+    g.strokeRect(0, 0, 256, 256);
+    const gt = GX.texture(c);
+    gt.wrapS = gt.wrapT = T.RepeatWrapping;
+    gt.repeat.set(100, 100);
+    gt.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    const floor = new T.Mesh(new T.PlaneGeometry(400, 400), new T.MeshStandardMaterial({ map: gt, roughness: 0.9 }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(1.3, -0.01, 0.7);
+    floor.receiveShadow = true;
+    plain.add(floor);
+    const N = 400, pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const a = Math.random() * TAU, e = 0.05 + Math.random() * 1.4;
+      pos.set([Math.cos(a) * Math.cos(e) * 250, Math.sin(e) * 250, Math.sin(a) * Math.cos(e) * 250], i * 3);
+    }
+    const sg = new T.BufferGeometry();
+    sg.setAttribute('position', new T.BufferAttribute(pos, 3));
+    plain.add(new T.Points(sg, new T.PointsMaterial({ color: '#FFFFFF', size: 1.4, sizeAttenuation: false, fog: false })));
+    scene.add(plain);
+    tear = new T.Sprite(new T.SpriteMaterial({ map: GX.glow(), color: '#FFFFFF', transparent: true, blending: T.AdditiveBlending, depthWrite: false, toneMapped: false }));
+    scene.add(tear);
+  }
+
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = canvas.clientWidth, h = canvas.clientHeight;
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
     ar.resize(w, h);
+    if (renderer) GX.fit();
   }
 
   async function start(spawn, done, opts) {
+    buildScene();
     const sp = C.byId(spawn.sp);
     const lvl = S.spawnLevel(spawn);
     const H = sp.size;
     const D = clamp(H * 2 + 2.5, 4.5, 17);
+    const inst = RB.beasts.instance(sp.id, { own: true });
+    scene.add(inst.root);
+    if (orbMesh) scene.remove(orbMesh);
+    orbMesh = RB.props.orb(S.faction().color);
+    orbMesh.scale.setScalar(ORB_R);
+    orbMesh.visible = false;
+    scene.add(orbMesh);
     E = {
-      spawn, sp, lvl, done,
+      spawn, sp, lvl, done, inst,
       H, D,
       fly: sp.plan === 'flyer',
       x: 0, y: D, alt: 0,
       vx: 0, vy: 0,
-      face: 1,
+      yaw: Math.PI,
       target: null, pause: 1.5, speedK: 1,
       t: 0, timeLeft: TIME,
       mode: S.save.items.darts > 0 ? 'dart' : 'orb',
       dna: 0, hits: 0, sed: 0,
-      tgt: { u: 0, v: -0.55, tu: 0, tv: -0.55, tt: 0 },
+      tgt: { bone: 0, cur: null, tt: 0, off: new T.Vector3() },
       darts: [],
       orb: null,
       ring: 0,
@@ -74,6 +141,7 @@ window.RB = window.RB || {};
       bonusXP: 0,
     };
     $('ar-screen').hidden = false;
+    GX.attach($('ar-gl'));
     $('enc-result').hidden = true;
     $('enc-name').textContent = sp.name;
     $('enc-meta').innerHTML = `<span style="color:${C.RARITY[sp.rar].color}">${C.RARITY[sp.rar].name}</span> · Lv ${lvl} · ${C.ELEMENTS[sp.el].icon} ${C.ELEMENTS[sp.el].name}`;
@@ -90,19 +158,22 @@ window.RB = window.RB || {};
     }
     if (opts.sensors) { await opts.sensors; await ar.startSensors(); }
     if (!E) return;
+    resize();
     if (ar.view.mode === 'touch') hint('Drag to look around. ' + (E.mode === 'dart' ? 'Tap Fire when the target lines up.' : 'Flick an orb up at it.'));
-    // Place it straight ahead of wherever you're looking now.
+    // Place it straight ahead of wherever you're looking now, facing you.
     const p = ar.spotAhead(D);
     E.x = p[0]; E.y = p[1];
     E.home = ar.heading();
     E.alt = E.fly ? H * 0.2 + 0.5 : 0;
-    sfx.roar();
+    E.yaw = Math.atan2(-E.x, E.y);
+    sfx.roar(E.H);
     E.mouth = 1;
   }
 
   function stop() {
     ar.stopCamera();
     $('ar-screen').hidden = true;
+    if (E) { scene.remove(E.inst.root); E.inst.dispose(); }
     E = null;
   }
 
@@ -140,69 +211,72 @@ window.RB = window.RB || {};
 
   /* ------------------ Creature ------------------ */
 
-  // Where on screen the creature is: its feet, and how many pixels one unit
-  // of its body is (one unit = its height), plus the tilt of the view.
-  function creatureScreen() {
-    const g = ar.project([E.x, E.y, E.alt]);
-    const top = ar.project([E.x, E.y, E.alt + E.H]);
-    if (!g || !top) return null;
-    const hpx = Math.hypot(top.x - g.x, top.y - g.y);
-    const ang = Math.atan2(top.x - g.x, -(top.y - g.y));
-    return { x: g.x, y: g.y, h: hpx, ang, depth: g.depth };
-  }
+  // A body point on screen: { x, y, depth } or null.
+  function screenOf(v3) { return ar.project(from3(v3)); }
 
-  // A point on the body (in unit coordinates) → screen.
-  function bodyPoint(cs, u, v) {
-    const ux = u * E.face;
-    const c = Math.cos(cs.ang), s = Math.sin(cs.ang);
-    return [cs.x + (ux * c - v * s) * cs.h, cs.y + (ux * s + v * c) * cs.h];
+  function bodyCenter() {
+    return E.inst.bones.hip.getWorldPosition(new T.Vector3());
   }
 
   function updateCreature(dt) {
     const e = E;
-    if (e.phase !== 'free') return;
-    e.speedK = lerp(e.speedK, 1, dt * 0.5);
-    if (!e.target) {
-      e.pause -= dt;
-      if (e.pause <= 0) {
-        // Wander within a cone in front of where it appeared.
-        const h = e.home || [0, 1];
-        const a = Math.atan2(h[1], h[0]) + rand(-0.22, 0.22);
-        const d = e.D * rand(0.8, 1.2);
-        e.target = [Math.cos(a) * d, Math.sin(a) * d];
-      }
-    } else {
-      const dx = e.target[0] - e.x, dy = e.target[1] - e.y;
-      const d = Math.hypot(dx, dy);
-      const speed = (0.35 + e.H * 0.18) * e.speedK * (1 - e.sed * 0.8);
-      if (d < 0.1) {
-        e.target = null;
-        e.pause = rand(0.8, 2.5);
-        e.vx = e.vy = 0;
-      } else {
-        e.vx = dx / d * speed;
-        e.vy = dy / d * speed;
-        e.x += e.vx * dt;
-        e.y += e.vy * dt;
-        const side = e.vx * ar.view.right[0] + e.vy * ar.view.right[1];
-        if (Math.abs(side) > 0.05) e.face = side > 0 ? 1 : -1;
-      }
-    }
-    // Roar now and then.
-    e.roarT -= dt;
-    if (e.roarT <= 0) { e.roarT = rand(6, 11); e.mouth = 1; sfx.roar(); }
     e.mouth = Math.max(0, e.mouth - dt * 0.9);
-    // The dart target drifts over its body.
-    const T = e.tgt;
-    T.tt -= dt;
-    if (T.tt <= 0) {
-      T.tt = rand(0.6, 1.4) * (1 + e.sed);
-      T.tu = rand(-0.4, 0.35);
-      T.tv = e.fly ? rand(-0.72, -0.55) : rand(-0.8, -0.4);
+    let speed = 0;
+    if (e.phase === 'free') {
+      e.speedK = lerp(e.speedK, 1, dt * 0.5);
+      if (!e.target) {
+        e.pause -= dt;
+        if (e.pause <= 0) {
+          // Wander within a cone in front of where it appeared.
+          const h = e.home || [0, 1];
+          const a = Math.atan2(h[1], h[0]) + rand(-0.22, 0.22);
+          const d = e.D * rand(0.8, 1.2);
+          e.target = [Math.cos(a) * d, Math.sin(a) * d];
+        }
+        // Idle: turn to face you.
+        const want = Math.atan2(-e.x, e.y);
+        const diff = ((want - e.yaw + Math.PI * 3) % TAU) - Math.PI;
+        e.yaw += diff * Math.min(1, dt * 1.5);
+      } else {
+        const dx = e.target[0] - e.x, dy = e.target[1] - e.y;
+        const d = Math.hypot(dx, dy);
+        speed = (0.35 + e.H * 0.18) * e.speedK * (1 - e.sed * 0.8);
+        if (d < 0.1) {
+          e.target = null;
+          e.pause = rand(0.8, 2.5);
+          e.vx = e.vy = 0;
+          speed = 0;
+        } else {
+          e.vx = dx / d * speed;
+          e.vy = dy / d * speed;
+          e.x += e.vx * dt;
+          e.y += e.vy * dt;
+          const want = Math.atan2(e.vx, -e.vy);
+          const diff = ((want - e.yaw + Math.PI * 3) % TAU) - Math.PI;
+          e.yaw += diff * Math.min(1, dt * 5);
+        }
+      }
+      // Roar now and then.
+      e.roarT -= dt;
+      if (e.roarT <= 0) { e.roarT = rand(6, 11); e.mouth = 1; sfx.roar(E.H); }
+      // The dart target hops between body parts.
+      const T0 = e.tgt;
+      T0.tt -= dt;
+      if (T0.tt <= 0) {
+        T0.tt = rand(0.6, 1.4) * (1 + e.sed);
+        T0.bone = Math.floor(Math.random() * e.inst.targets.length);
+        T0.off.set(rand(-0.05, 0.05), rand(-0.05, 0.08), rand(-0.05, 0.05)).multiplyScalar(e.H);
+      }
     }
-    const k = 1 - Math.exp(-dt * (2.4 - e.sed * 2));
-    T.u = lerp(T.u, T.tu, k);
-    T.v = lerp(T.v, T.tv, k);
+    const inst = e.inst;
+    inst.root.position.copy(to3([e.x, e.y, e.alt + (e.fly ? Math.sin(e.t * 2) * 0.12 : 0)]));
+    inst.root.rotation.y = e.yaw;
+    inst.update(dt, { speed: e.phase === 'free' ? speed : 0, mouth: e.mouth, flap: e.fly ? 0.4 : 0 });
+    if (e.phase === 'free' || e.phase === 'appear' || e.phase === 'flee') {
+      const want = e.inst.targets[e.tgt.bone].getWorldPosition(new T.Vector3()).add(e.tgt.off);
+      if (!e.tgt.cur) e.tgt.cur = want.clone();
+      e.tgt.cur.lerp(want, 1 - Math.exp(-dt * (5 - e.sed * 4)));
+    }
   }
 
   /* ------------------ Darts ------------------ */
@@ -217,16 +291,23 @@ window.RB = window.RB || {};
     hud();
   }
 
+  const targetR = () => [0.17, 0.14, 0.12, 0.1][E.sp.rar] * (1 + E.sed * 0.5);
+
+  function targetScreen() {
+    if (!E.tgt.cur) return null;
+    const s = screenOf(E.tgt.cur);
+    if (!s) return null;
+    return { x: s.x, y: s.y, r: ar.view.f * E.H * targetR() * 0.75 / s.depth };
+  }
+
   function resolveDart() {
     const v = ar.view;
-    const cs = creatureScreen();
     const cx = v.cx, cy = v.cy;
-    if (!cs) { msg('Miss', cx, cy - 30, '#AAB'); sfx.miss(); return; }
-    const tp = bodyPoint(cs, E.tgt.u, E.tgt.v);
-    const rpx = cs.h * targetR();
-    const d = Math.hypot(cx - tp[0], cy - tp[1]);
-    if (d < rpx) {
-      const bull = d < rpx * 0.4;
+    const ts = targetScreen();
+    if (!ts) { msg('Miss', cx, cy - 30, '#AAB'); sfx.miss(); return; }
+    const d = Math.hypot(cx - ts.x, cy - ts.y);
+    if (d < ts.r) {
+      const bull = d < ts.r * 0.4;
       const n = Math.round(C.RARITY[E.sp.rar].dna * (bull ? 2 : 1) * (1 + E.lvl / 40));
       E.dna += n;
       E.hits++;
@@ -234,20 +315,19 @@ window.RB = window.RB || {};
       E.hurt = 1;
       E.speedK = 1.8;
       E.tgt.tt = 0;
-      msg(bull ? `Bullseye! +${n} DNA` : `+${n} DNA`, tp[0], tp[1] - 20, bull ? '#FFE14D' : '#7CF0C8', bull);
-      for (let i = 0; i < (bull ? 16 : 9); i++) spark(tp[0], tp[1], C.ELEMENTS[E.sp.el].color);
+      msg(bull ? `Bullseye! +${n} DNA` : `+${n} DNA`, ts.x, ts.y - 20, bull ? '#FFE14D' : '#7CF0C8', bull);
+      for (let i = 0; i < (bull ? 16 : 9); i++) spark(ts.x, ts.y, C.ELEMENTS[E.sp.el].color);
       sfx.hit(bull);
     } else {
       // On the body but off target: it just flinches.
-      const body = Math.hypot(cx - bodyPoint(cs, 0, -0.55)[0], cy - bodyPoint(cs, 0, -0.55)[1]) < cs.h * 0.45;
+      const c = screenOf(bodyCenter());
+      const body = c && Math.hypot(cx - c.x, cy - c.y) < v.f * E.H * 0.4 / c.depth;
       msg(body ? 'Off target' : 'Miss', cx, cy - 34, '#C9C3E6');
       if (body) E.speedK = 1.4;
       sfx.miss();
     }
     hud();
   }
-
-  const targetR = () => [0.17, 0.14, 0.12, 0.1][E.sp.rar] * (1 + E.sed * 0.5);
 
   /* ------------------ Orbs ------------------ */
 
@@ -273,11 +353,10 @@ window.RB = window.RB || {};
     }
     const z0 = ar.EYE - 0.25;
     const tz = assisted ? E.alt + E.H * 0.45 : 0;
-    const T = clamp(dist / 11, 0.45, 1.3);
-    const p = [h[0] * 0.3, h[1] * 0.3, z0];
+    const Tt = clamp(dist / 11, 0.45, 1.3);
     E.orb = {
-      p,
-      v: [Math.cos(yaw) * dist / T, Math.sin(yaw) * dist / T, (tz - z0 + 0.5 * G * T * T) / T],
+      p: [h[0] * 0.3, h[1] * 0.3, z0],
+      v: [Math.cos(yaw) * dist / Tt, Math.sin(yaw) * dist / Tt, (tz - z0 + 0.5 * G * Tt * Tt) / Tt],
       spin: 0, life: 3, state: 'fly', ring: E.ring,
     };
     sfx.throw();
@@ -291,7 +370,6 @@ window.RB = window.RB || {};
     if (o.state === 'fly') {
       o.v[2] -= G * dt;
       for (let i = 0; i < 3; i++) o.p[i] += o.v[i] * dt;
-      // Hit?
       const dx = o.p[0] - E.x, dy = o.p[1] - E.y;
       const rH = E.H * (E.fly ? 0.45 : 0.4) + ORB_R;
       if (E.phase === 'free' && Math.hypot(dx, dy) < rH && o.p[2] > E.alt - 0.1 && o.p[2] < E.alt + E.H * 1.02) {
@@ -399,8 +477,8 @@ window.RB = window.RB || {};
       flee('It broke free and fled back into the Rift!');
     } else {
       e.phase = 'free';
-      const cs = creatureScreen();
-      if (cs) msg('It broke free!', cs.x, cs.y - cs.h - 20, '#FF8A8A', true);
+      const c = screenOf(bodyCenter());
+      if (c) msg('It broke free!', c.x, c.y - ar.view.f * e.H / c.depth * 0.7, '#FF8A8A', true);
     }
   }
 
@@ -425,9 +503,8 @@ window.RB = window.RB || {};
     $('enc-result-text').innerHTML = r.caught
       ? `<b style="color:${rc.color}">${rc.name}</b> · Level ${out.creature.lvl} · Power ${C.power(out.creature)}<br>+${E.dna + 25} ${E.sp.name} DNA · +${rc.xp + E.bonusXP} XP`
       : `${RB.util.esc(r.text || '')}<br>${E.dna ? `You kept +${E.dna} ${E.sp.name} DNA.` : 'Dart it next time to keep some DNA.'}`;
-    const cv = $('enc-result-pic');
-    C.portrait(cv, E.sp.id, { silhouette: !r.caught && !S.save.dex[E.sp.id]?.caught });
     el.hidden = false;
+    RB.beasts.portrait($('enc-result-pic'), E.sp.id, { silhouette: !r.caught && !(S.save.dex[E.sp.id] && S.save.dex[E.sp.id].caught) });
     if (out.up) RB.ui.levelUp(out.up);
   }
 
@@ -485,141 +562,114 @@ window.RB = window.RB || {};
     for (const m of e.msgs) { m.life -= dt; m.y -= 30 * dt; }
     e.msgs = e.msgs.filter((m) => m.life > 0);
     $('enc-timer-bar').style.width = `${clamp(e.timeLeft / TIME, 0, 1) * 100}%`;
-    render();
+    render3d();
+    render2d();
   }
 
-  function drawRiftTear(x, y, h, open, color) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 30;
-    const w = h * 0.35 * open;
-    const g = ctx.createRadialGradient(0, 0, 1, 0, 0, h * 0.6);
-    g.addColorStop(0, '#FFFFFF');
-    g.addColorStop(0.3, color);
-    g.addColorStop(1, color + '00');
-    ctx.fillStyle = g;
-    ctx.globalAlpha = open;
-    ctx.beginPath();
-    ctx.moveTo(0, -h * 0.6);
-    ctx.quadraticCurveTo(w, 0, 0, h * 0.6);
-    ctx.quadraticCurveTo(-w, 0, 0, -h * 0.6);
-    ctx.fill();
-    ctx.restore();
-  }
+  // The 3D layer: sync the camera with the phone, then draw the creature.
+  const basis = new T.Matrix4();
+  function render3d() {
+    const v = ar.view, e = E;
+    const r = to3(v.right).normalize(), u = to3(v.up).normalize(), f = to3(v.fwd).normalize().negate();
+    basis.makeBasis(r, u, f);
+    camera.quaternion.setFromRotationMatrix(basis);
+    camera.position.set(0, ar.EYE, 0);
+    camera.aspect = v.w / v.h;
+    camera.fov = 2 * Math.atan(v.h / 2 / v.f) * 180 / Math.PI;
+    camera.updateProjectionMatrix();
+    plain.visible = !v.camera;
+    catcher.visible = v.camera;
+    scene.background = v.camera ? null : bg();
+    scene.fog = v.camera ? null : fog();
 
-  function drawOrb(p, spin, wob) {
-    const s = ar.project(p);
-    if (!s) return;
-    const r = Math.max(4, ar.view.f * ORB_R / s.depth);
-    ctx.save();
-    ctx.translate(s.x, s.y);
-    ctx.rotate(wob || 0);
-    const col = S.faction().color;
-    ctx.shadowColor = col;
-    ctx.shadowBlur = 18;
-    const g = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
-    g.addColorStop(0, '#FFFFFF');
-    g.addColorStop(0.35, col);
-    g.addColorStop(1, '#1A0E30');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = '#120A1C';
-    ctx.lineWidth = Math.max(1.5, r * 0.12);
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
-    ctx.rotate(spin);
-    ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.stroke();
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.25, 0, TAU); ctx.fill(); ctx.stroke();
-    ctx.restore();
-  }
+    const inst = e.inst;
+    const pos = inst.root.position;
+    sun.position.set(pos.x + 4, 12, pos.z + 6);
+    sun.target.position.copy(pos);
+    const sc = sun.shadow.camera, ext = e.H * 1.6 + 1;
+    sc.left = -ext; sc.right = ext; sc.top = ext; sc.bottom = -ext; sc.near = 1; sc.far = 40;
+    sc.updateProjectionMatrix();
+    catcher.position.set(pos.x, 0.002, pos.z);
 
-  function render() {
-    const v = ar.view;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, v.w, v.h);
-    if (!v.camera) ar.drawBackdrop(ctx, E.t);
-    const e = E;
-    const cs = creatureScreen();
-    const elc = C.ELEMENTS[e.sp.el].color;
-
-    // Rift tear it came out of / flees into.
-    if (cs && (e.phase === 'appear' || e.phase === 'flee')) {
-      const open = e.phase === 'appear' ? Math.sin(Math.min(1, e.phaseT / 1.3) * Math.PI) : Math.sin(Math.min(1, e.phaseT / 1.2) * Math.PI);
-      drawRiftTear(cs.x, cs.y - cs.h * 0.55, cs.h * 1.3, open, elc);
-    }
-
-    // The creature.
+    // Fades, flashes and the capture pull.
     let alpha = 1, scale = 1;
     if (e.phase === 'appear') alpha = clamp(e.phaseT / 0.9, 0, 1);
     if (e.phase === 'flee') alpha = clamp(1 - e.phaseT / 0.9, 0, 1);
-    if (e.phase === 'absorb') { scale = 1 - clamp(e.phaseT / 0.5, 0, 1); }
+    if (e.phase === 'absorb') scale = 1 - clamp(e.phaseT / 0.5, 0, 1);
     const hidden = e.phase === 'fall' || e.phase === 'wobble' || e.phase === 'caught';
-    if (cs && !hidden && scale > 0.02) {
-      if (e.fly) {
-        const gs = ar.project([e.x, e.y, 0]);
-        if (gs) {
-          ctx.fillStyle = 'rgba(0,0,0,0.25)';
-          ctx.beginPath(); ctx.ellipse(gs.x, gs.y, cs.h * 0.3, cs.h * 0.06, 0, 0, TAU); ctx.fill();
-        }
-      }
-      ctx.save();
-      ctx.translate(cs.x, cs.y);
-      ctx.rotate(cs.ang);
-      const pull = e.phase === 'absorb' ? cs.h * 0.45 * (1 - scale) : 0;
-      C.draw(ctx, e.sp.id, {
-        x: 0, y: -pull, h: cs.h * scale, t: e.t, walk: Math.min(1, Math.hypot(e.vx, e.vy) * 1.2),
-        phase: e.t * (5 + Math.hypot(e.vx, e.vy) * 2), face: e.face, mouth: e.mouth,
-        tint: Math.max(e.hurt * 0.6, e.phase === 'absorb' ? 0.8 : 0), tintCol: e.phase === 'absorb' ? '#FFFFFF' : '#FF5A5A',
-        alpha, shadow: !e.fly, seed: 3,
-      });
-      ctx.restore();
+    inst.root.visible = !hidden && scale > 0.02;
+    inst.root.scale.setScalar(e.H * Math.max(scale, 0.001));
+    inst.setOpacity(alpha);
+    if (e.phase === 'absorb') inst.setTint('#FFFFFF', 1.5);
+    else if (e.hurt > 0.02) inst.setTint('#FF3030', e.hurt * 0.9);
+    else inst.setTint('#000000', 0);
 
-      // Dart target
-      if (e.mode === 'dart' && e.phase === 'free') {
-        const tp = bodyPoint(cs, e.tgt.u, e.tgt.v);
-        const r = cs.h * targetR();
+    // Rift tear it came out of / flees into.
+    if (e.phase === 'appear' || e.phase === 'flee') {
+      const open = Math.sin(Math.min(1, e.phaseT / (e.phase === 'appear' ? 1.3 : 1.2)) * Math.PI);
+      tear.visible = true;
+      tear.material.color.set(C.ELEMENTS[e.sp.el].color);
+      tear.position.set(pos.x, pos.y + e.H * 0.55, pos.z);
+      tear.scale.set(e.H * 0.9 * open + 0.01, e.H * 1.7 * Math.max(open, 0.2), 1);
+    } else tear.visible = false;
+
+    // Orb
+    const o = e.orb;
+    orbMesh.visible = !!o && !(o.state === 'capture' && e.phase === 'absorb');
+    if (o) {
+      orbMesh.position.copy(to3(o.p));
+      orbMesh.rotation.set(o.spin, 0, e.phase === 'wobble' ? Math.sin(e.phaseT / 0.9 * TAU) * 0.5 * Math.max(0, 1 - e.phaseT / 0.6) : 0);
+      if (o.state === 'capture') orbMesh.rotation.set(0, e.yaw, orbMesh.rotation.z);
+    }
+    renderer.toneMappingExposure = 1.05;
+    renderer.render(scene, camera);
+  }
+
+  let bgTex = null, fogObj = null;
+  const bg = () => bgTex || (bgTex = GX.gradient([[0, '#07061A'], [0.55, '#281446'], [1, '#5A2A6E']]));
+  const fog = () => fogObj || (fogObj = new T.Fog('#3A1C58', 30, 180));
+
+  // The 2D layer: crosshair, target, ring, darts, sparks and text.
+  function render2d() {
+    const v = ar.view, e = E;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, v.w, v.h);
+    const c = screenOf(bodyCenter());
+
+    if (e.mode === 'dart' && e.phase === 'free') {
+      const ts = targetScreen();
+      if (ts) {
         ctx.save();
         ctx.strokeStyle = '#FFE14D';
         ctx.fillStyle = 'rgba(255,225,77,0.14)';
         ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.arc(tp[0], tp[1], r, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(ts.x, ts.y, ts.r, 0, TAU); ctx.fill(); ctx.stroke();
         ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(tp[0], tp[1], r * 0.4, 0, TAU); ctx.stroke();
-        ctx.restore();
-      }
-      // Capture ring
-      if (e.mode === 'orb' && e.phase === 'free') {
-        const c = bodyPoint(cs, 0, e.fly ? -0.62 : -0.5);
-        const R = cs.h * 0.55;
-        const pc = catchChance(0);
-        const col = pc > 0.4 ? '#5CFF8A' : pc > 0.2 ? '#FFE14D' : '#FF6A5A';
-        ctx.save();
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-        ctx.beginPath(); ctx.arc(c[0], c[1], R, 0, TAU); ctx.stroke();
-        ctx.strokeStyle = col;
-        ctx.shadowColor = col;
-        ctx.shadowBlur = 10;
-        ctx.beginPath(); ctx.arc(c[0], c[1], R * e.ring, 0, TAU); ctx.stroke();
+        ctx.beginPath(); ctx.arc(ts.x, ts.y, ts.r * 0.4, 0, TAU); ctx.stroke();
         ctx.restore();
       }
     }
-
-    // Orb
-    if (e.orb && e.orb.state !== 'capture') drawOrb(e.orb.p, e.orb.spin);
-    if (e.orb && e.orb.state === 'capture' && e.phase !== 'absorb') {
-      const w = e.phase === 'wobble' ? Math.sin(e.phaseT / 0.9 * Math.PI * 2) * 0.4 * Math.max(0, 1 - e.phaseT / 0.6) : 0;
-      drawOrb(e.orb.p, 0, w);
-      if (e.phase === 'caught') {
-        const s = ar.project(e.orb.p);
-        if (s) {
-          ctx.fillStyle = '#FFE14D';
-          ctx.font = '700 22px "Chakra Petch", system-ui';
-          ctx.textAlign = 'center';
-          ctx.fillText('★', s.x, s.y - 26 - Math.sin(e.t * 6) * 3);
-        }
+    if (e.mode === 'orb' && e.phase === 'free' && c) {
+      const R = v.f * e.H * 0.5 / c.depth;
+      const pc = catchChance(0);
+      const col = pc > 0.4 ? '#5CFF8A' : pc > 0.2 ? '#FFE14D' : '#FF6A5A';
+      ctx.save();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = col;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(c.x, c.y, R * e.ring, 0, TAU); ctx.stroke();
+      ctx.restore();
+    }
+    if (e.phase === 'caught' && e.orb) {
+      const s = ar.project(e.orb.p);
+      if (s) {
+        ctx.fillStyle = '#FFE14D';
+        ctx.font = '700 22px "Chakra Petch", system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('★', s.x, s.y - 26 - Math.sin(e.t * 6) * 3);
       }
     }
 
@@ -636,6 +686,8 @@ window.RB = window.RB || {};
     if (e.mode === 'dart' && e.phase === 'free') {
       ctx.save();
       ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.shadowColor = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 4;
       ctx.lineWidth = 2;
       const R = 18;
       ctx.beginPath(); ctx.arc(v.cx, v.cy, R, 0, TAU); ctx.stroke();
@@ -653,40 +705,40 @@ window.RB = window.RB || {};
 
     // Orb ready in hand
     if (e.mode === 'orb' && e.phase === 'free' && !e.orb && S.save.items.orbs > 0) {
-      const y = v.h - 120 - (drag ? 0 : Math.sin(e.t * 3) * 4);
       const x = drag ? drag.x : v.cx;
-      const yy = drag ? drag.y : y;
-      ctx.save();
+      const y = drag ? drag.y : v.h - 120 - Math.sin(e.t * 3) * 4;
       const r = 30;
       const col = S.faction().color;
+      ctx.save();
       ctx.shadowColor = col;
       ctx.shadowBlur = 20;
-      const g = ctx.createRadialGradient(x - 9, yy - 9, 3, x, yy, r);
+      const g = ctx.createRadialGradient(x - 9, y - 9, 3, x, y, r);
       g.addColorStop(0, '#FFFFFF');
       g.addColorStop(0.35, col);
       g.addColorStop(1, '#1A0E30');
       ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(x, yy, r, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
       ctx.shadowBlur = 0;
       ctx.strokeStyle = '#120A1C';
       ctx.lineWidth = 3.5;
       ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x - r, yy); ctx.lineTo(x + r, yy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - r, y); ctx.lineTo(x + r, y); ctx.stroke();
       ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath(); ctx.arc(x, yy, 8, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, 8, 0, TAU); ctx.fill(); ctx.stroke();
       ctx.restore();
     }
 
     // Off-screen arrow
-    if (!cs || cs.x < -40 || cs.x > v.w + 40 || cs.y < -40 || cs.y > v.h + 40) {
+    if (!c || c.x < -40 || c.x > v.w + 40 || c.y < -40 || c.y > v.h + 40) {
       const d = ar.screenDirection([e.x, e.y, e.alt + e.H * 0.5]);
-      let ax = d.x, ay = d.y;
+      let ax = d.x;
+      const ay = d.y;
       if (d.depth < 0 && Math.hypot(ax, ay) < 1e-3) ax = 1;
       const a = Math.atan2(ay, ax);
       const R = Math.min(v.w, v.h) * 0.38;
-      const x = v.cx + Math.cos(a) * R, y = v.cy + Math.sin(a) * R;
+      const elc = C.ELEMENTS[e.sp.el].color;
       ctx.save();
-      ctx.translate(x, y);
+      ctx.translate(v.cx + Math.cos(a) * R, v.cy + Math.sin(a) * R);
       ctx.rotate(a);
       ctx.fillStyle = elc;
       ctx.shadowColor = elc;
@@ -695,7 +747,6 @@ window.RB = window.RB || {};
       ctx.restore();
     }
 
-    // Particles and floating text
     for (const p of e.parts) {
       ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
       ctx.fillStyle = p.color;
@@ -713,7 +764,6 @@ window.RB = window.RB || {};
       ctx.fillText(m.text, m.x, m.y);
     }
     ctx.globalAlpha = 1;
-
     if (e.flash > 0) {
       ctx.fillStyle = `rgba(255,255,255,${e.flash * 0.6})`;
       ctx.fillRect(0, 0, v.w, v.h);
@@ -728,11 +778,11 @@ window.RB = window.RB || {};
     let look = null;
     canvas.addEventListener('pointerdown', (e) => {
       if (!E) return;
-      canvas.setPointerCapture(e.pointerId);
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* the pointer already ended */ }
       const r = canvas.getBoundingClientRect();
       const x = e.clientX - r.left, y = e.clientY - r.top;
       if (E.mode === 'orb' && E.phase === 'free' && !E.orb && y > ar.view.h * 0.45) {
-        drag = { x, y, id: e.pointerId, hist: [[x, y, performance.now()]] };
+        drag = { x, y, id: e.pointerId, hist: [[x, y, e.timeStamp]] };
         return;
       }
       look = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false };
@@ -742,7 +792,7 @@ window.RB = window.RB || {};
         const r = canvas.getBoundingClientRect();
         drag.x = e.clientX - r.left;
         drag.y = e.clientY - r.top;
-        drag.hist.push([drag.x, drag.y, performance.now()]);
+        drag.hist.push([drag.x, drag.y, e.timeStamp]);
         if (drag.hist.length > 8) drag.hist.shift();
         return;
       }
@@ -756,9 +806,11 @@ window.RB = window.RB || {};
     });
     const up = (e) => {
       if (drag && e.pointerId === drag.id) {
+        // Speed over the last moment of the flick, timed by when the touches
+        // happened (not when we got round to handling them).
         const h = drag.hist;
-        const now = performance.now();
-        const old = h.find((p) => now - p[2] < 120) || h[0];
+        const now = e.timeStamp;
+        const old = h.find((p) => now - p[2] < 120) || h[Math.max(0, h.length - 2)];
         const last = h[h.length - 1];
         const dt = Math.max(0.016, (last[2] - old[2]) / 1000);
         const vx = (last[0] - old[0]) / dt, vy = (last[1] - old[1]) / dt;

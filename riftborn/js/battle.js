@@ -1,12 +1,13 @@
-/* Riftborn — Rift battles. To take an enemy Rift you beat the creatures
-   guarding it: your team of up to three against theirs, one at a time.
-   Each turn both sides pick a move; faster creatures act first, and Guard
-   always goes first. Elements matter: see RB.creatures.advantage. */
+/* Riftborn — Rift battles, in a 3D arena under a swirling rift. To take an
+   enemy Rift you beat the creatures guarding it: your team of up to three
+   against theirs, one at a time. Each turn both sides pick a move; faster
+   creatures act first, and Guard always goes first. Elements matter: see
+   RB.creatures.advantage. */
 window.RB = window.RB || {};
 (function (RB) {
   'use strict';
 
-  const { clamp, rand, TAU, lerp } = RB.util;
+  const { clamp, rand, TAU } = RB.util;
   const C = RB.creatures;
   const sfx = RB.sfx;
   const $ = (id) => document.getElementById(id);
@@ -55,17 +56,21 @@ window.RB = window.RB || {};
       outcome: null,
     };
     $('battle-screen').hidden = false;
+    buildArena();
+    GX.attach($('battle-gl'));
     $('bt-result').hidden = true;
     $('bt-title').textContent = opts.title || 'Rift battle';
     resize();
     hud();
     log(`${B.foe[0].sp.name} guards the Rift!`);
-    sfx.roar();
+    sfx.roar(B.foe[0].sp.size);
     B.foe[0].anim.mouth = 1;
   }
 
   function close() {
     $('battle-screen').hidden = true;
+    for (const f of B.me.concat(B.foe)) if (f.model) { scene.remove(f.model.root); f.model.dispose(); }
+    for (const x of B.fx) if (x.obj) fxGroup.remove(x.obj);
     B = null;
   }
 
@@ -176,9 +181,9 @@ window.RB = window.RB || {};
     if (!B) return;
     target.hp = Math.max(0, target.hp - dmg);
     target.anim.hurt = 1;
-    const p = pos(target.side);
-    B.nums.push({ text: `-${dmg}${crit ? '!' : ''}`, x: p[0], y: p[1] - p[2] * 0.9, life: 1.1, color: adv > 1 ? '#FFE14D' : '#FFFFFF' });
-    for (let i = 0; i < (mv === 'blast' ? 22 : 10); i++) spark(p[0], p[1] - p[2] * 0.5, mv === 'blast' ? el.color : '#FFFFFF');
+    const p = chestOf(target);
+    B.nums.push({ text: `-${dmg}${crit ? '!' : ''}`, p: p.clone().add(new T.Vector3(0, dispH(target) * 0.55, 0)), life: 1.1, color: adv > 1 ? '#FFE14D' : '#FFFFFF' });
+    for (let i = 0; i < (mv === 'blast' ? 26 : 12); i++) spark(p, mv === 'blast' ? el.color : '#FFF2D0');
     if (adv > 1.3) log('Super effective!');
     else if (adv < 1) log('Not very effective…');
     else if (target.guard) log(`${target.sp.name} blocked most of it.`);
@@ -200,7 +205,7 @@ window.RB = window.RB || {};
       B.fi = next;
       log(`${cur(1).sp.name} steps up!`);
       cur(1).anim.mouth = 1;
-      sfx.roar();
+      sfx.roar(cur(1).sp.size);
       hud();
       await wait(500);
     }
@@ -261,19 +266,125 @@ window.RB = window.RB || {};
     $('bt-result').hidden = false;
   }
 
-  /* ------------------ Drawing ------------------ */
+  /* ------------------ The arena ------------------ */
 
-  // Screen spot of each side's creature: [x, groundY, heightPx].
-  function pos(side) {
-    const f = cur(side);
-    const base = Math.min(Wd * 0.34, Ht * 0.3);
-    const h = base * clamp(0.65 + Math.log2(f.sp.size) * 0.2, 0.6, 1.25);
-    return side === 0 ? [Wd * 0.3, Ht * 0.7, h * 1.1] : [Wd * 0.7, Ht * 0.44, h * 0.85];
+  const T = window.THREE;
+  const GX = RB.gfx;
+  const SPOT = [new T.Vector3(-2.3, 0, 2.7), new T.Vector3(2.3, 0, -2.7)];
+  let scene = null, camera = null, renderer = null, portal = null, fxGroup = null, sun = null;
+  const shields = [];
+
+  function stoneTexture() {
+    const c = GX.canvas(512, 512), g = c.getContext('2d');
+    g.fillStyle = '#4A4452';
+    g.fillRect(0, 0, 512, 512);
+    const r = RB.util.rng('arena');
+    // Flagstones
+    for (let y = 0; y < 512; y += 64) {
+      for (let x = -((y / 64) % 2) * 40; x < 512; x += 80) {
+        const sh = 60 + Math.floor(r() * 30);
+        g.fillStyle = `rgb(${sh},${sh - 6},${sh + 8})`;
+        g.fillRect(x + 3, y + 3, 74, 58);
+      }
+    }
+    for (let i = 0; i < 1800; i++) {
+      g.fillStyle = r() < 0.5 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.05)';
+      g.beginPath(); g.arc(r() * 512, r() * 512, 1 + r() * 5, 0, TAU); g.fill();
+    }
+    const t = GX.texture(c);
+    t.wrapS = t.wrapT = T.RepeatWrapping;
+    t.repeat.set(4, 4);
+    return t;
   }
 
-  function spark(x, y, color) {
-    const a = Math.random() * TAU, s = rand(80, 300);
-    B.fx.push({ kind: 'spark', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 60, t: 0, dur: rand(0.4, 0.8), color });
+  function buildArena() {
+    if (scene) return;
+    renderer = GX.main();
+    scene = new T.Scene();
+    scene.environment = GX.environment(renderer);
+    scene.background = GX.gradient([[0, '#06041A'], [0.45, '#241046'], [1, '#6A2E7A']]);
+    scene.fog = new T.Fog('#3A1C58', 22, 70);
+    camera = new T.PerspectiveCamera(46, 1, 0.1, 300);
+    scene.add(new T.HemisphereLight('#B8B0FF', '#2A1A30', 1.1));
+    sun = new T.DirectionalLight('#FFE8D0', 2.3);
+    sun.position.set(6, 14, 8);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    const sc = sun.shadow.camera;
+    sc.left = -9; sc.right = 9; sc.top = 9; sc.bottom = -9; sc.near = 1; sc.far = 40;
+    sun.shadow.bias = -0.0006;
+    scene.add(sun);
+    const rim = new T.DirectionalLight('#C070FF', 1.6);
+    rim.position.set(-4, 5, -12);
+    scene.add(rim);
+    const floor = new T.Mesh(new T.CircleGeometry(13, 72), new T.MeshStandardMaterial({ map: stoneTexture(), roughness: 0.92 }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+    const outer = new T.Mesh(new T.PlaneGeometry(400, 400), new T.MeshStandardMaterial({ color: '#1A1224', roughness: 1 }));
+    outer.rotation.x = -Math.PI / 2;
+    outer.position.y = -0.05;
+    scene.add(outer);
+    const runes = RB.props.ringMarker('#B45CFF', 7, 0.55);
+    runes.position.y = 0.03;
+    scene.add(runes);
+    for (const s of SPOT) {
+      const pad = RB.props.ringMarker('#FFFFFF', 1.8, 0.35);
+      pad.position.set(s.x, 0.04, s.z);
+      scene.add(pad);
+    }
+    const r = RB.util.rng('rocks');
+    for (let i = 0; i < 22; i++) {
+      const a = i / 22 * TAU + r() * 0.2;
+      const rock = RB.props.rock(i);
+      const d = 12.5 + r() * 3;
+      const s = 0.8 + r() * 1.2;
+      rock.position.set(Math.cos(a) * d, 0.4 * s, Math.sin(a) * d);
+      rock.scale.set(s * (1 + r() * 0.6), s * (0.8 + r() * 1.6), s * (1 + r() * 0.6));
+      rock.rotation.set(r() * 0.3, r() * 6, r() * 0.3);
+      scene.add(rock);
+    }
+    // The rift overhead.
+    portal = new T.Group();
+    portal.position.set(4, 11, -22);
+    const torus = new T.Mesh(new T.TorusGeometry(6, 0.45, 12, 64), RB.props.std({ color: '#B45CFF', emissive: new T.Color('#B45CFF'), emissiveIntensity: 1.6 }));
+    portal.add(torus);
+    for (let i = 0; i < 3; i++) {
+      const sw = GX.sprite(i === 1 ? '#FF5CF0' : '#8A5CFF', 13 - i * 3, 0.55);
+      portal.add(sw);
+    }
+    scene.add(portal);
+    fxGroup = new T.Group();
+    scene.add(fxGroup);
+    for (let i = 0; i < 2; i++) {
+      const sh = new T.Mesh(new T.SphereGeometry(1, 32, 20), new T.MeshBasicMaterial({ color: '#9FE8FF', transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, toneMapped: false }));
+      scene.add(sh);
+      shields.push(sh);
+    }
+  }
+
+  // Creatures are shown at a size that fits the arena, big ones bigger.
+  const dispH = (f) => clamp(1.15 + Math.log2(f.sp.size) * 0.6, 1.1, 2.7);
+
+  function model(f) {
+    if (!f.model) {
+      f.model = RB.beasts.instance(f.sp.id, { own: true });
+      f.model.root.scale.setScalar(dispH(f));
+      scene.add(f.model.root);
+    }
+    return f.model;
+  }
+
+  function chestOf(f) {
+    return model(f).bones.f0.getWorldPosition(new T.Vector3());
+  }
+
+  function spark(p, color) {
+    const s = GX.sprite(color, rand(0.15, 0.35), 1);
+    s.position.copy(p);
+    fxGroup.add(s);
+    const a = Math.random() * TAU, e = rand(-0.3, 1.2), sp = rand(2, 6);
+    B.fx.push({ kind: 'spark', obj: s, v: new T.Vector3(Math.cos(a) * Math.cos(e) * sp, Math.sin(e) * sp + 1, Math.sin(a) * Math.cos(e) * sp), t: 0, dur: rand(0.4, 0.8) });
   }
 
   function update(dt) {
@@ -281,101 +392,106 @@ window.RB = window.RB || {};
     B.t += dt;
     for (const f of B.me.concat(B.foe)) {
       const a = f.anim;
-      a.lunge = Math.max(0, a.lunge - dt * 3);
+      a.lunge = Math.max(0, a.lunge - dt * 2.4);
       a.hurt = Math.max(0, a.hurt - dt * 2.5);
       a.shield = Math.max(0, a.shield - dt * 0.8);
       a.mouth = Math.max(0, a.mouth - dt * 1.5);
-      if (a.faint > 0) a.faint = Math.min(1, a.faint + dt * 1.6);
+      if (a.faint > 0) a.faint = Math.min(1, a.faint + dt * 1.4);
     }
+    // Fighters
+    for (const f of B.me.concat(B.foe)) if (f.model) f.model.root.visible = false;
+    for (const side of [0, 1]) {
+      const f = cur(side);
+      const m = model(f);
+      const a = f.anim;
+      const base = SPOT[side], other = SPOT[1 - side];
+      const dir = other.clone().sub(base);
+      const dist = dir.length();
+      dir.normalize();
+      const h = dispH(f);
+      const lunge = Math.sin(a.lunge * Math.PI) * dist * 0.32;
+      const knock = a.hurt * 0.35;
+      const fly = f.sp.plan === 'flyer' ? h * 0.35 + Math.sin(B.t * 2 + side) * 0.1 : 0;
+      m.root.visible = true;
+      m.root.position.copy(base).addScaledVector(dir, lunge - knock);
+      m.root.position.y = fly - a.faint * h * 0.15;
+      m.root.rotation.set(0, Math.atan2(dir.x, dir.z), a.faint * Math.PI * 0.45 * (side ? 1 : -1));
+      m.update(dt, { speed: a.lunge > 0.05 ? 4 * h : 0, mouth: a.mouth, flap: 0.5 });
+      if (a.hurt > 0.02) m.setTint('#FF3030', a.hurt * 0.9); else m.setTint('#000000', 0);
+      m.setOpacity(a.faint > 0.5 ? 1 - (a.faint - 0.5) * 2 : 1);
+      const sh = shields[side];
+      sh.material.opacity = a.shield * 0.3;
+      sh.visible = a.shield > 0.01;
+      sh.position.copy(m.root.position).add(new T.Vector3(0, h * 0.5, 0));
+      sh.scale.setScalar(h * 0.85 * (1 + (1 - a.shield) * 0.2));
+    }
+    // Effects
     for (const x of B.fx) {
       x.t += dt;
-      if (x.kind === 'spark') { x.x += x.vx * dt; x.y += x.vy * dt; x.vy += 500 * dt; }
+      if (x.kind === 'blast') {
+        if (!x.obj) {
+          x.obj = GX.sprite(x.color, 1.4, 1);
+          const core = new T.Mesh(new T.SphereGeometry(0.22, 16, 12), new T.MeshBasicMaterial({ color: '#FFFFFF', toneMapped: false }));
+          x.obj.add(core);
+          core.scale.setScalar(1 / 1.4);
+          fxGroup.add(x.obj);
+          x.a = chestOf(cur(x.from));
+          x.b = chestOf(cur(1 - x.from));
+        }
+        const k = Math.min(1, x.t / x.dur);
+        x.obj.position.copy(x.a).lerp(x.b, k);
+        x.obj.position.y += Math.sin(k * Math.PI) * 1.2;
+        x.obj.scale.setScalar(1.2 + Math.sin(B.t * 30) * 0.2);
+        if (Math.random() < 0.8) spark(x.obj.position, x.color);
+      } else if (x.kind === 'spark') {
+        x.v.y -= 9 * dt;
+        x.obj.position.addScaledVector(x.v, dt);
+        x.obj.material.opacity = 1 - x.t / x.dur;
+      }
     }
+    for (const x of B.fx) if (x.t >= x.dur && x.obj) { fxGroup.remove(x.obj); x.obj.material.dispose(); }
     B.fx = B.fx.filter((x) => x.t < x.dur);
-    for (const n of B.nums) { n.life -= dt; n.y -= 40 * dt; }
+    for (const n of B.nums) { n.life -= dt; n.p.y += 0.9 * dt; }
     B.nums = B.nums.filter((n) => n.life > 0);
+    portal.rotation.z += dt * 0.25;
+    portal.children.forEach((c, i) => { if (c.isSprite) c.material.rotation += dt * (0.3 + i * 0.2); });
     render();
   }
 
+  function frameCamera() {
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
+    camera.aspect = w / Math.max(1, h);
+    // Behind and to the right of your creature, looking across at theirs;
+    // pulled back further on narrow screens.
+    const narrow = camera.aspect < 0.8;
+    const dir = SPOT[1].clone().sub(SPOT[0]).normalize();
+    const right = new T.Vector3(-dir.z, 0, dir.x);
+    camera.position.copy(SPOT[0]).addScaledVector(dir, narrow ? -6.5 : -4.5).addScaledVector(right, narrow ? 3.6 : 3.2).setY(narrow ? 4.4 : 3.4);
+    const look = SPOT[0].clone().lerp(SPOT[1], 0.5).setY(1.0);
+    camera.lookAt(look);
+    camera.updateProjectionMatrix();
+  }
+
   function render() {
+    GX.fit();
+    frameCamera();
+    renderer.toneMappingExposure = 1.05;
+    renderer.render(scene, camera);
+    // Damage numbers on the 2D layer.
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const g = ctx.createLinearGradient(0, 0, 0, Ht);
-    g.addColorStop(0, '#0B0620');
-    g.addColorStop(0.5, '#2A1150');
-    g.addColorStop(1, '#0C0818');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, Wd, Ht);
-    // Swirling rift behind the enemy
-    ctx.save();
-    ctx.translate(Wd * 0.7, Ht * 0.26);
-    for (let i = 0; i < 5; i++) {
-      ctx.rotate(B.t * 0.15 + i);
-      ctx.strokeStyle = `rgba(180,92,255,${0.08 + i * 0.03})`;
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(0, 0, Wd * (0.18 + i * 0.05), Ht * 0.05 + i * 6, 0, 0, TAU); ctx.stroke();
-    }
-    ctx.restore();
-
-    for (const side of [1, 0]) {
-      const f = cur(side);
-      const [x, y, h] = pos(side);
-      // Platform
-      ctx.fillStyle = side === 0 ? 'rgba(46,230,197,0.14)' : 'rgba(255,79,163,0.14)';
-      ctx.strokeStyle = side === 0 ? 'rgba(46,230,197,0.5)' : 'rgba(255,79,163,0.5)';
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(x, y + 4, h * 0.75, h * 0.16, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      const a = f.anim;
-      const dir = side === 0 ? 1 : -1;
-      const lx = Math.sin(a.lunge * Math.PI) * h * 0.35 * dir;
-      const shake = a.hurt > 0 ? Math.sin(B.t * 60) * 6 * a.hurt : 0;
-      const fly = f.sp.plan === 'flyer' ? h * 0.25 + Math.sin(B.t * 2) * 5 : 0;
-      C.draw(ctx, f.sp.id, {
-        x: x + lx + shake - dir * h * 0.1, y: y - fly + a.faint * h * 0.3, h: h, t: B.t + side * 1.3,
-        walk: a.lunge > 0 ? 1 : 0, face: dir, mouth: a.mouth,
-        tint: a.hurt * 0.7, tintCol: '#FF4040', alpha: 1 - a.faint, shadow: f.sp.plan !== 'flyer', seed: side,
-      });
-      if (a.shield > 0) {
-        ctx.save();
-        ctx.globalAlpha = a.shield;
-        ctx.strokeStyle = '#9FE8FF';
-        ctx.fillStyle = 'rgba(159,232,255,0.15)';
-        ctx.lineWidth = 3;
-        ctx.shadowColor = '#9FE8FF';
-        ctx.shadowBlur = 16;
-        ctx.beginPath(); ctx.ellipse(x, y - fly - h * 0.5, h * 0.75, h * 0.62, 0, 0, TAU); ctx.fill(); ctx.stroke();
-        ctx.restore();
-      }
-    }
-
-    for (const x of B.fx) {
-      if (x.kind === 'blast') {
-        const a = pos(x.from), b = pos(1 - x.from);
-        const k = x.t / x.dur;
-        const px = lerp(a[0], b[0], k), py = lerp(a[1] - a[2] * 0.6, b[1] - b[2] * 0.5, k) - Math.sin(k * Math.PI) * 40;
-        ctx.save();
-        ctx.shadowColor = x.color;
-        ctx.shadowBlur = 25;
-        ctx.fillStyle = x.color;
-        ctx.beginPath(); ctx.arc(px, py, 14 + Math.sin(k * 20) * 3, 0, TAU); ctx.fill();
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath(); ctx.arc(px, py, 6, 0, TAU); ctx.fill();
-        ctx.restore();
-      } else {
-        ctx.globalAlpha = 1 - x.t / x.dur;
-        ctx.fillStyle = x.color;
-        ctx.beginPath(); ctx.arc(x.x, x.y, 3.5, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-    }
+    ctx.clearRect(0, 0, Wd, Ht);
     ctx.textAlign = 'center';
     for (const n of B.nums) {
+      const v = n.p.clone().project(camera);
+      if (v.z > 1) continue;
+      const x = (v.x + 1) / 2 * Wd, y = (1 - v.y) / 2 * Ht;
       ctx.globalAlpha = clamp(n.life / 0.4, 0, 1);
-      ctx.font = '700 28px "Chakra Petch", system-ui, sans-serif';
+      ctx.font = '700 30px "Chakra Petch", system-ui, sans-serif';
       ctx.lineWidth = 5;
       ctx.strokeStyle = 'rgba(10,5,20,0.85)';
-      ctx.strokeText(n.text, n.x, n.y);
+      ctx.strokeText(n.text, x, y);
       ctx.fillStyle = n.color;
-      ctx.fillText(n.text, n.x, n.y);
+      ctx.fillText(n.text, x, y);
     }
     ctx.globalAlpha = 1;
   }
