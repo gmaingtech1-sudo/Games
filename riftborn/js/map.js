@@ -29,11 +29,11 @@ window.RB = window.RB || {};
   let container = null, renderer = null, scene = null, camera = null;
   let handlers = {};
   const cam = { yaw: 0, dist: 95, target: new T.Vector3() };
-  const player = { lat: 0, lng: 0, heading: null, walkTo: null, moving: 0 };
+  const player = { lat: 0, lng: 0, heading: null, faceTo: null, moving: 0 };
   let ents = { rifts: [], drops: [], spawns: [] };
   let t = 0;
   let sun, hemi, shadowCatcher, ground, groundMat;
-  let agent, rangeRing, rangeFill, pulseRing, walkMarker, motes;
+  let agent, rangeRing, rangeFill, pulseRing, motes;
   let style = '';
   const live = { rifts: new Map(), drops: new Map(), spawns: new Map() };
   const picks = [];
@@ -89,10 +89,6 @@ window.RB = window.RB || {};
     pulseRing = P.ringMarker(S.faction().color, 10, 0.8);
     pulseRing.position.y = 0.45;
     scene.add(pulseRing);
-    walkMarker = P.ringMarker('#FFFFFF', 5, 0.9);
-    walkMarker.position.y = 0.5;
-    walkMarker.visible = false;
-    scene.add(walkMarker);
 
     // Floating rift energy around you.
     const N = 260;
@@ -426,7 +422,8 @@ window.RB = window.RB || {};
 
     agent.root.position.copy(me);
     let face = null;
-    if (player.walkTo) { const w = toV(player.walkTo.lat, player.walkTo.lng); face = Math.atan2(w.x - me.x, w.z - me.z); }
+    // Face the way you're walking, or your compass heading when standing.
+    if (player.faceTo) { const w = toV(player.faceTo.lat, player.faceTo.lng); face = Math.atan2(w.x - me.x, w.z - me.z); }
     else if (player.heading != null) face = Math.PI - player.heading * Math.PI / 180;
     if (face != null) {
       const diff = ((face - agent.root.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
@@ -439,11 +436,6 @@ window.RB = window.RB || {};
     pulseRing.position.set(me.x, 0.45, me.z);
     pulseRing.scale.setScalar(1 + u * 5.5);
     pulseRing.material.opacity = (1 - u) * 0.35;
-    if (player.walkTo) {
-      walkMarker.visible = true;
-      walkMarker.position.copy(toV(player.walkTo.lat, player.walkTo.lng, 0.5));
-      walkMarker.scale.setScalar(1 + Math.sin(t * 6) * 0.15);
-    } else walkMarker.visible = false;
 
     // Light and shadows centred on you.
     sun.position.set(me.x + 120, 220, me.z + 60);

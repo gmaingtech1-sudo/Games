@@ -12,7 +12,7 @@ window.RB = window.RB || {};
   const sfx = RB.sfx;
   const $ = (id) => document.getElementById(id);
 
-  let hooks = {};          // set by main: engage, assault, walkTo, player()
+  let hooks = {};          // set by main: engage, assault, changed, player()
   let current = null;      // { name, refresh }
   let anim = null;         // animated portrait in the sheet
 
@@ -86,15 +86,16 @@ window.RB = window.RB || {};
 
   function reportUp(r) { if (r && r.up) levelUp(r.up); }
 
+  // Distance from you in meters, or Infinity until the GPS has found you.
   function distTo(e) {
-    return W.distM(hooks.player(), e);
+    const me = hooks.player();
+    return me ? W.distM(me, e) : Infinity;
   }
 
-  function walkButton(e) {
-    return S.save.settings.walk === 'tap' ? '<button class="btn" data-walk>Walk there</button>' : '';
-  }
-  function bindWalk(card, e) {
-    on(card, '[data-walk]', () => { hooks.walkTo(e); close(); });
+  // "Walk closer" line for things out of reach.
+  function tooFar(d, what) {
+    if (d === Infinity) return '<p class="far">Waiting for your GPS location…</p>';
+    return `<p class="far">${fmtDist(d)} away. Walk within ${S.RANGE} m to ${what}.</p>`;
   }
 
   const pct = (n) => `${Math.round(clamp(n, 0, 1) * 100)}%`;
@@ -122,11 +123,10 @@ window.RB = window.RB || {};
       ${near
         ? `<button class="btn btn-main btn-big" data-engage>Engage in AR</button>
            <p class="muted small center">🎯 ${S.save.items.darts} darts · 🔮 ${S.save.items.orbs} orbs</p>`
-        : `<p class="far">${fmtDist(d)} away. Get within ${S.RANGE} m to engage.</p>${walkButton(spawn)}`}
+        : tooFar(d, 'engage')}
     `, (card) => {
       animate($('sp-pic'), sp.id);
       on(card, '[data-engage]', () => { close(); hooks.engage(spawn); });
-      bindWalk(card, spawn);
     });
   }
 
@@ -139,11 +139,10 @@ window.RB = window.RB || {};
       <div class="sheet-icon">📦</div>
       <h2>${esc(drop.name)}</h2>
       <p class="muted">Gear left by expeditions that went through the Rifts. Refills every 10 minutes.</p>
-      ${d > S.RANGE ? `<p class="far">${fmtDist(d)} away. Get within ${S.RANGE} m to open it.</p>${walkButton(drop)}`
+      ${d > S.RANGE ? tooFar(d, 'open it')
         : wait > 0 ? `<p class="far">Empty. Refills in ${fmtTime(wait)}.</p>`
         : '<button class="btn btn-main btn-big" data-open>Open cache</button>'}
     `, (card) => {
-      bindWalk(card, drop);
       on(card, '[data-open]', () => {
         const r = S.openDrop(drop);
         if (!r.ok) { toast(r.why); return; }
@@ -176,7 +175,7 @@ window.RB = window.RB || {};
         : '';
       let actions = '';
       if (!near) {
-        actions = `<p class="far">${fmtDist(d)} away. Get within ${S.RANGE} m to interact.</p>${walkButton(rift)}`;
+        actions = tooFar(d, 'use it');
       } else {
         actions += hackWait > 0
           ? `<button class="btn" disabled>Hack · ready in ${fmtTime(hackWait)}</button>`
@@ -206,7 +205,6 @@ window.RB = window.RB || {};
         <div class="actions">${actions}</div>
       `, (card) => {
         card.querySelectorAll('.rift-head').forEach((el) => el.classList.add('glow'));
-        bindWalk(card, rift);
         on(card, '[data-hack]', () => {
           const r = S.hack(rift);
           if (!r.ok) { toast(r.why); return; }
@@ -436,7 +434,7 @@ window.RB = window.RB || {};
 
   function bag() {
     const it = S.save.items;
-    const keys = Object.entries(S.save.keys).map(([id, k]) => ({ id, ...k, d: W.distM(hooks.player(), k) })).sort((a, b) => a.d - b.d);
+    const keys = Object.entries(S.save.keys).map(([id, k]) => ({ id, ...k, d: distTo(k) })).sort((a, b) => a.d - b.d);
     open('bag', `
       <h2>Bag</h2>
       <div class="items">
@@ -445,7 +443,7 @@ window.RB = window.RB || {};
         <div class="item"><span>💠</span><b>${it.shards}</b><small>Rift Shards · claim, recharge and upgrade Rifts</small></div>
       </div>
       <h3>Rift keys</h3>
-      ${keys.length ? `<div class="list">${keys.map((k) => `<div class="row"><span><b>${esc(k.name)}</b><small>${fmtDist(k.d)} away</small></span><span class="go">🗝️ ${k.n}</span></div>`).join('')}</div>`
+      ${keys.length ? `<div class="list">${keys.map((k) => `<div class="row"><span><b>${esc(k.name)}</b><small>${k.d === Infinity ? 'Rift key' : `${fmtDist(k.d)} away`}</small></span><span class="go">🗝️ ${k.n}</span></div>`).join('')}</div>`
         : '<p class="muted small">No keys yet. Hacking a Rift often gives you its key. You need keys to link Rifts.</p>'}
     `);
   }
@@ -476,6 +474,10 @@ window.RB = window.RB || {};
 
   function scan(ents) {
     const me = hooks.player();
+    if (!me) {
+      open('scan', '<h2>Rift scan</h2><p class="far">Waiting for your GPS location…</p><p class="muted small">Riftborn follows your real position. Head outside for a better signal.</p>');
+      return;
+    }
     const rows = [];
     for (const s of ents.spawns) if (!S.isGone(s) && W.distM(me, s) < RB.map.SIGHT) rows.push({ e: s, d: W.distM(me, s), kind: 'spawn' });
     for (const r of ents.rifts) rows.push({ e: r, d: W.distM(me, r), kind: 'rift' });
@@ -490,7 +492,7 @@ window.RB = window.RB || {};
     open('scan', `
       <h2>Rift scan</h2>
       <p class="muted small">Creatures within 300 m, Rifts and caches within 600 m. Creatures move on every 10 minutes.</p>
-      ${top.length ? `<div class="list">${top.map((r, i) => `<button class="row scan-row" data-i="${i}">${label(r)}<span class="go">${r.d <= S.RANGE ? 'In range' : '›'}</span></button>`).join('')}</div>` : '<p class="far">Nothing nearby. Try walking a bit!</p>'}
+      ${top.length ? `<div class="list">${top.map((r, i) => `<button class="row scan-row" data-i="${i}">${label(r)}<span class="go">${r.d <= S.RANGE ? 'In range' : '›'}</span></button>`).join('')}</div>` : '<p class="far">Nothing nearby. Go for a walk!</p>'}
     `, (el) => {
       on(el, '.scan-row', (b) => {
         const r = top[+b.dataset.i];
@@ -509,7 +511,6 @@ window.RB = window.RB || {};
       <h2>Menu</h2>
       <div class="actions">
         <button class="btn" data-set="sound">Sound: ${st.sound ? 'on' : 'off'}</button>
-        <button class="btn" data-set="walk">Moving: ${st.walk === 'gps' ? 'real GPS' : 'tap the map to walk'}</button>
         <button class="btn" data-set="map">Map: ${({ auto: 'day and night follow your clock', day: 'always day', night: 'always night', grid: 'no street map (offline)' })[st.map] || 'auto'}</button>
         <button class="btn" data-set="ar">AR camera: ${st.ar === false ? 'off' : 'on'}</button>
         <button class="btn" data-guide>How to play</button>
@@ -520,7 +521,6 @@ window.RB = window.RB || {};
       on(el, '[data-set]', (b) => {
         const k = b.dataset.set;
         if (k === 'sound') { st.sound = !st.sound; sfx.on = st.sound; }
-        if (k === 'walk') { st.walk = st.walk === 'gps' ? 'tap' : 'gps'; hooks.walkMode(); }
         if (k === 'map') st.map = ({ auto: 'day', day: 'night', night: 'grid', grid: 'auto' })[st.map] || 'day';
         if (k === 'ar') st.ar = st.ar === false;
         S.persist();
@@ -552,7 +552,7 @@ window.RB = window.RB || {};
         <h3>📦 Caches</h3>
         <p>Supply caches refill every 10 minutes. Great for darts.</p>
         <h3>🧭 Moving</h3>
-        <p>Riftborn follows your real GPS. At home? Switch <b>Moving</b> to <i>tap the map to walk</i> in the menu.</p>
+        <p>You move by walking around in real life. Riftborn follows your phone's GPS, and you have to be within ${S.RANGE} m of a Rift, cache or creature to use it. Creatures hide if you go faster than about 40 km/h, so no playing from a car.</p>
       </div>
     `);
   }

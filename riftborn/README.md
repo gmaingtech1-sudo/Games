@@ -16,10 +16,16 @@ It's plain HTML, CSS and JavaScript on top of [three.js](https://threejs.org) (i
 
 ### Getting started
 
-Pick a faction (**Wardens** or **Breachers**), a codename and a first creature (Cindertail, Ripplehorn or Zephyrix). Then choose how you move:
+Pick a faction (**Wardens** or **Breachers**), a codename and a first creature (Cindertail, Ripplehorn or Zephyrix), then turn on location.
 
-- **Use my location:** the map follows your real GPS.
-- **Play at home:** tap the map to walk. You can switch any time in **Menu → Moving**.
+### Moving
+
+Like Ingress, you play by walking around in real life. Your agent follows your phone's GPS, and there's no way to move in the game without moving yourself. You have to be within 60 m of a Rift, cache or creature to use it, so to reach something, walk there.
+
+- Until the GPS has found you, the map waits behind a **Finding your location…** notice and nothing is in reach. The Lab, Bag and Menu still work.
+- If location is blocked, the game says how to turn it on for your browser, with a **Try again** button.
+- If you move faster than about 40 km/h (a car, a bus, or a GPS jump), creatures hide until you slow down.
+- **Profile → Walked** counts the distance you've walked.
 
 ### The map
 
@@ -93,7 +99,7 @@ The camera and GPS only work over HTTPS, so the easiest way is GitHub Pages:
 
 It works offline after the first visit (the map falls back to plain ground).
 
-To try it on a computer: `cd riftborn && python3 -m http.server 8000`, open `http://localhost:8000`, pick **Play at home**, and drag to look around in AR.
+To try it on a computer: `cd riftborn && python3 -m http.server 8000` and open `http://localhost:8000`. The browser uses the computer's rough location. To "walk", open the developer tools, find **Sensors** (Chrome: ⋮ → More tools → Sensors) and change the location. In AR, drag to look around.
 
 ## Play safe
 
@@ -120,5 +126,5 @@ Stay aware of your surroundings. Don't go onto private property, and never play 
 | `js/encounter.js` | The AR encounter: darts, orbs, catching |
 | `js/battle.js` | Turn-based Rift battles in the 3D arena |
 | `js/ui.js` | The panels: Rifts, creatures, Lab, bag, profile, menu, guide |
-| `js/main.js` | Start-up, onboarding, GPS and tap-to-walk, the game loop |
+| `js/main.js` | Start-up, onboarding, following your GPS, the game loop |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Offline support and home-screen install |

@@ -267,6 +267,38 @@ canvas.gl { position: absolute; inset: 0; width: 100% !important; height: 100% !
 .gps-status.show { opacity: 1; transform: translate(-50%, 0); }
 .gps-status.warn { color: var(--gold); border-color: rgba(255, 176, 32, 0.4); }
 
+/* Until the GPS finds you, the map waits behind this. The HUD and bottom
+   bar stay usable, so you can still visit the Lab. */
+.gps-gate {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 90px 20px 110px;
+  background: rgba(8, 4, 20, 0.72);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: fade 0.3s;
+}
+.gate-card {
+  width: min(360px, 100%);
+  padding: 24px 20px;
+  border-radius: 22px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  text-align: center;
+}
+.gate-card h2 { margin-bottom: 8px; }
+.gate-card p { color: #D9CFF5; margin: 0 0 14px; }
+.gate-card small { display: block; margin-top: 12px; color: var(--muted); font-size: 12px; text-align: left; }
+.gps-gate[data-kind="denied"] .radar, .gps-gate[data-kind="insecure"] .radar, .gps-gate[data-kind="unsupported"] .radar { opacity: 0.35; }
+.radar { position: relative; width: 86px; height: 86px; margin: 0 auto 14px; border-radius: 50%; border: 2px solid var(--fac); box-shadow: 0 0 20px color-mix(in srgb, var(--fac) 40%, transparent); }
+.radar::after { content: ""; position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px; border-radius: 50%; background: var(--fac); box-shadow: 0 0 12px var(--fac); }
+.radar i { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--fac); animation: ping 2s ease-out infinite; }
+.radar i + i { animation-delay: 1s; }
+@keyframes ping { from { transform: scale(0.2); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+#map-screen.gated .nearby, #map-screen.gated .map-side { display: none; }
+
 .map-side {
   position: absolute;
   right: 10px;

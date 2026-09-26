@@ -1,5 +1,6 @@
-/* Riftborn — start-up, onboarding, moving around (real GPS or tap to walk),
-   the frame loop, and the glue between the map, AR encounters and battles. */
+/* Riftborn — start-up, onboarding, following your real GPS position (you
+   play by walking around, like Ingress), the frame loop, and the glue
+   between the map, AR encounters and battles. */
 (function (RB) {
   'use strict';
 
@@ -12,14 +13,12 @@
   const sfx = RB.sfx;
   const $ = (id) => document.getElementById(id);
 
-  const DEFAULT_POS = { lat: 37.7955, lng: -122.3937 };   // San Francisco waterfront
-  const WALK_SPEED = 9;          // m/s when tapping to walk
+  const DEFAULT_POS = { lat: 37.7955, lng: -122.3937 };   // until the first GPS fix
   const TOO_FAST = 11;           // m/s (~40 km/h): creatures hide, like in a car
 
   let mode = 'onboard';
   let ents = { rifts: [], drops: [], spawns: [] };
   const pos = { lat: DEFAULT_POS.lat, lng: DEFAULT_POS.lng };
-  let walkTo = null;
   let gps = { watch: null, state: 'off', target: null, last: null, tooFast: false };
   let heading = null;
   let entTimer = 0, entAt = null, tickTimer = 0, hudTimer = 0, nearbyKey = '';
@@ -38,11 +37,10 @@
     RB.encounter.init();
     RB.battle.init();
     UI.setHooks({
-      player: () => pos,
+      // Where you are, or null until the GPS has found you.
+      player: () => (located() ? pos : null),
       engage,
       assault,
-      walkTo: (e) => { walkTo = { lat: e.lat, lng: e.lng }; M.player.walkTo = walkTo; },
-      walkMode: () => startMoving(),
       changed: () => { refreshEntities(true); updateHud(); },
     });
     bindDom();
@@ -64,13 +62,10 @@
         else if (e.kind === 'rift') UI.riftSheet(e);
         else UI.dropSheet(e);
       },
-      tapGround: (ll) => {
-        if (S.save.settings.walk === 'tap') {
-          walkTo = ll;
-          M.player.walkTo = ll;
-        } else if (!boot.hinted) {
+      tapGround: () => {
+        if (!boot.hinted) {
           boot.hinted = true;
-          UI.toast('You move with your real location. At home? Menu → Moving → tap the map to walk.');
+          UI.toast('Walk in real life to move. Get within 60 m of something to use it.');
         }
       },
       panned: () => { $('btn-center').classList.toggle('show', M.rotated); },
@@ -136,8 +131,8 @@
       draft.starter = b.dataset.sp;
       step('where');
     }));
-    $('ob-gps').addEventListener('click', () => newAgent('gps'));
-    $('ob-tap').addEventListener('click', () => newAgent('tap'));
+    $('ob-gps').addEventListener('click', () => newAgent());
+    $('gate-retry').addEventListener('click', () => { sfx.tap(); stopGPS(); startGPS(); });
 
     $('btn-lab').addEventListener('click', () => { sfx.tap(); UI.lab(); });
     $('btn-bag').addEventListener('click', () => { sfx.tap(); UI.bag(); });
@@ -165,11 +160,10 @@
     RB.host.on('resume', () => RB.ar.pauseCamera(false));
   }
 
-  function newAgent(walk) {
+  function newAgent() {
     sfx.unlock();
     sfx.tap();
     S.newGame(draft.name, draft.faction, draft.starter);
-    S.save.settings.walk = walk;
     S.persist(true);
     enterMap(true);
   }
@@ -192,7 +186,7 @@
     M.setPlayer({ lat: pos.lat, lng: pos.lng });
     M.recenter();
     startCompass();
-    startMoving();
+    startGPS();
     S.tick();
     refreshEntities(true);
     updateHud();
@@ -205,29 +199,44 @@
     }
   }
 
-  function startMoving() {
-    const s = S.save.settings;
-    if (s.walk === 'gps') startGPS();
-    else {
-      stopGPS();
-      status('Tap the map to walk');
-    }
-  }
-
   function status(text, kind) {
     const el = $('gps-status');
     el.textContent = text || '';
     el.className = `gps-status ${text ? 'show' : ''} ${kind || ''}`;
   }
 
+  /* ------------------ GPS ------------------ */
+
+  // You only move by really moving. Until the GPS has a fix, the map waits
+  // behind a notice and nothing counts as in range.
+  const located = () => gps.state === 'ok';
+
+  const GATE = {
+    waiting: ['Finding your location…', 'Riftborn is played by walking around the real world. Stand outside or near a window for a better GPS signal.'],
+    slow: ['Still looking for GPS…', 'Make sure location is turned on for your phone and your browser. GPS works best outdoors.'],
+    denied: ['Location is turned off', 'Riftborn needs your location to put Rifts and creatures on your streets. Allow location for this site, then tap Try again.<small>iPhone: Settings → Privacy &amp; Security → Location Services → Safari Websites → While Using the App.<br>Android: tap the icon left of the address → Permissions → Location → Allow.</small>'],
+    insecure: ['Open Riftborn over https', 'Phones only share your location with secure pages. Open the game from an https:// address, such as GitHub Pages.'],
+    unsupported: ['No location here', 'This device or browser can’t share its location. Riftborn needs GPS, so play it on a phone.'],
+  };
+
+  function gate(kind) {
+    const el = $('gps-gate');
+    $('map-screen').classList.toggle('gated', !!kind);
+    if (!kind) { el.hidden = true; return; }
+    el.hidden = false;
+    el.dataset.kind = kind;
+    $('gate-title').textContent = GATE[kind][0];
+    $('gate-text').innerHTML = GATE[kind][1];
+    $('gate-retry').hidden = kind === 'waiting' || kind === 'insecure' || kind === 'unsupported';
+  }
+
   function startGPS() {
     if (gps.watch != null) return;
-    if (!navigator.geolocation) {
-      gpsUnavailable('This device has no location. Switched to tap-to-walk.');
-      return;
-    }
+    if (!window.isSecureContext) { gps.state = 'off'; gate('insecure'); return; }
+    if (!navigator.geolocation) { gps.state = 'off'; gate('unsupported'); return; }
     gps.state = 'waiting';
-    status('Finding your location…');
+    gate('waiting');
+    status('');
     gps.watch = navigator.geolocation.watchPosition(onPos, onPosErr, { enableHighAccuracy: true, maximumAge: 3000, timeout: 30000 });
   }
 
@@ -239,14 +248,6 @@
     gps.tooFast = false;
   }
 
-  function gpsUnavailable(text) {
-    stopGPS();
-    S.save.settings.walk = 'tap';
-    S.persist();
-    UI.toast(text, 'bad');
-    status('Tap the map to walk');
-  }
-
   function onPos(p) {
     const ll = { lat: p.coords.latitude, lng: p.coords.longitude };
     if (gps.state !== 'ok') {
@@ -254,6 +255,7 @@
       if (W.distM(W.origin, ll) > 20000) { W.setOrigin(ll.lat, ll.lng); M.reset(); }
       pos.lat = ll.lat;
       pos.lng = ll.lng;
+      gate(null);
       refreshEntities(true);
     }
     if (gps.last && p.coords.accuracy < 35) {
@@ -269,8 +271,15 @@
   }
 
   function onPosErr(e) {
-    if (e.code === 1) gpsUnavailable('Location is blocked, so you tap the map to walk instead. You can turn location on in your browser settings.');
-    else if (gps.state !== 'ok') status('Still looking for GPS… (or use tap-to-walk in the menu)', 'warn');
+    if (e.code === 1) {
+      stopGPS();
+      gps.state = 'denied';
+      gate('denied');
+    } else if (gps.state !== 'ok') {
+      gate('slow');
+    } else {
+      status('GPS signal lost. Keep walking…', 'warn');
+    }
   }
 
   function startCompass() {
@@ -290,22 +299,10 @@
     }
   }
 
+  // Glide your agent towards the latest GPS fix.
   function movePlayer(dt) {
-    let moving = 0;
-    if (S.save.settings.walk === 'tap' && walkTo) {
-      const d = W.distM(pos, walkTo);
-      const step = Math.min(d, WALK_SPEED * dt);
-      if (d < 0.5) {
-        walkTo = null;
-        M.player.walkTo = null;
-      } else {
-        const k = step / d;
-        pos.lat += (walkTo.lat - pos.lat) * k;
-        pos.lng += (walkTo.lng - pos.lng) * k;
-        S.save.stats.meters += step;
-        moving = 1;
-      }
-    } else if (gps.target) {
+    let moving = 0, faceTo = null;
+    if (gps.target) {
       const d = W.distM(pos, gps.target);
       if (d > 300) { pos.lat = gps.target.lat; pos.lng = gps.target.lng; }
       else {
@@ -313,9 +310,10 @@
         pos.lat += (gps.target.lat - pos.lat) * k;
         pos.lng += (gps.target.lng - pos.lng) * k;
         moving = d > 1 ? 1 : 0;
+        if (moving) faceTo = gps.target;
       }
     }
-    M.setPlayer({ lat: pos.lat, lng: pos.lng, heading, moving });
+    M.setPlayer({ lat: pos.lat, lng: pos.lng, heading, moving, faceTo });
   }
 
   function refreshEntities(force) {
@@ -354,7 +352,7 @@
 
   // The little tracker of the closest creatures, bottom left.
   function updateNearby() {
-    const list = ents.spawns
+    const list = !located() ? [] : ents.spawns
       .filter((s) => !S.isGone(s))
       .map((s) => ({ s, d: W.distM(pos, s) }))
       .filter((x) => x.d < M.SIGHT)
@@ -372,7 +370,7 @@
   /* ======================= Encounters & battles ======================= */
 
   function engage(spawn) {
-    if (W.distM(pos, spawn) > S.RANGE + 5) { UI.toast('Too far away now.'); return; }
+    if (!located() || W.distM(pos, spawn) > S.RANGE + 5) { UI.toast('Too far away now.'); return; }
     if (S.save.items.orbs <= 0 && S.save.items.darts <= 0) {
       UI.toast('You have no orbs or darts. Hack Rifts and open caches for supplies.', 'bad');
       sfx.error();
@@ -393,7 +391,7 @@
   }
 
   function assault(rift) {
-    if (W.distM(pos, rift) > S.RANGE + 5) { UI.toast('Too far away now.'); return; }
+    if (!located() || W.distM(pos, rift) > S.RANGE + 5) { UI.toast('Too far away now.'); return; }
     const st = S.riftState(rift);
     if (!st.faction || st.faction === S.save.agent.faction) return;
     mode = 'battle';

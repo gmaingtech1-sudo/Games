@@ -24,6 +24,16 @@
 <main id="map-screen" hidden>
   <div id="scan-pulse" class="scan-pulse" aria-hidden="true"></div>
 
+  <!-- Shown until the GPS has found you. -->
+  <div id="gps-gate" class="gps-gate" hidden>
+    <div class="gate-card" role="status" aria-live="polite">
+      <div class="radar" aria-hidden="true"><i></i><i></i></div>
+      <h2 id="gate-title">Finding your location…</h2>
+      <p id="gate-text"></p>
+      <button id="gate-retry" class="btn btn-main" type="button" hidden>Try again</button>
+    </div>
+  </div>
+
   <header class="hud">
     <button id="btn-profile" class="agent" type="button" aria-label="Agent profile">
       <span id="hud-glyph" class="agent-glyph-sm"></span>
@@ -191,10 +201,9 @@
   </div>
 
   <div class="ob-step" data-step="where" hidden>
-    <h2>How will you move?</h2>
-    <p class="muted">Riftborn puts Rifts and creatures on your real streets. Your location stays on your phone.</p>
-    <button id="ob-gps" class="btn btn-main btn-big" type="button">📍 Use my location</button>
-    <button id="ob-tap" class="btn btn-big" type="button">🏠 Play at home (tap to walk)</button>
+    <h2>Get walking</h2>
+    <p class="muted">Riftborn puts Rifts and creatures on your real streets. To reach them you walk there in real life: the game follows your phone's GPS. Your location stays on your phone.</p>
+    <button id="ob-gps" class="btn btn-main btn-big" type="button">📍 Turn on location and start</button>
     <p class="fineprint">Stay aware of your surroundings. Don't trespass, and never play while driving or cycling.</p>
   </div>
 </section>
