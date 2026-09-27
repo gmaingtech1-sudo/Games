@@ -51,7 +51,7 @@ You earn XP for nearly everything: catching and darting creatures, hacking, clai
 
 ### Moving
 
-Like Ingress, you play by walking around in real life. Your agent follows your phone's GPS, and there's no way to move in the game without moving yourself. You have to be within 60 m of a Rift, cache or creature to use it, so to reach something, walk there.
+Like Ingress, you play by walking around in real life. Your agent follows your phone's GPS, and there's no way to move in the game without moving yourself. You have to be within 100 m of a Rift, cache or creature to use it, so to reach something, walk there.
 
 - Until the GPS has found you, the map waits behind a **Finding your location…** notice and nothing is in reach. The Lab, Bag and Menu still work.
 - If location is blocked, the game says how to turn it on for your browser, with a **Try again** button.
@@ -72,7 +72,7 @@ The camera hovers behind your agent, looking out across the streets to the horiz
 | Floating crystal with a beam of light | A **Rift**. Teal = Wardens, magenta = Breachers, grey = unclaimed. The badge is its level (★ means it's yours), and a shard orbits it for every level. A spinning white ring means you can hack it right now. |
 | Crate with a blinking light | A **supply cache**. Open it for darts, orbs and shards. Refills every 10 minutes (the lid stays open until then). |
 | Creature on a coloured ring | A wild creature, walking around its spot. The ring colour is its rarity: grey Common, blue Rare, purple Epic, gold Legendary. Creatures move on every 10 minutes. |
-| Glowing circle around you | Your reach (60 m). You have to be this close to interact with anything. |
+| Glowing circle around you | Your reach (100 m). You have to be this close to interact with anything. |
 
 The row of creatures above the bottom bar shows the closest ones. **Scan** (the big button) lists everything around you by distance.
 
@@ -149,9 +149,13 @@ You keep the DNA you collect even if it gets away. **✕** leaves and keeps your
 
 Battles happen in a 3D arena under the Rift. Your team fights the guardians one at a time. Each turn, pick **Strike** (reliable), your element's **special move** (big hit, cooldown), **Guard** (blocks most damage and heals a little, goes first) or **Swap**. Faster creatures act first. Elements matter: Ember beats Gale, Gale beats Stone, Stone beats Volt, Volt beats Tide, Tide beats Ember. Void hits everything harder but also takes more from everything.
 
+### Arena
+
+Tap **⚔️** on the map to battle other agents' teams, like Jurassic World Alive's arena. It works anywhere, no walking needed. You're offered three rivals matched to your team (Easy, Even and Hard); winning earns trophies, supplies and DNA from one of their creatures, losing (or running away) costs a few trophies. Climb from 🥉 Bronze through 🥈 Silver (300), 🥇 Gold (700), 💎 Platinum (1,200) and 🔷 Diamond (1,800) to 👑 Legend (2,600); each new rank pays out supplies, and from Gold up an egg. Win three a day for the daily chest. Arena wins count for the Brawler medal and battle missions.
+
 ### Species
 
-24 in all: 18 wild (6 Common, 5 Rare, 4 Epic, 3 Legendary) and 6 hybrids. Each part of town leans towards one element, and Void creatures come out at night.
+42 in all: 32 wild (11 Common, 9 Rare, 7 Epic, 5 Legendary) and 10 hybrids. Besides raptors, tyrannosaurs, horned and plated dinosaurs, long-necks and pterosaurs, there are sail-backed hunters like Spinosaurus (Sailfin, Tidereaver, Solarch), armoured tanks with tail clubs like Ankylosaurus (Mudstomper, Boulderback, Ironhide), dome-headed rammers like Pachycephalosaurus (Kindlepup, Skullcrack) and tube-crested callers like Parasaurolophus (Brookrunner, Hornblower). Each part of town leans towards one element, and Void creatures come out at night.
 
 ## How it works
 

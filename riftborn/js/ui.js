@@ -13,7 +13,7 @@ window.RB = window.RB || {};
   const sfx = RB.sfx;
   const $ = (id) => document.getElementById(id);
 
-  let hooks = {};          // set by main: engage, assault, raid, changed, player(), goOnline, accountsChanged
+  let hooks = {};          // set by main: engage, assault, raid, duel, changed, player(), goOnline, accountsChanged
   let current = null;      // { name, refresh }
   let anim = null;         // animated portrait in the sheet
 
@@ -499,6 +499,47 @@ window.RB = window.RB || {};
     reportUp(h);
   }
 
+  // The Arena: battle rival agents' teams from anywhere for trophies.
+  function arenaSheet() {
+    const A = S.arena();
+    const k = S.arenaTier(A.trophies), T0 = S.ARENA_TIERS[k], T1 = S.ARENA_TIERS[k + 1];
+    const frac = T1 ? (A.trophies - T0.min) / (T1.min - T0.min) : 1;
+    const mine = S.team();
+    const power = (tm) => tm.reduce((n, c) => n + C.power(c), 0);
+    open('arena', `
+      <h2>⚔️ Arena</h2>
+      <div class="arena-rank" style="--c:${T0.color}">
+        <span class="arena-badge">${T0.icon}</span>
+        <div><b>${T0.name}</b><small>🏆 ${A.trophies} trophies · ${A.wins} wins, ${A.losses} losses</small>
+          <span class="bar"><i style="width:${pct(frac)};background:${T0.color}"></i></span>
+          <small>${T1 ? `${T1.min - A.trophies} to ${T1.icon} ${T1.name}: 🔮 ${T1.reward.orbs} · 🎯 ${T1.reward.darts} · 💠 ${T1.reward.shards}${T1.reward.egg ? ` · 🥚 ${T1.reward.egg} km` : ''}` : 'Top rank!'}</small>
+        </div>
+      </div>
+      <div class="row arena-chest"><span class="go">🎁</span><span><b>Daily chest</b><small>Win 3 arena battles today (${Math.min(3, A.dayWins)}/3): 🔮 10 · 🎯 20 · 💠 8 · 🥚 5 km</small></span>
+        ${A.chest ? '<span class="go">✓</span>' : `<button class="btn btn-small ${A.dayWins >= 3 ? 'btn-main' : ''}" data-chest ${A.dayWins >= 3 ? '' : 'disabled'}>Open</button>`}</div>
+      <h3>Choose a rival</h3>
+      <div class="list">${A.rivals.map((rv, i) => `
+        <div class="rival">
+          <div class="rival-top"><span class="dot" style="--c:${S.FACTIONS[rv.faction].color}"></span><b>${esc(rv.name)}</b><small>🏆 ${rv.trophies}</small><span class="chip lvl-${rv.level}">${rv.level}</span></div>
+          <div class="rival-team">${rv.team.map((c) => `<div><canvas data-sp="${c.sp}"></canvas><small>${esc(C.byId(c.sp).name)} · ${c.lvl}</small></div>`).join('')}</div>
+          <div class="rival-foot"><small>Power ${power(rv.team).toLocaleString()} vs your ${power(mine).toLocaleString()} · win +${rv.win} 🏆, lose ${rv.loss}</small><button class="btn btn-main btn-small" data-duel="${i}">Battle</button></div>
+        </div>`).join('')}</div>
+      <button class="btn" data-new>🔄 New rivals</button>
+      <p class="muted small">Your team: ${mine.map((c) => `${esc(C.byId(c.sp).name)} (${c.lvl})`).join(', ')}. Change it in the Lab with ★. Arena battles work anywhere; running away counts as a loss.</p>
+    `, (el) => {
+      on(el, '[data-duel]', (b) => { close(); hooks.duel(+b.dataset.duel); });
+      on(el, '[data-new]', () => { S.newRivals(); arenaSheet(); });
+      on(el, '[data-chest]', () => {
+        const r = S.claimArenaChest();
+        if (!r.ok) return;
+        sfx.crate();
+        toast(`Arena chest: ${loot(r.loot)}${eggNote(r.egg)}`, 'good');
+        reportUp(r);
+        arenaSheet();
+      });
+    });
+  }
+
   // The real weather and what it draws out.
   function weatherSheet() {
     const w = RB.weather.now;
@@ -964,6 +1005,8 @@ window.RB = window.RB || {};
         <p>Spend DNA to level up creatures. Fuse DNA from two species to create <b>hybrids</b> you can't find in the wild.</p>
         <h3>📋 Missions &amp; walking</h3>
         <p>Three new field missions every day (the 📋 button). Finish all three for a Rift Surge. Your first team creature is your walking buddy: it finds DNA every ${S.BUDDY_M} m you walk, and every kilometre you find a supply stash.</p>
+        <h3>⚔️ Arena</h3>
+        <p>Battle other agents' teams from anywhere (the ⚔️ button on the map). Wins earn trophies, losses cost some. Climb from Bronze through Silver, Gold, Platinum and Diamond to Legend; each new rank pays out supplies and eggs. Win three a day for the daily chest.</p>
         <h3>👑 Apex raids</h3>
         <p>Every day some Rifts are taken over by a huge <b>Apex</b> creature with triple health. Walk there and beat it with your team for lots of its DNA, supplies and big XP. Each Apex can be beaten once a day.</p>
         <h3>🥚 Eggs</h3>
@@ -984,6 +1027,6 @@ window.RB = window.RB || {};
     setHooks(h) { hooks = h; },
     toast, open, close, isOpen, refresh, tick, levelUp,
     spawnSheet, dropSheet, riftSheet, lab, creatureSheet, bag, profile, scan, menu, guide, missionsSheet,
-    account, onlineSheet, hatched, daily, weatherSheet,
+    account, onlineSheet, hatched, daily, weatherSheet, arenaSheet,
   };
 })(window.RB);

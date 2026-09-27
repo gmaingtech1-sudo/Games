@@ -18,7 +18,7 @@ window.RB = window.RB || {};
   const { clamp } = RB.util;
 
   const SIGHT = 300;              // creatures further than this aren't shown
-  const MIN_D = 55, MAX_D = 320;  // camera distance range (m)
+  const MIN_D = 70, MAX_D = 340;  // camera distance range (m)
   const PITCH = 0.56;             // camera angle below the horizon (rad)
   const AGENT_SCALE = 5;          // the map isn't to scale: props are big
   // Free street maps that need no key (Google Maps is used instead when
@@ -52,7 +52,7 @@ window.RB = window.RB || {};
 
   let container = null, renderer = null, scene = null, camera = null;
   let handlers = {};
-  const cam = { yaw: 0, dist: 95, target: new T.Vector3() };
+  const cam = { yaw: 0, dist: 140, target: new T.Vector3() };
   const player = { lat: 0, lng: 0, heading: null, faceTo: null, moving: 0 };
   let ents = { rifts: [], drops: [], spawns: [] };
   let t = 0;

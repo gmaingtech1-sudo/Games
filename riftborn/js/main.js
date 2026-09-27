@@ -43,6 +43,7 @@
       engage,
       assault,
       raid,
+      duel,
       changed: () => { refreshEntities(true); updateHud(); },
       goOnline,
       // Online accounts were turned on or off.
@@ -88,7 +89,7 @@
       tapGround: () => {
         if (!boot.hinted) {
           boot.hinted = true;
-          UI.toast('Walk in real life to move. Get within 60 m of something to use it.');
+          UI.toast(`Walk in real life to move. Get within ${S.RANGE} m of something to use it.`);
         }
       },
       panned: () => { $('btn-center').classList.toggle('show', M.rotated); },
@@ -271,6 +272,7 @@
     $('btn-menu').addEventListener('click', () => { sfx.tap(); UI.menu(); });
     $('btn-missions').addEventListener('click', () => { sfx.tap(); UI.missionsSheet(); });
     $('hud-weather').addEventListener('click', () => { sfx.tap(); UI.weatherSheet(); });
+    $('btn-arena').addEventListener('click', () => { sfx.tap(); UI.arenaSheet(); });
     $('btn-profile').addEventListener('click', () => { sfx.tap(); UI.profile(); });
     $('btn-profile2').addEventListener('click', () => { sfx.tap(); UI.profile(); });
     $('btn-center').addEventListener('click', () => { sfx.tap(); M.recenter(); $('btn-center').classList.remove('show'); });
@@ -531,6 +533,8 @@
     $('hud-darts').textContent = s.items.darts;
     $('hud-shards').textContent = s.items.shards;
     $('btn-missions').classList.toggle('ready', S.missionsReady() || !!S.loginPending());
+    const ar = S.arena();
+    $('btn-arena').classList.toggle('ready', ar.dayWins >= 3 && !ar.chest);
     // Say once when online saving is blocked, and why. (A weak signal
     // just means it tries again later.)
     const problem = RB.auth.syncNeedsFix ? RB.auth.syncError : '';
@@ -630,6 +634,35 @@
         refreshEntities(true);
       }
       updateHud();
+    });
+  }
+
+  // An arena battle against a rival agent's team. Works anywhere.
+  function duel(i) {
+    const rv = S.arena().rivals[i];
+    if (!rv) return;
+    mode = 'battle';
+    $('map-screen').hidden = true;
+    RB.battle.start(S.team(), rv.team, {
+      title: `⚔️ Arena · ${rv.name}`,
+      intro: `${rv.name} sends out ${C.byId(rv.team[0].sp).name}!`,
+      winText: `You beat ${rv.name}! +${rv.win} trophies.`,
+    }, (out) => {
+      mode = 'map';
+      $('map-screen').hidden = false;
+      M.show();
+      const r = S.arenaResult(i, !!(out && out.win));
+      if (r.ok) {
+        if (r.win) UI.toast(`⚔️ Victory! +${r.trophies} 🏆 · +${r.dna.n} ${esc(C.byId(r.dna.sp).name)} DNA`, 'good');
+        else UI.toast(`⚔️ ${out && out.fled ? 'You left the arena' : 'Defeated'}. ${r.trophies} 🏆`, 'bad');
+        if (r.ranked) {
+          sfx.levelUp();
+          UI.toast(`${r.ranked.icon} New arena rank: ${r.ranked.name}! Rank rewards added${r.egg ? ' · 🥚 egg' : ''}.`, 'good');
+        }
+        if (r.up) UI.levelUp(r.up);
+      }
+      updateHud();
+      setTimeout(() => { if (mode === 'map') UI.arenaSheet(); }, 700);
     });
   }
 

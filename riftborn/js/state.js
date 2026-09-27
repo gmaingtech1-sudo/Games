@@ -20,7 +20,7 @@ window.RB = window.RB || {};
   const DROP_MS = 10 * 60e3;
   const DECAY_PER_DAY = 12;
   const MAX_TEAM = 3;
-  const RANGE = 60;           // meters you can reach things from
+  const RANGE = 100;          // meters you can reach things from
   const MAX_LEVEL = 40;
 
   let save = null;
@@ -54,6 +54,7 @@ window.RB = window.RB || {};
       eggs: [],          // { id, km, walked, inc }
       raids: {},         // "riftId:day" → Apex beaten that day
       login: { day: 0, streak: 0 },   // last day you claimed the daily reward
+      arena: { trophies: 0, best: 0, wins: 0, losses: 0, tierGot: 0, day: '', dayWins: 0, chest: false, rivals: null },
       lastPos: null,
     };
   }
@@ -71,6 +72,7 @@ window.RB = window.RB || {};
       s.settings = Object.assign(b.settings, s.settings);
       s.walk = Object.assign(b.walk, s.walk);
       s.login = Object.assign(b.login, s.login);
+      s.arena = Object.assign(b.arena, s.arena);
       if (s.settings.map === 'streets') s.settings.map = 'auto';
       // The Ingress-style scanner map became the default in map version 2.
       if (s.settings.mapV !== 2) { s.settings.map = 'scanner'; s.settings.mapV = 2; }
@@ -808,6 +810,108 @@ window.RB = window.RB || {};
     return { ok: true, sp: a.boss.sp, dna: a.dna, loot, egg, up };
   }
 
+  /* ------------------ Arena ------------------ */
+
+  // Like Jurassic World Alive's arena: battle other agents' teams from
+  // anywhere, win trophies, climb the ranks. Rivals are generated to
+  // match your team, and each rank pays out once when you reach it.
+  const ARENA_TIERS = [
+    { name: 'Bronze', min: 0, color: '#CD8A4E', icon: '🥉' },
+    { name: 'Silver', min: 300, color: '#C9D2DC', icon: '🥈', reward: { orbs: 10, darts: 20, shards: 5 } },
+    { name: 'Gold', min: 700, color: '#FFC83A', icon: '🥇', reward: { orbs: 15, darts: 25, shards: 10, egg: 5 } },
+    { name: 'Platinum', min: 1200, color: '#9FE8FF', icon: '💎', reward: { orbs: 20, darts: 30, shards: 15, egg: 10 } },
+    { name: 'Diamond', min: 1800, color: '#7FB8FF', icon: '🔷', reward: { orbs: 25, darts: 40, shards: 20, egg: 10 } },
+    { name: 'Legend', min: 2600, color: '#B45CFF', icon: '👑', reward: { orbs: 40, darts: 60, shards: 30, egg: 10 } },
+  ];
+  const arenaTier = (tr) => { let k = 0; while (k < ARENA_TIERS.length - 1 && tr >= ARENA_TIERS[k + 1].min) k++; return k; };
+  const RIVAL_A = ['Nova', 'Rex', 'Kai', 'Vex', 'Juno', 'Ash', 'Zed', 'Mika', 'Onyx', 'Sol', 'Rook', 'Ivy', 'Blaze', 'Echo', 'Luna', 'Flint', 'Storm', 'Rift', 'Talon', 'Kora'];
+  const RIVAL_B = ['Hunter', 'Striker', 'Walker', 'Fang', 'Claw', 'Runner', 'Tamer', 'Scout', 'Warden', 'Breaker', 'Rider', 'Queen', 'King', 'Ace', 'Shade'];
+
+  function arena() {
+    const A = save.arena;
+    const d = today();
+    if (A.day !== d) { A.day = d; A.dayWins = 0; A.chest = false; }
+    if (!A.rivals) A.rivals = makeRivals();
+    return A;
+  }
+
+  function makeRivals() {
+    const A = save.arena;
+    const tier = arenaTier(A.trophies);
+    const mine = team();
+    const myLvl = Math.round(mine.reduce((n, c) => n + c.lvl, 0) / Math.max(1, mine.length));
+    const maxRar = Math.min(3, 1 + Math.floor(tier / 1.5));
+    const pool = C.SPECIES.filter((x) => x.rar <= maxRar && (!x.hybrid || tier >= 2));
+    return [['Easy', -2, 18, -8], ['Even', 0, 28, -14], ['Hard', 3, 42, -20]].map(([level, off, win, loss]) => ({
+      name: `${RIVAL_A[randInt(0, RIVAL_A.length - 1)]}${RIVAL_B[randInt(0, RIVAL_B.length - 1)]}${Math.random() < 0.5 ? randInt(2, 99) : ''}`,
+      faction: Math.random() < 0.5 ? 'W' : 'B',
+      trophies: Math.max(0, A.trophies + off * 35 + randInt(-30, 30)),
+      level, win, loss,
+      team: [0, 1, 2].map(() => {
+        const sp = weighted(pool, (x) => 4 - x.rar);
+        return { sp: sp.id, lvl: clamp(myLvl + off + randInt(-1, 1), 1, C.MAX_LEVEL), iv: [randInt(3, 10), randInt(3, 10), randInt(3, 10)] };
+      }),
+    }));
+  }
+
+  function newRivals() { save.arena.rivals = makeRivals(); persist(); }
+
+  // After an arena battle (fleeing counts as a loss).
+  function arenaResult(i, win) {
+    const A = arena();
+    const rv = A.rivals[i];
+    if (!rv) return { ok: false };
+    const before = arenaTier(A.trophies);
+    let loot = null, dna = null, up = 0, ranked = null;
+    if (win) {
+      A.trophies += rv.win;
+      A.wins++;
+      A.dayWins++;
+      loot = { orbs: 2, darts: 5, shards: 1 };
+      give(loot);
+      const pick = rv.team[randInt(0, rv.team.length - 1)].sp;
+      addDNA(pick, 15);
+      markDex(pick, 'seen');
+      dna = { sp: pick, n: 15 };
+      save.stats.wins++;
+      track('win');
+      up = addXP(250 + ['Easy', 'Even', 'Hard'].indexOf(rv.level) * 100);
+    } else {
+      A.trophies = Math.max(0, A.trophies + rv.loss);
+      A.losses++;
+      up = addXP(50);
+    }
+    A.best = Math.max(A.best, A.trophies);
+    // New ranks pay out once.
+    const after = arenaTier(A.trophies);
+    let egg = null;
+    if (after > A.tierGot) {
+      for (let k = A.tierGot + 1; k <= after; k++) {
+        const rw = ARENA_TIERS[k].reward;
+        give(rw);
+        if (rw.egg) egg = addEgg(rw.egg) || egg;
+      }
+      A.tierGot = after;
+      ranked = ARENA_TIERS[after];
+    }
+    A.rivals = makeRivals();
+    persist();
+    return { ok: true, win, trophies: win ? rv.win : rv.loss, loot, dna, up, ranked, egg, before, after };
+  }
+
+  // Win three arena battles in a day for a chest.
+  function claimArenaChest() {
+    const A = arena();
+    if (A.chest || A.dayWins < 3) return { ok: false };
+    A.chest = true;
+    const loot = { orbs: 10, darts: 20, shards: 8 };
+    give(loot);
+    const egg = addEgg(5);
+    const up = addXP(500);
+    persist();
+    return { ok: true, loot, egg, up };
+  }
+
   /* ------------------ Daily login ------------------ */
 
   // Come back every day for a week of rewards; day 7 is a 10 km egg. Miss
@@ -858,5 +962,6 @@ window.RB = window.RB || {};
     EGGS, MAX_EGGS, INCUBATORS, addEgg, incubate,
     apexAt, beatApex,
     LOGIN, loginPending, claimLogin,
+    ARENA_TIERS, arenaTier, arena, newRivals, arenaResult, claimArenaChest,
   };
 })(window.RB);

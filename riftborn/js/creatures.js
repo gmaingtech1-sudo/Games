@@ -54,6 +54,20 @@ window.RB = window.RB || {};
     ['riftking', 'Riftking', 'void', 3, 'rex', 5.8, ['#140C1E', '#4A3666', '#D850F0'], '#FF5CF0', 'spikes glow crown', [300, 52, 16], 'The first thing to come through the Rifts. It rules the other side.'],
     ['aetherwyrm', 'Aetherwyrm', 'gale', 3, 'longneck', 7.5, ['#C3D8D2', '#F2F6F2', '#3FD6B6'], '#2EE6C5', 'crest glow spots', [320, 46, 14], 'Said to hold the sky together. Seen only where many Rifts meet.'],
     ['magmaron', 'Magmaron', 'ember', 3, 'horned', 3.4, ['#2B100B', '#8A3A1A', '#FF8A20'], '#FFD23F', 'horns3 frill glow spikes', [290, 50, 12], 'Walks on lava like it is a warm carpet.'],
+    ['mudstomper', 'Mudstomper', 'stone', 0, 'plated', 1.9, ['#5E4A34', '#C4AE8A', '#8C7250'], '#E8C060', 'armor club spots', [150, 17, 7], 'Covered in bony studs. Swings its tail club at anything that sneaks up.'],
+    ['brookrunner', 'Brookrunner', 'tide', 0, 'raptor', 1.5, ['#3E5A58', '#D2D8C8', '#6FA89A'], '#F2E6B0', 'tubecrest stripes', [105, 21, 17], 'Hoots through its tube crest to call the herd to the river.'],
+    ['thistlehorn', 'Thistlehorn', 'gale', 0, 'horned', 1.5, ['#4E5E3C', '#D0CCA8', '#9CB86A'], '#FFD23F', 'horns1 frill stripes', [125, 21, 12], 'Its frill rattles in the wind like dry leaves.'],
+    ['zapling', 'Zapling', 'volt', 0, 'flyer', 1.2, ['#36384E', '#E2DAB0', '#E8C83A'], '#FFE14D', 'crest', [85, 23, 21], 'Perches on power lines and hums along with them.'],
+    ['kindlepup', 'Kindlepup', 'ember', 0, 'raptor', 1.2, ['#6A3A22', '#DCBC94', '#C8642E'], '#FFC23A', 'dome spots', [110, 22, 15], 'Headbutts everything. Its dome is always warm.'],
+    ['boulderback', 'Boulderback', 'stone', 1, 'plated', 2.7, ['#56504A', '#C8BCA8', '#A8967A'], '#FFB020', 'armor club spikes', [200, 27, 7], 'A walking fortress. One swing of its club can split a boulder.'],
+    ['sailfin', 'Sailfin', 'tide', 1, 'rex', 3.8, ['#3A4E5A', '#D8D6C8', '#C86A3A'], '#F4E9C8', 'sail stripes', [175, 32, 13], 'Hunts along riverbanks, its great sail flushing red when it is angry.'],
+    ['hornblower', 'Hornblower', 'gale', 1, 'raptor', 2.4, ['#4A5A3E', '#DAD6BC', '#B8C86A'], '#F6F0C8', 'tubecrest spots', [150, 27, 18], 'Its call carries for miles. Other creatures scatter when they hear it.'],
+    ['skullcrack', 'Skullcrack', 'stone', 1, 'raptor', 1.9, ['#5A4A3E', '#D4C4A8', '#8A6A4E'], '#FFD23F', 'dome spikes', [150, 30, 16], 'Settles every argument by ramming. It has never lost one.'],
+    ['tidereaver', 'Tidereaver', 'tide', 2, 'rex', 5.0, ['#23384A', '#C8D4D8', '#3DB8FF'], '#9FE8FF', 'sail stripes glow', [240, 42, 14], 'Its sail glows like deep water. Storm drains flood when it passes.'],
+    ['ironhide', 'Ironhide', 'volt', 2, 'plated', 3.2, ['#3A3A48', '#C8C4B0', '#F2D040'], '#FFE14D', 'armor club glow', [260, 36, 8], 'Lightning jumps between its armour studs. Nothing bites it twice.'],
+    ['nightglider', 'Nightglider', 'void', 2, 'flyer', 2.6, ['#1C1428', '#6A5A7E', '#A04CE8'], '#E05CFF', 'crest glow', [150, 44, 25], 'Blots out the stars as it glides over rooftops at midnight.'],
+    ['solarch', 'Solarch', 'ember', 3, 'rex', 6.0, ['#4A1E10', '#D8A070', '#FF9A30'], '#FFE14D', 'sail crown glow spikes', [310, 54, 14], 'Its blazing sail soaks up the sun. Streetlights flicker on when it sleeps.'],
+    ['stormcrown', 'Stormcrown', 'volt', 3, 'horned', 3.6, ['#262A48', '#D0CCB0', '#F2D040'], '#FFE14D', 'horns3 frill glow spikes', [300, 50, 13], 'Thunder rolls every time it lowers its horns.'],
     // Hybrids: never found in the wild, made in the Lab by fusing DNA.
     ['scorchglider', 'Scorchglider', 'ember', 1, 'flyer', 2.0, ['#7A3218', '#E8C29A', '#2FA487'], '#FFD23F', 'crest stripes', [140, 34, 23], 'Cindertail × Zephyrix. Glides on its own heat.', ['cindertail', 'zephyrix']],
     ['reefwarden', 'Reefwarden', 'tide', 1, 'plated', 2.6, ['#2F6B66', '#D8E6CC', '#8FD8EE'], '#F4F0D0', 'plates spots spikes', [200, 26, 10], 'Mossback × Ripplehorn. A walking coral reef.', ['mossback', 'ripplehorn']],
@@ -61,6 +75,10 @@ window.RB = window.RB || {};
     ['skyrender', 'Skyrender', 'gale', 2, 'raptor', 2.0, ['#23505C', '#E8F0E8', '#F2D040'], '#FFE14D', 'feathers crest stripes glow', [160, 42, 26], 'Galeclaw × Sparkjaw. Faster than you can blink.', ['galeclaw', 'sparkjaw']],
     ['tempestral', 'Tempestral', 'volt', 2, 'longneck', 6.5, ['#2E4A78', '#E2ECF2', '#F2D040'], '#FFE14D', 'crest glow stripes', [270, 38, 11], 'Tidecrest × Voltwing. Carries a storm on its back.', ['tidecrest', 'voltwing']],
     ['gravemaw', 'Gravemaw', 'void', 3, 'horned', 3.2, ['#35283F', '#BFB0D2', '#A04CE8'], '#E05CFF', 'horns3 frill glow spikes', [310, 50, 12], 'Stonehorn × Duskmaw. Its frill opens onto another world.', ['stonehorn', 'duskmaw']],
+    ['sailcrusher', 'Sailcrusher', 'ember', 2, 'rex', 4.6, ['#5A2A1A', '#D8B090', '#E8602A'], '#FFD23F', 'sail stripes spikes', [230, 44, 13], 'Sailfin × Emberjaw. Its sail steams in the rain.', ['sailfin', 'emberjaw']],
+    ['bastionhorn', 'Bastionhorn', 'stone', 1, 'horned', 2.8, ['#5A5048', '#D0C4AE', '#A8967A'], '#FFB020', 'horns3 frill armor', [220, 28, 9], 'Boulderback × Pebblestomp. Armoured from nose to tail.', ['boulderback', 'pebblestomp']],
+    ['thunderdome', 'Thunderdome', 'volt', 2, 'raptor', 2.1, ['#2E3050', '#D8CCA0', '#F2D040'], '#FFE14D', 'dome stripes glow', [180, 42, 19], 'Skullcrack × Sparkjaw. Its headbutts land like lightning strikes.', ['skullcrack', 'sparkjaw']],
+    ['mistcaller', 'Mistcaller', 'tide', 2, 'raptor', 2.6, ['#34505A', '#DCE4E0', '#78C4EE'], '#9FE8FF', 'tubecrest spots glow', [200, 36, 18], 'Hornblower × Tidecrest. Fog rolls in wherever it sings.', ['hornblower', 'tidecrest']],
   ];
 
   const SPECIES = RAW.map((r) => ({

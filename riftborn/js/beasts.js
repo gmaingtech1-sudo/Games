@@ -511,6 +511,32 @@ window.RB = window.RB || {};
     return G.texture(c);
   }
 
+  // Sail: skin stretched over long spines, body colour at the base fading
+  // to the accent colour at the top, with the spines showing through.
+  function sailTexture(sp) {
+    const c = G.canvas(512, 256), g = c.getContext('2d');
+    const gr = g.createLinearGradient(0, 256, 0, 0);
+    gr.addColorStop(0, sp.col[0]);
+    gr.addColorStop(0.55, css(mixc(sp.col[0], sp.col[2], 0.6)));
+    gr.addColorStop(1, sp.col[2]);
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 512, 256);
+    const r = rng(`sail:${sp.id}`);
+    for (let x = 6; x < 512; x += 16 + r() * 6) {
+      g.strokeStyle = 'rgba(20,10,6,0.35)';
+      g.lineWidth = 3;
+      g.beginPath(); g.moveTo(x, 256); g.lineTo(x + (r() - 0.5) * 8, 10); g.stroke();
+      g.strokeStyle = 'rgba(255,245,225,0.15)';
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(x + 2, 256); g.lineTo(x + 2, 12); g.stroke();
+    }
+    for (let i = 0; i < 2500; i++) {
+      g.fillStyle = r() < 0.5 ? 'rgba(0,0,0,0.1)' : 'rgba(255,250,235,0.06)';
+      g.fillRect(r() * 512, r() * 256, 2, 2);
+    }
+    return G.texture(c);
+  }
+
   // Frill: body colour in the middle, bold accent bands to the rim.
   function frillTexture(sp) {
     const c = G.canvas(256, 256), g = c.getContext('2d');
@@ -764,7 +790,7 @@ window.RB = window.RB || {};
         }
       }
     }
-    if (f.has('spikes') && sp.plan !== 'plated') {
+    if (f.has('spikes') && sp.plan !== 'plated' && !f.has('sail')) {
       // A row of dorsal spikes down the back and tail.
       for (let p = 1.2; p < P.hip + 1.6; p += 0.28) {
         const rg = ringAt(p);
@@ -789,6 +815,52 @@ window.RB = window.RB || {};
         const a = (k - 2) * 0.35;
         horn(headName, V(Math.sin(a) * head.hw * 0.8, head.p.y + head.hh * 0.75, head.p.z - 0.02 + Math.cos(a) * 0.02), V(Math.sin(a) * 0.6, 1, -0.5), 0.13 - Math.abs(k - 2) * 0.02, 0.022);
       }
+    }
+    // A tall sail of skin on long spines down the back (like Spinosaurus),
+    // in panels that ride the spine bones.
+    if (f.has('sail')) {
+      const p0 = P.hip - 2.2, p1 = P.front[0] + 1.1, mid = P.hip + 0.6;
+      const height = (p) => Math.max(0.015, 0.27 * Math.exp(-((p - mid) ** 2) / 5.5) - 0.02);
+      const top = (p) => { const rg = ringAt(p); return rg.p.clone().addScaledVector(rg.nrm, rg.hh * 0.8); };
+      const zs = [top(p0).z, top(p1).z];
+      for (let p = p0; p < p1 - 0.01; p += 0.25) {
+        const q = Math.min(p1, p + 0.27);
+        parts.push({ kind: 'sail', bone: boneAtParam(p + 0.12), shape: 'sail', pos: V(0, 0, 0), a: top(p), b: top(q), ha: height(p), hb: height(q), z0: Math.min(...zs), z1: Math.max(...zs) });
+      }
+    }
+    // Rows of bony studs along the back and flanks (like Ankylosaurus).
+    if (f.has('armor')) {
+      for (let p = P.hip - 1.6; p <= P.front[0] + 0.3; p += 0.2) {
+        const rg = ringAt(p);
+        for (const a of [-1.2, -0.6, 0, 0.6, 1.2]) {
+          const at = rg.p.clone().addScaledVector(rg.nrm, Math.cos(a) * rg.hh * 0.95).addScaledVector(rg.sd, Math.sin(a) * rg.hw * 0.95);
+          const dir = at.clone().sub(rg.p).normalize();
+          const sz = (0.01 + rg.hh * 0.06) * (a === 0 ? 1.1 : Math.abs(a) > 1 ? 0.8 : 1);
+          parts.push({ kind: 'osteo', bone: boneAtParam(p), shape: 'horn', pos: at, dir, len: sz * 1.3, rad: sz });
+        }
+      }
+    }
+    // A heavy bone club at the end of the tail.
+    if (f.has('club')) {
+      const tb = `t${P.tail.length - 1}`;
+      const at = J[P.tail[P.tail.length - 1]].p.clone().lerp(J[0].p, 0.35);
+      parts.push({ kind: 'osteo', bone: tb, shape: 'blob', pos: at, scale: V(0.1, 0.06, 0.1) });
+      for (const s2 of [1, -1]) parts.push({ kind: 'osteo', bone: tb, shape: 'blob', pos: at.clone().add(V(s2 * 0.075, -0.008, 0.01)), scale: V(0.065, 0.048, 0.075) });
+    }
+    // A thick domed skull ringed with knobs (like Pachycephalosaurus).
+    if (f.has('dome')) {
+      parts.push({ kind: 'skin', bone: headName, shape: 'blob', pos: V(0, head.p.y + head.hh * 0.6, head.p.z - head.hw * 0.25), scale: V(head.hw * 1.05, head.hh * 0.9, head.hw * 1.3) });
+      for (let k = 0; k < 7; k++) {
+        const a = (k / 6 - 0.5) * 2.6;
+        horn(headName, V(Math.sin(a) * head.hw * 0.95, head.p.y + head.hh * 0.35, head.p.z - head.hw * 0.25 - Math.cos(a) * head.hw * 1.1), V(Math.sin(a), 0.4, -Math.cos(a)), 0.03, 0.014);
+      }
+    }
+    // A long hollow crest sweeping back from the head (like
+    // Parasaurolophus). It hoots through it.
+    if (f.has('tubecrest')) {
+      const y = head.p.y + head.hh * 0.55, z = head.p.z + head.hw * 0.4;
+      parts.push({ kind: 'accent', bone: headName, shape: 'tube', pos: V(0, 0, 0), rad: head.hw * 0.32,
+        pts: [V(0, y, z), V(0, y + 0.06, z - 0.1), V(0, y + 0.1, z - 0.24), V(0, y + 0.1, z - 0.34)] });
     }
 
     // Materials
@@ -818,6 +890,8 @@ window.RB = window.RB || {};
       teeth: new T.MeshStandardMaterial({ color: '#E6DCC2', roughness: 0.3 }),
       frill: new T.MeshStandardMaterial({ map: frillTexture(sp), normalMap: tiled(sc.normal, 4, 4), normalScale: new T.Vector2(0.7, 0.7), roughness: 0.7, envMapIntensity: 0.7, side: T.DoubleSide, emissive: sp.feat.has('glow') ? new T.Color(elc) : new T.Color(0), emissiveIntensity: sp.feat.has('glow') ? 0.35 : 0 }),
       // Plates, crests and quills: horny skin, part body colour, part accent.
+      osteo: new T.MeshStandardMaterial({ color: mixc(sp.col[0], '#CFC2A0', 0.3), normalMap: tiled(sc.normal, 2, 2), normalScale: new T.Vector2(0.6, 0.6), roughness: 0.6, envMapIntensity: 0.8 }),
+      sail: new T.MeshStandardMaterial({ map: sailTexture(sp), roughness: 0.65, side: T.DoubleSide, envMapIntensity: 0.7, emissive: sp.feat.has('glow') ? new T.Color(elc) : new T.Color(0), emissiveIntensity: sp.feat.has('glow') ? 0.35 : 0 }),
       accent: new T.MeshStandardMaterial({ color: mixc(sp.col[0], sp.col[2], sp.feat.has('glow') || sp.el === 'void' ? 0.8 : 0.55), normalMap: tiled(sc.normal, 3, 3), normalScale: new T.Vector2(0.5, 0.5), roughness: 0.7, envMapIntensity: 0.8, side: T.DoubleSide, emissive: sp.feat.has('glow') ? new T.Color(elc) : new T.Color(0), emissiveIntensity: sp.feat.has('glow') ? 0.5 : 0 }),
     };
 
@@ -853,6 +927,26 @@ window.RB = window.RB || {};
         out.scale.setScalar(pt.rad);
         // The iris is in the middle of the texture, which faces +x.
         out.quat.setFromUnitVectors(V(1, 0, 0), pt.look);
+      } else if (pt.shape === 'sail') {
+        // One panel of the sail: from the back up to its scalloped top.
+        const pos = [], uv = [], idx = [];
+        const N = 4;
+        for (let k = 0; k <= N; k++) {
+          const f2 = k / N;
+          const base = pt.a.clone().lerp(pt.b, f2);
+          const h = pt.ha + (pt.hb - pt.ha) * f2 - Math.sin(f2 * Math.PI) * 0.012;
+          const u = (base.z - pt.z0) / ((pt.z1 - pt.z0) || 1);
+          pos.push(base.x, base.y - 0.01, base.z, base.x, base.y + h, base.z);
+          uv.push(u, 0, u, 1);
+          if (k) { const q = (k - 1) * 2; idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3); }
+        }
+        out.geo = new T.BufferGeometry();
+        out.geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+        out.geo.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
+        out.geo.setIndex(idx);
+        out.geo.computeVertexNormals();
+      } else if (pt.shape === 'tube') {
+        out.geo = new T.TubeGeometry(new T.CatmullRomCurve3(pt.pts), 16, pt.rad, 8, false);
       } else if (pt.shape === 'lid') {
         if (!geoCache.lid) geoCache.lid = new T.TorusGeometry(0.86, 0.3, 8, 20);
         out.geo = geoCache.lid;
