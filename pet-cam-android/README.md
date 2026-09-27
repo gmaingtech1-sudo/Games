@@ -1,8 +1,8 @@
 # Pet Cam for Android
 
-The Pet Cam AR pet as a regular Android app: download the APK, install it, and it gets its own icon on your home screen. No app store, and no HTTPS hosting needed for the camera.
+The Pet Cam AR pet (a real-looking dog, cat or bunny you play with using your finger) as a regular Android app: download the APK, install it, and it gets its own icon on your home screen. No app store, and no HTTPS hosting needed for the camera.
 
-**Download:** [`dist/pet-cam.apk`](dist/pet-cam.apk) (about 180 KB)
+**Download:** [`dist/pet-cam.apk`](dist/pet-cam.apk) (about 270 KB)
 
 ## Installing it
 

@@ -1,7 +1,7 @@
 {
   "name": "Pet Cam",
   "short_name": "Pet Cam",
-  "description": "An AR pet that lives in your camera. Pet it, feed it, play fetch and take photos together.",
+  "description": "A real-looking AR dog, cat or bunny that lives in your camera. Pet it, hand-feed it, play with toys and take photos together.",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
@@ -11,7 +11,6 @@
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
