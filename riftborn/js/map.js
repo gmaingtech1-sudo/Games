@@ -55,7 +55,7 @@ window.RB = window.RB || {};
   let sun, hemi, shadowCatcher, ground, groundMat;
   let agent, rangeRing, rangeFill, pulseRing, motes;
   let style = '';
-  const live = { rifts: new Map(), drops: new Map(), spawns: new Map() };
+  const live = { rifts: new Map(), drops: new Map(), spawns: new Map(), apex: new Map() };
   const picks = [];
   let links = null, fields = null, linkKey = '';
 
@@ -339,7 +339,7 @@ window.RB = window.RB || {};
   // The world origin moved: rebuild everything placed in local meters.
   function reset() {
     const none = new Set();
-    prune(live.rifts, none); prune(live.drops, none); prune(live.spawns, none);
+    prune(live.rifts, none); prune(live.drops, none); prune(live.spawns, none); prune(live.apex, none);
     for (const tl of tiles.values()) disposeTile(tl);
     tiles.clear();
     linkKey = '';
@@ -383,8 +383,44 @@ window.RB = window.RB || {};
       o.set(S.dropReady(d, now) === 0);
     }
     prune(live.drops, seen);
+    syncApex(now);
     syncSpawns();
     syncLinks();
+  }
+
+  // Apex creatures stand beside the Rift they've taken over, huge, on a
+  // red ring. Tapping one opens its Rift.
+  function syncApex(now) {
+    const seen = new Set();
+    for (const r of ents.rifts) {
+      const a = S.apexAt(r, now);
+      if (!a || a.beaten || W.distM(player, r) > SIGHT * 1.5) continue;
+      seen.add(r.id);
+      if (live.apex.has(r.id)) continue;
+      const sp = C.byId(a.boss.sp);
+      const inst = RB.beasts.instance(sp.id, {});
+      const scale = clamp(sp.size * 5.5, 14, 34);
+      inst.root.scale.setScalar(scale);
+      const root = new T.Group();
+      const at = toV(r.lat, r.lng);
+      root.position.set(at.x + 14, at.y, at.z + 6);
+      root.rotation.y = -0.6;
+      root.add(inst.root);
+      const ring = P.ringMarker('#FF3B5C', scale * 0.6, 1);
+      ring.position.y = 0.3;
+      root.add(ring);
+      const aura = G.sprite('#FF3B5C', 2.2, 0.4);
+      aura.position.y = 0.5;
+      inst.root.add(aura);
+      const pick = new T.Mesh(new T.SphereGeometry(scale * 0.6, 8, 6), new T.MeshBasicMaterial({ visible: false }));
+      pick.position.y = scale * 0.5;
+      pick.userData.ent = r;
+      root.add(pick);
+      picks.push(pick);
+      scene.add(root);
+      live.apex.set(r.id, { root, inst, pick, dispose: () => inst.dispose() });
+    }
+    prune(live.apex, seen);
   }
 
   function prune(map, seen) {
@@ -551,6 +587,8 @@ window.RB = window.RB || {};
     for (const o of live.rifts.values()) o.update(dt);
     for (const o of live.drops.values()) o.update(dt);
     for (const o of live.spawns.values()) updateSpawn(o, dt);
+    // Apex creatures stand their ground and roar now and then.
+    for (const o of live.apex.values()) o.inst.update(dt, { speed: 0, mouth: Math.max(0, Math.sin(t * 0.8) - 0.8) * 5 });
 
     tileTimer -= dt;
     if (tileTimer <= 0) { tileTimer = 0.5; updateTiles(); }

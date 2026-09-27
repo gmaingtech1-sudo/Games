@@ -5,8 +5,8 @@ An AR game on your real streets. Rifts between worlds have torn open all over th
 It mixes three games:
 
 - **Like Ingress:** two factions fight over Rifts pinned to real places. Hack them for gear, claim them, link them together, and close triangles of links into control fields that earn Aether.
-- **Like Pokémon GO:** creatures roam the streets around you. Walk up to one, and it steps out of a rift tear into your camera. Flick a Rift Orb at it to catch it.
-- **Like Jurassic World Alive:** the creatures are dinosaur-like beasts. Fire darts at them in AR to collect their DNA, spend DNA to level them up, fuse DNA into hybrids, and battle the guardians of enemy Rifts.
+- **Like Pokémon GO:** creatures roam the streets around you. Walk up to one, and it steps out of a rift tear into your camera. Flick a Rift Orb at it to catch it. Hatch eggs by walking, and come back daily for a week of login rewards.
+- **Like Jurassic World Alive:** the creatures are dinosaur-like beasts. Fire darts at them in AR to collect their DNA, spend DNA to level them up, fuse DNA into hybrids, battle the guardians of enemy Rifts, and take on huge Apex creatures in raids.
 
 Everything is in 3D, like those games: a tilted 3D map of your real streets with a day/night sky, animated 3D dinosaurs that stand in your room through the camera with real shadows, and a 3D battle arena.
 
@@ -46,7 +46,7 @@ The Web API key only identifies the project and is meant to sit in apps; the Fir
 You earn XP for nearly everything: catching and darting creatures, hacking, claiming, upgrading, recharging and linking Rifts, control fields, battles, fusing and levelling creatures, missions, medals and walking. XP pops up by your level bar as you earn it.
 
 - **40 agent levels.** Each level up gives supplies. Even levels up to 14 let you upgrade Rifts one level higher. Every five levels you get a new title: Recruit, Scout, Tracker, Hunter, Ranger, Riftwalker, Vanguard, Legend, and Riftborn at level 40. **Agent → 📈 Levels** lists every level's XP and reward.
-- **Medals**, like Ingress badges: Trekker (km walked), Collector, Hacker, Sharpshooter (dart hits), Builder, Connector, Mind Controller (fields), Brawler and Geneticist. Each has Bronze, Silver, Gold, Platinum and Onyx tiers, worth 500 to 40,000 XP. They're shown in **Agent**.
+- **Medals**, like Ingress badges: Trekker (km walked), Collector, Hacker, Sharpshooter (dart hits), Builder, Connector, Mind Controller (fields), Brawler, Geneticist, Breeder (eggs hatched) and Apex Hunter (raids won). Each has Bronze, Silver, Gold, Platinum and Onyx tiers, worth 500 to 40,000 XP. They're shown in **Agent**.
 - **🏆 Leaderboard** in **Agent**: top agents by XP.
 
 ### Moving
@@ -93,6 +93,15 @@ Without a key, or if Google refuses it (the menu says why), the game uses a free
 - **📋 Missions:** three new missions every day, like catching creatures, hacking Rifts, opening caches, landing darts, winning a battle or walking a distance. Each pays orbs, darts, shards and XP. Finish all three for a **Rift Surge**: 60 DNA of a rare creature plus extra supplies.
 - **Walking buddy:** the first creature on your team (★ in the Lab) walks with you and finds 5 of its DNA every 250 m.
 - **Supply stash:** every kilometre you walk you find a stash of orbs, darts and shards. **Agent** shows how far to the next one.
+- **🎁 Daily bonus:** play every day for a week of rising rewards (it pops up when you open the game, and lives in **📋 Missions**). Day 7 gives a 10 km egg. Miss a day and it starts again from day 1.
+
+### Eggs
+
+Eggs turn up in supply caches, sometimes when you hack a Rift, in the daily bonus, in the Rift Surge and from Apex raids. You can carry 9. Two incubators hatch them as you walk: **2 km** eggs (green) hold common creatures, **5 km** eggs (orange) rarer ones, and **10 km** eggs (purple) Epic and Legendary ones. Eggs go into a free incubator by themselves; the **Bag** shows how far each one has to go. Hatched creatures have good stats and come with DNA.
+
+### Apex raids
+
+Every day about one Rift in twelve is taken over by an **Apex**: a huge Rare, Epic or Legendary creature that stands beside the Rift on a red ring, and shows up in **Scan**. It's the same for everyone and changes daily. Walk there and tap **👑 Battle the Apex** to fight it with your team. It has three times the health and scales with your level. Win for 40 to 100 of its DNA, supplies, big XP and a chance of a 10 km egg. Each Apex can be beaten once a day.
 
 ### Rifts
 

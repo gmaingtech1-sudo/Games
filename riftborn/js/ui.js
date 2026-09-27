@@ -13,7 +13,7 @@ window.RB = window.RB || {};
   const sfx = RB.sfx;
   const $ = (id) => document.getElementById(id);
 
-  let hooks = {};          // set by main: engage, assault, changed, player(), goOnline, accountsChanged
+  let hooks = {};          // set by main: engage, assault, raid, changed, player(), goOnline, accountsChanged
   let current = null;      // { name, refresh }
   let anim = null;         // animated portrait in the sheet
 
@@ -71,6 +71,10 @@ window.RB = window.RB || {};
     l.darts ? `🎯 ${l.darts} Dart${l.darts > 1 ? 's' : ''}` : '',
     l.shards ? `💠 ${l.shards} Shard${l.shards > 1 ? 's' : ''}` : '',
   ].filter(Boolean).join(' · ');
+
+  // An egg picture: its colour says how far you walk to hatch it.
+  const eggIcon = (km, big) => `<span class="egg ${big ? 'big' : ''}" style="--c:${S.EGGS[km].color}"></span>`;
+  const eggNote = (e) => (e ? ` · 🥚 ${e.km} km egg` : '');
 
   function levelUp(L) {
     sfx.levelUp();
@@ -148,7 +152,7 @@ window.RB = window.RB || {};
         const r = S.openDrop(drop);
         if (!r.ok) { toast(r.why); return; }
         sfx.crate();
-        toast(`Cache opened: ${loot(r.loot)}`, 'good');
+        toast(`Cache opened: ${loot(r.loot)}${eggNote(r.egg)}`, 'good');
         reportUp(r);
         close();
         hooks.changed();
@@ -171,6 +175,16 @@ window.RB = window.RB || {};
       const friendly = st.faction === me;
       const enemy = st.faction && !friendly;
       const who = st.mine ? 'Held by you' : F ? `Held by the ${F.name}` : 'Unclaimed';
+      const apex = S.apexAt(rift);
+      const asp = apex && C.byId(apex.boss.sp);
+      const apexHtml = !apex ? '' : `
+        <div class="apex ${apex.beaten ? 'done' : ''}">
+          <canvas data-sp="${asp.id}"></canvas>
+          <div><b>👑 Apex ${esc(asp.name)}</b>
+            <small>Level ${apex.boss.lvl} · ${C.ELEMENTS[asp.el].icon} ${C.ELEMENTS[asp.el].name} · 3× health</small>
+            <small>${apex.beaten ? 'You beat it today. A new Apex rises tomorrow.' : `Beat it for ${apex.dna} ${esc(asp.name)} DNA, supplies, big XP and maybe a 10 km egg. Today only.`}</small>
+          </div>
+        </div>`;
       const guards = st.guard.length
         ? `<div class="guards">${st.guard.map((g) => `<div class="guard"><canvas data-sp="${g.sp}"></canvas><small>${esc(C.byId(g.sp).name)} · Lv ${g.lvl}</small></div>`).join('')}</div>`
         : '';
@@ -181,6 +195,7 @@ window.RB = window.RB || {};
         actions += hackWait > 0
           ? `<button class="btn" disabled>Hack · ready in ${fmtTime(hackWait)}</button>`
           : '<button class="btn btn-main" data-hack>Hack</button>';
+        if (apex && !apex.beaten) actions += `<button class="btn btn-danger" data-raid>👑 Battle the Apex</button>`;
         if (!st.faction) actions += `<button class="btn btn-main" data-claim>Claim · ${S.claimCost} 💠</button>`;
         if (enemy) actions += '<button class="btn btn-danger" data-assault>Assault the guardians</button>';
         if (friendly && st.health < 100) actions += '<button class="btn" data-recharge>Recharge · 2 💠</button>';
@@ -196,6 +211,7 @@ window.RB = window.RB || {};
             <p class="rift-who">${who}${st.faction ? ` · Level ${st.level}` : ''}</p>
           </div>
         </div>
+        ${apexHtml}
         ${st.faction ? `<div class="bar-row"><span>Charge</span><span class="bar"><i style="width:${st.health}%;background:${col}"></i></span><span>${st.health}%</span></div>` : ''}
         ${guards ? `<h3>${friendly ? 'Guardians' : 'Guardians to beat'}</h3>${guards}` : ''}
         <p class="muted small">${keys ? `You hold ${keys} key${keys > 1 ? 's' : ''} to this Rift. ` : ''}${
@@ -210,7 +226,7 @@ window.RB = window.RB || {};
           const r = S.hack(rift);
           if (!r.ok) { toast(r.why); return; }
           sfx.hack();
-          toast(`Hacked: ${loot(r.loot)}${r.key ? ' · 🗝️ Key' : ''}`, 'good');
+          toast(`Hacked: ${loot(r.loot)}${r.key ? ' · 🗝️ Key' : ''}${eggNote(r.egg)}`, 'good');
           reportUp(r);
           render();
           hooks.changed();
@@ -241,6 +257,7 @@ window.RB = window.RB || {};
           hooks.changed();
         });
         on(card, '[data-assault]', () => { close(); hooks.assault(rift); });
+        on(card, '[data-raid]', () => { close(); hooks.raid(rift); });
         on(card, '[data-guards]', () => guardSheet(rift));
         on(card, '[data-link]', () => linkSheet(rift));
       }, () => render());
@@ -443,10 +460,71 @@ window.RB = window.RB || {};
         <div class="item"><span>🎯</span><b>${it.darts}</b><small>DNA Darts · fire them to collect DNA</small></div>
         <div class="item"><span>💠</span><b>${it.shards}</b><small>Rift Shards · claim, recharge and upgrade Rifts</small></div>
       </div>
+      <h3>Eggs · ${S.save.eggs.length}/${S.MAX_EGGS}</h3>
+      ${S.save.eggs.length ? `<div class="eggs">${S.save.eggs.map((e) => `
+        <div class="egg-card ${e.inc ? 'inc' : ''}">
+          ${eggIcon(e.km)}
+          <b>${e.km} km</b>
+          <span class="bar"><i style="width:${pct(e.walked / (e.km * 1000))};background:${S.EGGS[e.km].color}"></i></span>
+          ${e.inc ? `<small>${fmtDist(e.walked)} / ${e.km} km</small>` : `<button class="btn btn-small" data-inc="${e.id}">Incubate</button>`}
+        </div>`).join('')}</div>
+      <p class="muted small">${S.INCUBATORS} incubators. Eggs in them hatch as you walk. Longer eggs hold rarer creatures.</p>`
+        : '<p class="muted small">No eggs yet. You find them in supply caches, sometimes when hacking Rifts, in the daily bonus and from Apex raids. Walk to hatch them.</p>'}
       <h3>Rift keys</h3>
       ${keys.length ? `<div class="list">${keys.map((k) => `<div class="row"><span><b>${esc(k.name)}</b><small>${k.d === Infinity ? 'Rift key' : `${fmtDist(k.d)} away`}</small></span><span class="go">🗝️ ${k.n}</span></div>`).join('')}</div>`
         : '<p class="muted small">No keys yet. Hacking a Rift often gives you its key. You need keys to link Rifts.</p>'}
-    `);
+    `, (el) => {
+      on(el, '[data-inc]', (b) => {
+        const r = S.incubate(b.dataset.inc);
+        if (!r.ok) { if (r.why) toast(r.why, 'bad'); return; }
+        toast('Egg in the incubator. Start walking!', 'good');
+        bag();
+      });
+    });
+  }
+
+  // An egg just hatched.
+  function hatched(h) {
+    const sp = C.byId(h.creature.sp), rc = C.RARITY[sp.rar];
+    sfx.caught();
+    open('hatch', `
+      <div class="hatch-top">${eggIcon(h.km, true)}</div>
+      <canvas class="portrait big" id="hatch-pic"></canvas>
+      <h2 class="center">${esc(sp.name)} hatched!</h2>
+      <p class="chips center">${chip(sp)}<span class="chip">Lv ${h.creature.lvl}</span></p>
+      <p class="muted center">From your ${h.km} km egg · +${h.dna} ${esc(sp.name)} DNA · +${S.EGGS[h.km].xp} XP</p>
+      <p class="muted small center">${esc(sp.blurb)}</p>
+      <button class="btn btn-main btn-big" data-close>Nice!</button>
+    `, () => animate($('hatch-pic'), sp.id));
+    reportUp(h);
+  }
+
+  // A week of daily rewards, like a login calendar.
+  function daily() {
+    const p = S.loginPending();
+    const cur = p ? p.streak : S.save.login.streak;
+    const give = (r) => [r.orbs ? `🔮 ${r.orbs}` : '', r.darts ? `🎯 ${r.darts}` : '', r.shards ? `💠 ${r.shards}` : '', r.egg ? `🥚 ${r.egg} km` : ''].filter(Boolean).join(' ');
+    open('daily', `
+      <h2>Daily bonus</h2>
+      <p class="muted">Play every day for a week of rewards. Day 7 has a 10 km egg. Miss a day and you start again from day 1.</p>
+      <div class="days">${S.LOGIN.map((r, i) => {
+        const n = i + 1;
+        const state = n < cur || (!p && n === cur) ? 'got' : n === cur ? 'today' : '';
+        return `<div class="day ${state}"><small>Day ${n}</small><b>${state === 'got' ? '✓' : n === 7 ? '🥚' : '🎁'}</b><small>${give(r)}</small></div>`;
+      }).join('')}</div>
+      ${p ? `<button class="btn btn-main btn-big" data-claim>Claim day ${p.streak} · +${100 * p.streak} XP</button>`
+        : '<p class="far center">Claimed for today. Come back tomorrow!</p>'}
+    `, (el) => {
+      on(el, '[data-claim]', () => {
+        const r = S.claimLogin();
+        if (!r.ok) return;
+        sfx.collect();
+        toast(`Day ${r.streak} bonus: ${give(r.reward)}${r.reward.egg && !r.egg ? ' (your egg bag was full)' : ''}`, 'good');
+        reportUp(r);
+        daily();
+        hooks.changed();
+      });
+    });
   }
 
   function profile() {
@@ -707,6 +785,7 @@ window.RB = window.RB || {};
     const surge = C.byId(ms.surge);
     open('missions', `
       <h2>Field missions</h2>
+      <button class="row daily-row" data-daily><span class="go">🎁</span><span><b>Daily bonus</b><small>${S.loginPending() ? `Day ${S.loginPending().streak} is ready to claim!` : `Day ${S.save.login.streak} claimed. Come back tomorrow.`}</small></span><span class="go">›</span></button>
       <p class="muted small">New missions every day. Each pays 🔮 ${r.orbs} · 🎯 ${r.darts} · 💠 ${r.shards} and 300 XP. Finish all three for a Rift Surge.</p>
       <div class="list">${ms.list.map((m, i) => `
         <div class="mission ${m.got >= m.need ? 'done' : ''}">
@@ -717,10 +796,11 @@ window.RB = window.RB || {};
       <div class="surge">
         <canvas data-sp="${surge.id}" data-sil="${S.save.dex[surge.id] ? 0 : 1}"></canvas>
         <b>Rift Surge</b>
-        <p class="muted small">60 ${S.save.dex[surge.id] ? esc(surge.name) : 'mystery creature'} DNA · 🔮 10 · 💠 10 · 800 XP</p>
+        <p class="muted small">60 ${S.save.dex[surge.id] ? esc(surge.name) : 'mystery creature'} DNA · 🔮 10 · 💠 10 · 🥚 5 km egg · 800 XP</p>
         ${ms.bonus ? '<small class="muted">Claimed ✓ Come back tomorrow.</small>' : `<button class="btn ${allClaimed ? 'btn-main' : ''}" data-bonus ${allClaimed ? '' : 'disabled'}>Claim Rift Surge</button>`}
       </div>
     `, (el) => {
+      on(el, '[data-daily]', () => daily());
       on(el, '[data-claim]', (b) => {
         const res = S.claimMission(+b.dataset.claim);
         if (!res.ok) return;
@@ -733,7 +813,7 @@ window.RB = window.RB || {};
         const res = S.claimBonus();
         if (!res.ok) return;
         sfx.caught();
-        toast(`Rift Surge! +60 ${esc(C.byId(res.sp).name)} DNA, 🔮 10, 💠 10`, 'good');
+        toast(`Rift Surge! +60 ${esc(C.byId(res.sp).name)} DNA, 🔮 10, 💠 10${eggNote(res.egg)}`, 'good');
         reportUp(res);
         missionsSheet();
       });
@@ -754,7 +834,11 @@ window.RB = window.RB || {};
     const top = rows.filter((r) => r.d < 600).slice(0, 30);
     const label = (r) => {
       if (r.kind === 'spawn') { const sp = C.byId(r.e.sp); return `<canvas data-sp="${sp.id}"></canvas><span><b>${esc(sp.name)}</b><small><i style="color:${C.RARITY[sp.rar].color}">${C.RARITY[sp.rar].name}</i> · ${fmtDist(r.d)}</small></span>`; }
-      if (r.kind === 'rift') { const st = S.riftState(r.e); return `<span class="dot" style="--c:${S.riftColor(st)}"></span><span><b>${esc(r.e.name)}</b><small>${st.mine ? 'Yours' : st.faction ? S.FACTIONS[st.faction].name : 'Unclaimed'} · ${fmtDist(r.d)}</small></span>`; }
+      if (r.kind === 'rift') {
+        const st = S.riftState(r.e), a = S.apexAt(r.e);
+        const apex = a && !a.beaten ? `<i style="color:#FF3B5C">👑 Apex ${esc(C.byId(a.boss.sp).name)}</i> · ` : '';
+        return `<span class="dot" style="--c:${S.riftColor(st)}"></span><span><b>${esc(r.e.name)}</b><small>${apex}${st.mine ? 'Yours' : st.faction ? S.FACTIONS[st.faction].name : 'Unclaimed'} · ${fmtDist(r.d)}</small></span>`;
+      }
       return `<span class="dot" style="--c:#FFB020"></span><span><b>${esc(r.e.name)}</b><small>Supply cache · ${fmtDist(r.d)}</small></span>`;
     };
     open('scan', `
@@ -861,6 +945,12 @@ window.RB = window.RB || {};
         <p>Spend DNA to level up creatures. Fuse DNA from two species to create <b>hybrids</b> you can't find in the wild.</p>
         <h3>📋 Missions &amp; walking</h3>
         <p>Three new field missions every day (the 📋 button). Finish all three for a Rift Surge. Your first team creature is your walking buddy: it finds DNA every ${S.BUDDY_M} m you walk, and every kilometre you find a supply stash.</p>
+        <h3>👑 Apex raids</h3>
+        <p>Every day some Rifts are taken over by a huge <b>Apex</b> creature with triple health. Walk there and beat it with your team for lots of its DNA, supplies and big XP. Each Apex can be beaten once a day.</p>
+        <h3>🥚 Eggs</h3>
+        <p>Eggs turn up in caches, Rift hacks, the daily bonus and Apex raids. Put them in your two incubators (Bag) and walk 2, 5 or 10 km to hatch them. Longer eggs hold rarer creatures.</p>
+        <h3>🎁 Daily bonus</h3>
+        <p>Play every day for a week of rising rewards (📋 Missions → Daily bonus). Day 7 gives a 10 km egg.</p>
         <h3>📦 Caches</h3>
         <p>Supply caches refill every 10 minutes. Great for darts.</p>
         <h3>🧭 Moving</h3>
@@ -873,6 +963,6 @@ window.RB = window.RB || {};
     setHooks(h) { hooks = h; },
     toast, open, close, isOpen, refresh, tick, levelUp,
     spawnSheet, dropSheet, riftSheet, lab, creatureSheet, bag, profile, scan, menu, guide, missionsSheet,
-    account, onlineSheet,
+    account, onlineSheet, hatched, daily,
   };
 })(window.RB);

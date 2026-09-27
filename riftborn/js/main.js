@@ -42,6 +42,7 @@
       player: () => (located() ? pos : null),
       engage,
       assault,
+      raid,
       changed: () => { refreshEntities(true); updateHud(); },
       goOnline,
       // Online accounts were turned on or off.
@@ -318,6 +319,8 @@
       const sp = C.byId(draft.starter);
       setTimeout(() => UI.toast(`${esc(sp.name)} joined you. Welcome to the ${S.faction().name}, Agent ${esc(save.agent.name)}!`, 'good'), 400);
       setTimeout(() => UI.guide(), 900);
+    } else if (S.loginPending()) {
+      setTimeout(() => { if (mode === 'map' && !UI.isOpen()) UI.daily(); }, 900);
     }
   }
 
@@ -467,6 +470,7 @@
   function walkRewards(news) {
     for (const n of news) {
       if (n.kind === 'buddy') UI.toast(`🐾 Your buddy ${esc(C.byId(n.sp).name)} found 5 DNA while you walked.`, 'good');
+      else if (n.kind === 'hatch') { if (mode === 'map') UI.hatched(n); else UI.toast(`🥚 Your ${n.km} km egg hatched into ${esc(C.byId(n.creature.sp).name)}!`, 'good'); }
       else { sfx.crate(); UI.toast(`🎒 1 km walked! Supply stash: 🔮 ${n.loot.orbs} · 🎯 ${n.loot.darts} · 💠 ${n.loot.shards}`, 'good'); }
     }
   }
@@ -504,7 +508,7 @@
     $('hud-orbs').textContent = s.items.orbs;
     $('hud-darts').textContent = s.items.darts;
     $('hud-shards').textContent = s.items.shards;
-    $('btn-missions').classList.toggle('ready', S.missionsReady());
+    $('btn-missions').classList.toggle('ready', S.missionsReady() || !!S.loginPending());
     // Say once when online saving is blocked, and why. (A weak signal
     // just means it tries again later.)
     const problem = RB.auth.syncNeedsFix ? RB.auth.syncError : '';
@@ -574,6 +578,34 @@
         if (r.up) UI.levelUp(r.up);
         refreshEntities(true);
         UI.riftSheet(rift);
+      }
+      updateHud();
+    });
+  }
+
+  // An Apex raid: your team against one huge creature with triple health.
+  function raid(rift) {
+    const a = S.apexAt(rift);
+    if (!a || a.beaten) return;
+    if (!located() || W.distM(pos, rift) > S.RANGE + 5) { UI.toast('Too far away now.'); return; }
+    const sp = C.byId(a.boss.sp);
+    mode = 'battle';
+    $('map-screen').hidden = true;
+    RB.battle.start(S.team(), [a.boss], {
+      title: `👑 Apex ${sp.name}`,
+      intro: `The Apex ${sp.name} roars! It has three times the health.`,
+      winText: `The Apex ${sp.name} flees back through the Rift, leaving ${a.dna} DNA behind.`,
+    }, (out) => {
+      mode = 'map';
+      $('map-screen').hidden = false;
+      M.show();
+      if (out && out.win) {
+        const r = S.beatApex(rift);
+        if (r.ok) {
+          UI.toast(`👑 Apex defeated! +${r.dna} ${esc(sp.name)} DNA · 🔮 ${r.loot.orbs} · 🎯 ${r.loot.darts} · 💠 ${r.loot.shards}${r.egg ? ' · 🥚 10 km egg' : ''}`, 'good');
+          if (r.up) UI.levelUp(r.up);
+        }
+        refreshEntities(true);
       }
       updateHud();
     });

@@ -23,7 +23,9 @@ window.RB = window.RB || {};
 
   function fighter(c, side) {
     const st = C.stats(c);
-    return { c, sp: C.byId(c.sp), side, st, hp: st.hp, max: st.hp, cd: { blast: 0, guard: 0 }, guard: false, anim: { lunge: 0, hurt: 0, faint: 0, shield: 0, mouth: 0 } };
+    // Apex bosses (c.hpx) have several times the health.
+    const hp = Math.round(st.hp * (c.hpx || 1));
+    return { c, sp: C.byId(c.sp), side, st, hp, max: hp, cd: { blast: 0, guard: 0 }, guard: false, anim: { lunge: 0, hurt: 0, faint: 0, shield: 0, mouth: 0 } };
   }
 
   function init() {
@@ -62,7 +64,7 @@ window.RB = window.RB || {};
     $('bt-title').textContent = opts.title || 'Rift battle';
     resize();
     hud();
-    log(`${B.foe[0].sp.name} guards the Rift!`);
+    log(opts.intro || `${B.foe[0].sp.name} guards the Rift!`);
     sfx.roar(B.foe[0].sp.size);
     B.foe[0].anim.mouth = 1;
   }
@@ -364,7 +366,7 @@ window.RB = window.RB || {};
   }
 
   // Creatures are shown at a size that fits the arena, big ones bigger.
-  const dispH = (f) => clamp(1.15 + Math.log2(f.sp.size) * 0.6, 1.1, 2.7);
+  const dispH = (f) => clamp(1.15 + Math.log2(f.sp.size) * 0.6, 1.1, 2.7) * (f.c.boss ? 1.4 : 1);
 
   function model(f) {
     if (!f.model) {

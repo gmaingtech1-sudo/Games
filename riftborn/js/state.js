@@ -1,11 +1,12 @@
 /* Riftborn — the player's save and the game's rules: items, XP, creatures,
-   DNA, fusion, and everything you can do to a Rift (hack, claim, upgrade,
-   recharge, link, and the control fields that links make). */
+   DNA, fusion, everything you can do to a Rift (hack, claim, upgrade,
+   recharge, link, and the control fields that links make), Apex raids,
+   eggs you hatch by walking, and daily login rewards. */
 window.RB = window.RB || {};
 (function (RB) {
   'use strict';
 
-  const { rng, hash, randInt, uid, clamp } = RB.util;
+  const { rng, hash, randInt, uid, clamp, weighted } = RB.util;
   const C = RB.creatures;
   const W = RB.world;
 
@@ -45,11 +46,14 @@ window.RB = window.RB || {};
       hacks: {},         // riftId → time
       drops: {},         // dropId → time
       events: [],        // news to show on next look ("your Rift fell")
-      stats: { caught: 0, darts: 0, hits: 0, hacks: 0, claimed: 0, links: 0, fields: 0, wins: 0, fused: 0, meters: 0 },
+      stats: { caught: 0, darts: 0, hits: 0, hacks: 0, claimed: 0, links: 0, fields: 0, wins: 0, fused: 0, meters: 0, hatched: 0, apex: 0 },
       medals: {},        // medal id → tier reached (1 bronze … 5 onyx)
       settings: { sound: true, map: 'scanner', mapV: 2, tiles: 'auto', ar: true, googleKey: '' },
       missions: null,    // today's field missions
       walk: { buddy: 0, stash: 0 },   // meters toward the next walking rewards
+      eggs: [],          // { id, km, walked, inc }
+      raids: {},         // "riftId:day" → Apex beaten that day
+      login: { day: 0, streak: 0 },   // last day you claimed the daily reward
       lastPos: null,
     };
   }
@@ -66,6 +70,7 @@ window.RB = window.RB || {};
       s.stats = Object.assign(b.stats, s.stats);
       s.settings = Object.assign(b.settings, s.settings);
       s.walk = Object.assign(b.walk, s.walk);
+      s.login = Object.assign(b.login, s.login);
       if (s.settings.map === 'streets') s.settings.map = 'auto';
       // The Ingress-style scanner map became the default in map version 2.
       if (s.settings.mapV !== 2) { s.settings.map = 'scanner'; s.settings.mapV = 2; }
@@ -322,12 +327,13 @@ window.RB = window.RB || {};
     give(loot);
     let key = false;
     if (Math.random() < (enemy ? 0.45 : 0.7)) { addKey(rift); key = true; }
+    const egg = Math.random() < 0.08 ? addEgg(Math.random() < 0.3 ? 5 : 2) : null;
     save.hacks[rift.id] = now;
     save.stats.hacks++;
     track('hack');
     const up = addXP(enemy ? 100 : 50);
     persist();
-    return { ok: true, loot, key, up };
+    return { ok: true, loot, key, egg, up };
   }
 
   const claimCost = 6;
@@ -515,10 +521,12 @@ window.RB = window.RB || {};
     if (dropReady(drop) > 0) return { ok: false, why: 'Already looted. It refills soon.' };
     const loot = { darts: randInt(4, 9), orbs: randInt(2, 4), shards: randInt(0, 2) };
     give(loot);
+    const x = Math.random();
+    const egg = x < 0.12 ? addEgg(2) : x < 0.17 ? addEgg(5) : null;
     save.drops[drop.id] = Date.now();
     track('drop');
     const up = addXP(30);
-    return { ok: true, loot, up };
+    return { ok: true, loot, egg, up };
   }
 
   function spawnLevel(spawn) {
@@ -572,6 +580,8 @@ window.RB = window.RB || {};
     { id: 'mind', name: 'Mind Controller', icon: '🔺', stat: 'fields', what: 'control fields', tiers: [2, 25, 100, 500, 2000] },
     { id: 'brawler', name: 'Brawler', icon: '⚔️', stat: 'wins', what: 'battles won', tiers: [5, 50, 200, 1000, 5000] },
     { id: 'geneticist', name: 'Geneticist', icon: '🧬', stat: 'fused', what: 'fusions', tiers: [3, 30, 150, 500, 2000] },
+    { id: 'breeder', name: 'Breeder', icon: '🥚', stat: 'hatched', what: 'eggs hatched', tiers: [3, 30, 150, 600, 2500] },
+    { id: 'apex', name: 'Apex Hunter', icon: '👑', stat: 'apex', what: 'Apex raids won', tiers: [1, 10, 50, 200, 1000] },
   ];
 
   // Progress on every medal: { m, tier (0 = none yet), value, next }.
@@ -670,9 +680,10 @@ window.RB = window.RB || {};
     give({ shards: 10, orbs: 10 });
     addDNA(ms.surge, 60);
     markDex(ms.surge, 'seen');
+    const egg = addEgg(5);
     const up = addXP(800);
     persist();
-    return { ok: true, sp: ms.surge, up };
+    return { ok: true, sp: ms.surge, egg, up };
   }
 
   const missionsReady = () => { const ms = missions(); return ms.list.some((m) => m.got >= m.need && !m.claimed) || (!ms.bonus && ms.list.every((m) => m.claimed)); };
@@ -701,8 +712,133 @@ window.RB = window.RB || {};
       addXP(100);
       news.push({ kind: 'stash', loot });
     }
+    for (const e of save.eggs.filter((x) => x.inc)) {
+      e.walked += m;
+      if (e.walked >= e.km * 1000) news.push(Object.assign({ kind: 'hatch' }, hatch(e)));
+    }
     persist();
     return news;
+  }
+
+  /* ------------------ Eggs ------------------ */
+
+  // Like Pokémon GO: eggs come from caches, Rifts, the daily bonus and Apex
+  // raids, and hatch after you walk 2, 5 or 10 km with them in an
+  // incubator. Longer eggs hold rarer creatures.
+  const MAX_EGGS = 9, INCUBATORS = 2;
+  const EGGS = {
+    2: { name: '2 km egg', color: '#7CE08A', odds: [80, 20, 0, 0], xp: 200 },
+    5: { name: '5 km egg', color: '#FFB347', odds: [35, 50, 15, 0], xp: 500 },
+    10: { name: '10 km egg', color: '#C86BFF', odds: [0, 40, 47, 13], xp: 1000 },
+  };
+
+  // A new egg, straight into a free incubator. Null when your egg bag is full.
+  function addEgg(km) {
+    if (!EGGS[km] || save.eggs.length >= MAX_EGGS) return null;
+    const e = { id: uid(), km, walked: 0, inc: save.eggs.filter((x) => x.inc).length < INCUBATORS };
+    save.eggs.push(e);
+    persist();
+    return e;
+  }
+
+  function incubate(id) {
+    const e = save.eggs.find((x) => x.id === id);
+    if (!e || e.inc) return { ok: false };
+    if (save.eggs.filter((x) => x.inc).length >= INCUBATORS) return { ok: false, why: `Both incubators are in use. Hatch an egg first.` };
+    e.inc = true;
+    persist();
+    return { ok: true };
+  }
+
+  function hatch(e) {
+    const E = EGGS[e.km];
+    const rar = weighted([0, 1, 2, 3].filter((k) => E.odds[k] > 0), (k) => E.odds[k]);
+    const sp = weighted(C.WILD.filter((x) => x.rar === rar), () => 1);
+    const lvl = Math.min(C.MAX_LEVEL, 3 + Math.floor(level().level * 0.8) + rar * 2);
+    const c = addCreature(sp.id, lvl, [randInt(5, 10), randInt(5, 10), randInt(5, 10)]);
+    addDNA(sp.id, 30 + e.km * 5);
+    save.eggs = save.eggs.filter((x) => x !== e);
+    // The incubator takes the next egg waiting.
+    const next = save.eggs.find((x) => !x.inc);
+    if (next) next.inc = true;
+    save.stats.hatched = (save.stats.hatched || 0) + 1;
+    const up = addXP(E.xp);
+    persist();
+    return { creature: c, km: e.km, dna: 30 + e.km * 5, up };
+  }
+
+  /* ------------------ Apex raids ------------------ */
+
+  // Like Jurassic World Alive's apex creatures and Pokémon GO raids: each
+  // day about one Rift in twelve is taken over by a huge Apex creature.
+  // Beat it in battle once that day for lots of its DNA.
+  function apexAt(rift, now) {
+    now = now || Date.now();
+    const d = day(now);
+    const r = rng(`apex:${rift.id}:${d}`);
+    if (r() >= 0.08) return null;
+    const sp = weighted(C.WILD.filter((x) => x.rar >= 1), (x) => [0, 6, 3, 1][x.rar], r);
+    const lvl = clamp(6 + Math.round(level().level * 0.9) + randInt(0, 3, r) + sp.rar * 2, 8, C.MAX_LEVEL);
+    return {
+      boss: { sp: sp.id, lvl, iv: [10, 10, 10], hpx: 3, boss: true },
+      beaten: !!save.raids[`${rift.id}:${d}`],
+      dna: 40 + sp.rar * 20,
+    };
+  }
+
+  function beatApex(rift) {
+    const a = apexAt(rift);
+    if (!a || a.beaten) return { ok: false };
+    save.raids[`${rift.id}:${day(Date.now())}`] = true;
+    // Forget old raids.
+    for (const k of Object.keys(save.raids)) if (+k.split(':').pop() < day(Date.now()) - 1) delete save.raids[k];
+    const loot = { orbs: 8, darts: 15, shards: 6 };
+    give(loot);
+    addDNA(a.boss.sp, a.dna);
+    markDex(a.boss.sp, 'seen');
+    const egg = Math.random() < 0.35 ? addEgg(10) : null;
+    save.stats.apex = (save.stats.apex || 0) + 1;
+    save.stats.wins++;
+    track('win');
+    track('apex');
+    const up = addXP(1500 + a.boss.lvl * 20);
+    persist();
+    return { ok: true, sp: a.boss.sp, dna: a.dna, loot, egg, up };
+  }
+
+  /* ------------------ Daily login ------------------ */
+
+  // Come back every day for a week of rewards; day 7 is a 10 km egg. Miss
+  // a day and it starts again from day 1.
+  const LOGIN = [
+    { orbs: 5, darts: 10 },
+    { darts: 20 },
+    { shards: 5 },
+    { orbs: 10, darts: 10 },
+    { shards: 8, egg: 2 },
+    { orbs: 10, darts: 20, shards: 5 },
+    { orbs: 15, shards: 10, egg: 10 },
+  ];
+  const localDay = (t) => Math.floor((t - new Date(t).getTimezoneOffset() * 60e3) / 86400e3);
+
+  // Today's reward if you haven't claimed it: { streak (1-7), reward }.
+  function loginPending(now) {
+    const today = localDay(now || Date.now());
+    const L = save.login;
+    if (L.day === today) return null;
+    const streak = L.day === today - 1 ? (L.streak % 7) + 1 : 1;
+    return { streak, reward: LOGIN[streak - 1] };
+  }
+
+  function claimLogin() {
+    const p = loginPending();
+    if (!p) return { ok: false };
+    save.login = { day: localDay(Date.now()), streak: p.streak };
+    give(p.reward);
+    const egg = p.reward.egg ? addEgg(p.reward.egg) : null;
+    const up = addXP(100 * p.streak);
+    persist();
+    return { ok: true, streak: p.streak, reward: p.reward, egg, up };
   }
 
   RB.state = {
@@ -717,5 +853,8 @@ window.RB = window.RB || {};
     linkTargets, link, validateLinks, aether, tick,
     dropReady, openDrop, spawnLevel, isGone, finishEncounter,
     missions, claimMission, claimBonus, missionsReady, missionReward, walked, BUDDY_M, STASH_M,
+    EGGS, MAX_EGGS, INCUBATORS, addEgg, incubate,
+    apexAt, beatApex,
+    LOGIN, loginPending, claimLogin,
   };
 })(window.RB);
