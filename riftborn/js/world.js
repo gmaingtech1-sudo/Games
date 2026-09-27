@@ -3,7 +3,9 @@
    Rift, for everyone, with no server.
 
    The globe is cut into cells about 120 m across. Each cell can hold:
-   - a Rift (fixed; like an Ingress portal): owned by a faction or neutral;
+   - a Rift (fixed; like an Ingress portal): owned by a faction or neutral.
+     About half the cells have one, and every 2×2 block of cells has at
+     least one, so there's always a Rift within a couple of hundred meters;
    - a Supply Cache (fixed; like a PokéStop or supply drop);
    - creatures (they change every 10 minutes, staggered per cell).
    Creature kinds are biased by a coarse "biome" element, the time of day
@@ -70,6 +72,19 @@ window.RB = window.RB || {};
     return els[hash(`biome:${Math.floor(j / 8)}:${Math.floor(i / 8)}`) % els.length];
   }
 
+  // Rifts: a cell rolls for one, and a 2x2 block of cells that rolled
+  // none gets one anyway, in a cell picked by its coordinates.
+  const RIFT_CHANCE = 0.46;
+  const rolledRift = (j, i) => rng(`cell:${j}:${i}`)() < RIFT_CHANCE;
+  function hasRift(j, i) {
+    if (rolledRift(j, i)) return true;
+    const bj = Math.floor(j / 2) * 2, bi = Math.floor(i / 2) * 2;
+    const block = [[bj, bi], [bj, bi + 1], [bj + 1, bi], [bj + 1, bi + 1]];
+    if (block.some(([a, b]) => rolledRift(a, b))) return false;
+    const pick = block[hash(`block:${bj}:${bi}`) % 4];
+    return pick[0] === j && pick[1] === i;
+  }
+
   function staticCell(j, i, lngSize) {
     const key = `${j}:${i}`;
     let cell = cache.get(key);
@@ -79,7 +94,8 @@ window.RB = window.RB || {};
     const at = () => ({ lat: lat0 + (0.12 + r() * 0.76) * CELL, lng: lng0 + (0.12 + r() * 0.76) * lngSize });
     cell = { key, j, i, lngSize, biome: biomeOf(j, i), rift: null, drop: null, offset: Math.floor(r() * SPAWN_MS) };
 
-    if (r() < 0.24) {
+    r();   // the Rift roll (see hasRift)
+    if (hasRift(j, i)) {
       const p = at();
       const faction = r() < 0.42 ? 'W' : r() < 0.72 ? 'B' : null;
       const level = faction ? weighted([1, 2, 3, 4, 5, 6, 7, 8], (l) => 9 - l, r) : 0;
