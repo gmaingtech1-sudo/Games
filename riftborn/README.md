@@ -8,6 +8,8 @@ It mixes three games:
 - **Like Pokémon GO:** creatures roam the streets around you. Walk up to one, and it steps out of a rift tear into your camera. Flick a Rift Orb at it to catch it. Hatch eggs by walking, and come back daily for a week of login rewards.
 - **Like Jurassic World Alive:** the creatures are dinosaur-like beasts. Fire darts at them in AR to collect their DNA, spend DNA to level them up, fuse DNA into hybrids, battle the guardians of enemy Rifts, and take on huge Apex creatures in raids.
 
+**[Watch the trailer](../riftborn-trailer/riftborn-trailer.mp4).**
+
 Everything is in 3D, like those games: a tilted 3D map of your real streets with a day/night sky, animated 3D dinosaurs that stand in your room through the camera with real shadows, and a 3D battle arena.
 
 It's plain HTML, CSS and JavaScript on top of [three.js](https://threejs.org) (included in `vendor/`, MIT licence). There's no build step and nothing to install. The camera feed and your exact position stay on your phone. The map tiles and the weather (rounded to about 1 km) are fetched for roughly where you are.

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Riftborn trailer</title>
+<style>
+  @font-face { font-family: "Audiowide"; src: url("fonts/audiowide-latin-400-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Chakra Petch"; font-weight: 700; src: url("fonts/chakra-petch-latin-700-normal.woff2") format("woff2"); }
+  html, body { margin: 0; width: 720px; height: 1280px; overflow: hidden; background: #000; color: #fff; font-family: "Chakra Petch", sans-serif; font-weight: 700; }
+  #gl, #gl canvas { position: absolute; inset: 0; width: 720px; height: 1280px; }
+  #vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 100%); }
+  #fade { position: absolute; inset: 0; background: #000; opacity: 0; }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; mix-blend-mode: screen; }
+  .cap { position: absolute; left: 40px; right: 40px; bottom: 210px; text-align: center; opacity: 0; }
+  .cap small { display: block; font-size: 26px; letter-spacing: 0.22em; text-transform: uppercase; color: #D6C4FF; text-shadow: 0 2px 12px #000; margin-bottom: 14px; }
+  .cap h1 { margin: 0; font-family: "Audiowide", sans-serif; font-weight: 400; font-size: 58px; line-height: 1.12; letter-spacing: 0.03em; text-shadow: 0 0 24px rgba(180, 92, 255, 0.8), 0 4px 16px #000; }
+  #hud { position: absolute; inset: 0; opacity: 0; }
+  #hud .cross { position: absolute; left: 50%; top: 48%; width: 150px; height: 150px; margin: -75px 0 0 -75px; border: 4px solid rgba(255,255,255,0.8); border-radius: 50%; box-shadow: 0 0 18px rgba(46,230,197,0.8); }
+  #hud .bar { position: absolute; left: 30px; right: 30px; bottom: 40px; display: flex; justify-content: space-between; align-items: center; }
+  #hud .pill { padding: 14px 24px; border-radius: 40px; background: rgba(14,8,28,0.7); border: 2px solid rgba(180,150,255,0.35); font-size: 28px; }
+  #hud .name { position: absolute; top: 60px; left: 30px; right: 30px; padding: 18px 26px; border-radius: 28px; background: rgba(14,8,28,0.66); border: 2px solid rgba(180,150,255,0.3); font-size: 34px; }
+  #hud .name small { display: block; font-size: 22px; color: #A99FCC; }
+  #caught { position: absolute; left: 0; right: 0; top: 40%; text-align: center; font-family: "Audiowide"; font-size: 64px; color: #7CF0C8; text-shadow: 0 0 30px #2EE6C5, 0 4px 14px #000; opacity: 0; }
+  #logo { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; }
+  #logo h1 { margin: 0; font-family: "Audiowide"; font-weight: 400; font-size: 96px; letter-spacing: 0.04em; background: linear-gradient(180deg, #FFFFFF, #D6B8FF 60%, #B45CFF); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 30px rgba(180,92,255,0.9)); }
+  #logo p { margin: 26px 0 0; font-size: 40px; letter-spacing: 0.18em; color: #EDE4FF; }
+  #logo small { margin-top: 70px; font-size: 26px; letter-spacing: 0.12em; color: #A99FCC; }
+</style>
+</head>
+<body>
+<div id="gl"></div>
+<div id="hud">
+  <div class="name">Stonehorn<small>Rare · Stone · Lv 14</small></div>
+  <div class="cross"></div>
+  <div class="bar"><span class="pill">🎯 Darts 30</span><span class="pill">🔮 Orbs 20</span></div>
+</div>
+<div id="caught">Caught!</div>
+<div id="vig"></div>
+<div class="cap" id="cap"><small id="kicker"></small><h1 id="line"></h1></div>
+<div id="logo"><h1>RIFTBORN</h1><p>WALK · CATCH · BATTLE</p><small>An AR game on your real streets</small></div>
+<div id="flash"></div>
+<div id="fade"></div>
+<script src="../riftborn/vendor/three.min.js"></script>
+<script src="../riftborn/js/core.js"></script>
+<script src="../riftborn/js/gfx.js"></script>
+<script src="../riftborn/js/creatures.js"></script>
+<script src="../riftborn/js/beasts.js"></script>
+<script src="../riftborn/js/props.js"></script>
+<script src="trailer.js"></script>
+</body>
+</html>
