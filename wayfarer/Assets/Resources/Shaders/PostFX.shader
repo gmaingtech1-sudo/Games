@@ -176,6 +176,7 @@ Shader "Hidden/Wayfarer/PostFX"
         float target = clamp(_Key / max(lum, 1e-4), _MinExposure, _MaxExposure);
         float prev = tex2D(_PrevTex, float2(0.5, 0.5)).r;
         if (prev <= 0.0 || prev != prev) prev = target;
+        prev = clamp(prev, _MinExposure, _MaxExposure);
         float t = 1.0 - exp(-_DeltaTime * _AdaptSpeed);
         return float4(lerp(prev, target, t), 0, 0, 1);
     }

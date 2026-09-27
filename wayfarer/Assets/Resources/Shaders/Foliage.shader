@@ -17,11 +17,23 @@ Shader "Wayfarer/Foliage"
         LOD 200
 
         CGPROGRAM
-        #pragma surface surf Standard fullforwardshadows vertex:vert addshadow
+        #pragma surface surf PlanetProp fullforwardshadows vertex:vert addshadow
         #pragma target 3.5
         #pragma multi_compile_instancing
         #include "UnityCG.cginc"
+        #include "UnityPBSLighting.cginc"
         #include "WayfarerCommon.cginc"
+
+        half4 LightingPlanetProp(SurfaceOutputStandard s, half3 viewDir, UnityGI gi)
+        {
+            return LightingStandard(s, viewDir, gi);
+        }
+
+        void LightingPlanetProp_GI(SurfaceOutputStandard s, UnityGIInput data, inout UnityGI gi)
+        {
+            LightingStandard_GI(s, data, gi);
+            gi.light.color *= wf_planetShadow(data.worldPos);
+        }
 
         fixed4 _Color;
         half4 _Emission;

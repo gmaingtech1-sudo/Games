@@ -43,7 +43,7 @@ namespace Wayfarer
         public PlanetBody ActivePlanet => Ref;
 
         public event Action<PlanetBody, PlanetBody> FrameChanged; // old, new
-        public event Action OriginShifted;
+        public event Action<Vector3> OriginShifted;   // how far the world moved (Unity units)
 
         const double ScaledStart = 110000;
         const double ScaledMax = 260000;
@@ -218,8 +218,9 @@ namespace Wayfarer
             CameraRef = cameraRef;
             if ((cameraRef - Origin).magnitude > RebaseDistance)
             {
+                var old = Origin;
                 Origin = new Vector3d(Math.Round(cameraRef.x), Math.Round(cameraRef.y), Math.Round(cameraRef.z));
-                OriginShifted?.Invoke();
+                OriginShifted?.Invoke((Vector3)(Origin - old));
             }
             Vector3 camUnity = ToUnity(cameraRef);
             Vector3d camSys = RefToSys(cameraRef);
@@ -369,14 +370,13 @@ namespace Wayfarer
             RenderSettings.ambientEquatorColor = horizon;
             RenderSettings.ambientGroundColor = ground;
 
-            // sunlight fades at night on the surface (the planet itself blocks it) and reddens at sunset
-            float sunVis = 1f;
+            // sunlight reddens near sunset; night-side darkness comes from the
+            // planet-shadow term in the shaders, not from dimming the light
             Color lc = LightColor;
             if (p != null && cameraRef.magnitude < p.Radius + p.Data.MaxHeight + 3000)
             {
                 Vector3d up = cameraRef.normalized;
                 float elev = (float)Vector3d.Dot(up, (Vector3d)SunDirRef);
-                sunVis = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.06f, 0.04f, elev));
                 if (p.Data.HasAtmosphere)
                 {
                     float red = Mathf.Clamp01(1f - elev * 5f);
@@ -384,7 +384,16 @@ namespace Wayfarer
                 }
             }
             Sun.color = lc;
-            Sun.intensity = LightIntensity * sunVis;
+            Sun.intensity = LightIntensity;
+            // things on the night side of the planet you're on are in its shadow
+            if (p != null)
+            {
+                Shader.SetGlobalFloat("_WF_ShadowOn", 1f);
+                Shader.SetGlobalVector("_WF_ShadowCenter", p.Root.transform.position);
+                Shader.SetGlobalFloat("_WF_ShadowRadius", (float)(p.Radius * p.RenderScale));
+                Shader.SetGlobalVector("_WF_SunDirW", SunDirRef);
+            }
+            else Shader.SetGlobalFloat("_WF_ShadowOn", 0f);
             Sun.shadowStrength = 0.92f;
 
             reflectionTimer -= dt;
@@ -438,6 +447,9 @@ namespace Wayfarer
         public void Dispose()
         {
             foreach (var p in Planets) p.Dispose();
+            foreach (var g in Giants) { UnityEngine.Object.Destroy(g.Mat); if (g.RingMat != null) UnityEngine.Object.Destroy(g.RingMat); }
+            UnityEngine.Object.Destroy(Star.Mat);
+            UnityEngine.Object.Destroy(Star.GlowMat);
             UnityEngine.Object.Destroy(Root);
             if (SkyCube != null) { SkyCube.Release(); UnityEngine.Object.Destroy(SkyCube); }
             UnityEngine.Object.Destroy(skyMat);

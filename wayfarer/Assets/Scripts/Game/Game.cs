@@ -202,14 +202,14 @@ namespace Wayfarer
                 Combat.ClearPirates();
                 Combat.Bolts.Clear();
                 View.Dispose();
-                if (Ship != null) { Destroy(Ship.Go); Ship = null; }
             }
-            bool start = star == Galaxy.StartStar();
+            bool start = star.Id == Galaxy.StartStar().Id;
             var data = SystemGen.Generate(star, start);
             View = new SystemView(data, time, Settings.Graphics);
             View.Root.transform.SetParent(worldParent, false);
-            View.OriginShifted += () => { };
+            View.OriginShifted += delta => Effects.Shift(delta);
             Audio.SetMood((int)(star.Seed & 0x7FFFFFFF));
+            if (Ship != null) return;
             Ship = new ShipController(worldParent);
             Ship.Message += s => Toast(s, true);
             Ship.Impact += spd => { Audio.Play(Sfx.Hit, Mathf.Clamp01(spd / 40f)); Rig.Shake = Mathf.Max(Rig.Shake, Mathf.Clamp01(spd / 40f)); };
@@ -367,6 +367,7 @@ namespace Wayfarer
             Fps = Mathf.Lerp(Fps, 1f / Mathf.Max(rawDt, 1e-4f), 0.05f);
             bool running = State == GameState.Playing || State == GameState.Warping || State == GameState.Station;
             float dt = running ? Mathf.Min(rawDt, 0.05f) : 0f;
+            GameInput.CaptureUI(UI.Modal || UI.Capturing);
             GameInput.Update(State == GameState.Playing && !UI.Modal);
             GlobalKeys();
 

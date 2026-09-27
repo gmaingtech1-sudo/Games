@@ -299,7 +299,7 @@ namespace Wayfarer
             {
                 this.owner = owner;
                 this.cell = cell;
-                Priority = 5e6 + priority;
+                Priority = 6.5e6 + priority;
             }
 
             public override bool StillWanted() => !Cancelled && !owner.disposed && cell.WantedFrame >= owner.frame - 24;

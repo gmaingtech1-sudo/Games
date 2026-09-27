@@ -122,6 +122,22 @@ float3 wf_rotY(float3 p, float a)
     return float3(c * p.x + s * p.z, p.y, -s * p.x + c * p.z);
 }
 
+// ─── the shadow of the planet you're on (set globally each frame) ────────
+float4 _WF_ShadowCenter, _WF_SunDirW;
+float _WF_ShadowOn, _WF_ShadowRadius;
+
+// 1 in daylight, 0 on the night side of the current planet
+float wf_planetShadow(float3 worldPos)
+{
+    if (_WF_ShadowOn < 0.5) return 1.0;
+    float3 d = worldPos - _WF_ShadowCenter.xyz;
+    float r = length(d);
+    float mu = dot(d / max(r, 1e-3), normalize(_WF_SunDirW.xyz));
+    // how far below the horizon the sun is, softened over the terminator
+    float horizon = -sqrt(saturate(1.0 - (_WF_ShadowRadius * _WF_ShadowRadius) / max(r * r, 1e-3)));
+    return smoothstep(horizon - 0.06, horizon + 0.03, mu);
+}
+
 // ─── the atmosphere the camera is in (set globally each frame) ───────────
 // Used by the sun and its glow so the disc reddens and dims near the horizon.
 float4 _WF_AtmoPos;      // world centre

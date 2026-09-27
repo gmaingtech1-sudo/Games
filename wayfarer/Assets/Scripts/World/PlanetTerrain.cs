@@ -223,7 +223,7 @@ namespace Wayfarer
         void Request(TerrainNode n)
         {
             if (n.Job != null || n.Ready) return;
-            double pri = n.Level * 1e7 + Distance(n);
+            double pri = n.Level * 1e6 + Distance(n);
             n.Job = new ChunkJob(n, Field, pri);
             TerrainJobs.Submit(n.Job);
         }

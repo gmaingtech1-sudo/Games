@@ -71,8 +71,14 @@ namespace Wayfarer
                 Vector2 md = g.Mode == PlayerMode.Docked ? Vector2.zero : GameInput.MouseDelta;
                 orbitYaw += md.x * 2.5f;
                 orbitPitch = Mathf.Clamp(orbitPitch - md.y * 2.5f, -5f, 70f);
-                if (g.Mode == PlayerMode.Docked) orbitYaw += dt * 6f;
-                orbitDist = Mathf.Clamp(orbitDist - GameInput.Scroll * 2f, 14f, 60f);
+                if (g.Mode == PlayerMode.Docked)
+                {
+                    // slow turn around the ship, kept inside the hangar walls
+                    orbitYaw += dt * 6f;
+                    orbitPitch = 8f;
+                    orbitDist = 17f;
+                }
+                else orbitDist = Mathf.Clamp(orbitDist - GameInput.Scroll * 2f, 14f, 60f);
                 Vector3 up = ship.Rot * Vector3.up;
                 var q = ship.Rot * Quaternion.Euler(orbitPitch, orbitYaw, 0);
                 Vector3 off = q * new Vector3(0, 0, -orbitDist) + up * 2.5f;
@@ -132,7 +138,7 @@ namespace Wayfarer
             cam.transform.rotation = Rot;
             cam.fieldOfView = Fov;
             bool onFoot = g.Mode == PlayerMode.OnFoot && g.State != GameState.Title;
-            float near = onFoot ? 0.06f : 0.35f;
+            float near = onFoot ? 0.12f : 0.35f;
             if (view.Ref == null || g.Mode == PlayerMode.InShip && g.Ship.Altitude > 3000f) near = 2f;
             if (g.Mode == PlayerMode.Docked) near = 0.35f;
             cam.nearClipPlane = near;
