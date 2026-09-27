@@ -531,7 +531,8 @@ window.RB = window.RB || {};
 
   function spawnLevel(spawn) {
     const cap = Math.min(C.MAX_LEVEL, 3 + Math.floor(level().level * 1.5));
-    return 1 + Math.floor(spawn.lvlRoll * cap);
+    // Weather-boosted creatures come a few levels stronger.
+    return Math.min(C.MAX_LEVEL, 1 + Math.floor(spawn.lvlRoll * cap) + (spawn.boost ? 3 : 0));
   }
 
   function isGone(spawn) {
@@ -544,20 +545,21 @@ window.RB = window.RB || {};
     markDex(spawn.sp, 'seen');
     if (result.dna) addDNA(spawn.sp, result.dna);
     let c = null, up = 0;
+    const weatherXP = result.caught && spawn.boost ? Math.round(C.RARITY[sp.rar].xp * 0.25) : 0;
     if (result.caught) {
       c = addCreature(spawn.sp, spawnLevel(spawn), spawn.ivs);
       addDNA(spawn.sp, 25);
       save.stats.caught++;
       track('catch');
       track(`el:${sp.el}`);
-      up = addXP(C.RARITY[sp.rar].xp + (result.bonusXP || 0));
+      up = addXP(C.RARITY[sp.rar].xp + (result.bonusXP || 0) + weatherXP);
     } else if (result.dna) {
       up = addXP(20 + result.dna);
     }
     if (result.hits) { track('darts', result.hits); save.stats.hits += result.hits; }
     if (result.caught || result.fled) save.gone[spawn.id] = spawn.expires;
     persist();
-    return { creature: c, up };
+    return { creature: c, up, weatherXP };
   }
 
   /* ------------------ Medals ------------------ */

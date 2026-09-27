@@ -28,18 +28,22 @@ window.RB = window.RB || {};
     esri: {
       name: 'Esri',
       // Dark Gray Canvas (no labels) for the scanner and night; the street
-      // map by day. Esri's URLs are z/y/x.
-      url: (st, z, x, y) => (st === 'day'
-        ? `${ESRI}/World_Street_Map/MapServer/tile/${z}/${y}/${x}`
-        : `${ESRI}/Canvas/World_Dark_Gray_Base/MapServer/tile/${z}/${y}/${x}`),
-      maxZ: (st) => (st === 'day' ? 18 : 16),
-      credit: 'Powered by Esri · Esri, HERE, Garmin, © OpenStreetMap contributors',
+      // map by day; real aerial photos for satellite. Esri's URLs are z/y/x.
+      url: (st, z, x, y) => (st === 'satellite'
+        ? `${ESRI}/World_Imagery/MapServer/tile/${z}/${y}/${x}`
+        : st === 'day'
+          ? `${ESRI}/World_Street_Map/MapServer/tile/${z}/${y}/${x}`
+          : `${ESRI}/Canvas/World_Dark_Gray_Base/MapServer/tile/${z}/${y}/${x}`),
+      maxZ: (st) => (st === 'day' || st === 'satellite' ? 18 : 16),
+      credit: (st) => (st === 'satellite'
+        ? 'Powered by Esri · Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+        : 'Powered by Esri · Esri, HERE, Garmin, © OpenStreetMap contributors'),
     },
     osm: {
       name: 'OpenStreetMap',
       url: (st, z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`,
       maxZ: () => 18,
-      credit: '© OpenStreetMap contributors',
+      credit: () => '© OpenStreetMap contributors',
       // The standard OSM style is bright, so darken it for night and the scanner.
       dark: true,
     },
@@ -55,6 +59,7 @@ window.RB = window.RB || {};
   let sun, hemi, shadowCatcher, ground, groundMat;
   let agent, rangeRing, rangeFill, pulseRing, motes;
   let style = '';
+  let sunBase = 1, hemiBase = 1;
   const live = { rifts: new Map(), drops: new Map(), spawns: new Map(), apex: new Map() };
   const picks = [];
   let links = null, fields = null, linkKey = '';
@@ -139,7 +144,7 @@ window.RB = window.RB || {};
 
   function mapStyle() {
     const m = S.save.settings.map;
-    if (m === 'grid' || m === 'scanner') return m;
+    if (m === 'grid' || m === 'scanner' || m === 'satellite') return m;
     if (m === 'day' || m === 'night') return m;
     const h = new Date().getHours() + new Date().getMinutes() / 60;
     return h >= 6.5 && h < 19.5 ? 'day' : 'night';
@@ -151,7 +156,7 @@ window.RB = window.RB || {};
     motes.material.color.set('#C9A8FF');
     motes.material.size = 2.2;
     xm.visible = false;
-    const night = st !== 'day';
+    const night = st !== 'day' && st !== 'satellite';
     const horizon = night ? '#241838' : '#CFE4F2';
     scene.background = G.gradient(night
       ? [[0, '#05040C'], [0.55, '#140E28'], [1, horizon]]
@@ -306,7 +311,7 @@ window.RB = window.RB || {};
       // Colour the tiles for the style: teal scanner, and a bright map
       // darkened for night when the source has no dark version.
       let tint = style === 'day' ? '#F4FFF0' : style === 'scanner' && !google ? '#8FFFEA' : '#FFFFFF';
-      if (!google && free.dark && style !== 'day') tint = style === 'scanner' ? '#2E6B64' : '#4A4470';
+      if (!google && free.dark && style !== 'day' && style !== 'satellite') tint = style === 'scanner' ? '#2E6B64' : '#4A4470';
       const mat = new T.MeshBasicMaterial({ color: tint, transparent: true, opacity: 0, toneMapped: false });
       const mesh = new T.Mesh(new T.PlaneGeometry(1, 1), mat);
       mesh.rotation.x = -Math.PI / 2;
@@ -539,12 +544,90 @@ window.RB = window.RB || {};
     scene.add(links, fields);
   }
 
+  /* ======================= Weather ======================= */
+
+  // The real weather over the map: rain streaks, drifting snow, fog rolling
+  // in, darker skies under cloud, and lightning in a storm.
+  const WX = { kind: null, rain: null, snow: null, flash: 0, nextFlash: 4 };
+  const BOX = 360, TOP = 170;
+
+  function rainLayer() {
+    const N = 1600, pos = new Float32Array(N * 6), r = RB.util.rng('rain');
+    for (let i = 0; i < N; i++) {
+      const x = (r() - 0.5) * BOX, y = r() * TOP, z = (r() - 0.5) * BOX;
+      pos.set([x, y, z, x + 0.6, y + 7, z], i * 6);
+    }
+    const g = new T.BufferGeometry();
+    g.setAttribute('position', new T.BufferAttribute(pos, 3));
+    const m = new T.LineSegments(g, new T.LineBasicMaterial({ color: '#B8D2FF', transparent: true, opacity: 0.4, depthWrite: false }));
+    m.frustumCulled = false;
+    return m;
+  }
+
+  function snowLayer() {
+    const N = 1800, pos = new Float32Array(N * 3), r = RB.util.rng('snow');
+    for (let i = 0; i < N; i++) pos.set([(r() - 0.5) * BOX, r() * TOP, (r() - 0.5) * BOX], i * 3);
+    const g = new T.BufferGeometry();
+    g.setAttribute('position', new T.BufferAttribute(pos, 3));
+    const m = new T.Points(g, new T.PointsMaterial({ map: G.glow(), size: 3.2, color: '#FFFFFF', transparent: true, opacity: 0.9, depthWrite: false }));
+    m.frustumCulled = false;
+    return m;
+  }
+
+  function setWeather(w) {
+    WX.kind = w ? w.kind : null;
+    const rainy = WX.kind === 'rain' || WX.kind === 'storm';
+    if (rainy && !WX.rain) { WX.rain = rainLayer(); scene.add(WX.rain); }
+    if (WX.kind === 'snow' && !WX.snow) { WX.snow = snowLayer(); scene.add(WX.snow); }
+    if (WX.rain) WX.rain.visible = rainy;
+    if (WX.snow) WX.snow.visible = WX.kind === 'snow';
+  }
+
+  function updateWeather(dt) {
+    const k = WX.kind;
+    const c = cam.target;
+    // Falling rain and snow, wrapped in a box that follows you.
+    const fall = (layer, speed, stride, sway) => {
+      const a = layer.geometry.attributes.position, p = a.array;
+      for (let i = 0; i < p.length; i += stride) {
+        let y = p[i + 1] - speed * dt;
+        if (y < 0) y += TOP;
+        const dy = y - p[i + 1];
+        for (let j = 0; j < stride; j += 3) p[i + j + 1] += dy;
+        if (sway) p[i] += Math.sin(t * 0.9 + i) * sway * dt;
+      }
+      a.needsUpdate = true;
+      layer.position.set(Math.round(c.x / 40) * 40, 0, Math.round(c.z / 40) * 40);
+    };
+    if (WX.rain && WX.rain.visible) fall(WX.rain, k === 'storm' ? 150 : 110, 6, 0);
+    if (WX.snow && WX.snow.visible) fall(WX.snow, 9, 3, 2.5);
+    // Cloud dims the sun; fog pulls the horizon in.
+    const dim = { cloudy: 0.6, rain: 0.5, storm: 0.35, snow: 0.7, fog: 0.55, partly: 0.85 }[k] || 1;
+    sun.intensity = sunBase * dim;
+    if (scene.fog) {
+      const near = k === 'fog' ? 60 : k === 'rain' || k === 'storm' || k === 'snow' ? 180 : 280;
+      const far = k === 'fog' ? 330 : k === 'rain' || k === 'storm' || k === 'snow' ? 620 : 900;
+      scene.fog.near += (near - scene.fog.near) * Math.min(1, dt);
+      scene.fog.far += (far - scene.fog.far) * Math.min(1, dt);
+    }
+    // Lightning
+    let flash = 0;
+    if (k === 'storm') {
+      WX.nextFlash -= dt;
+      if (WX.nextFlash <= 0) { WX.flash = 0.35; WX.nextFlash = 5 + Math.random() * 9; }
+      WX.flash = Math.max(0, WX.flash - dt);
+      flash = WX.flash > 0 ? (Math.sin(WX.flash * 60) > 0 ? 3 : 0.5) : 0;
+    }
+    hemi.intensity = hemiBase * (0.75 + 0.25 * dim) + flash;
+  }
+
   /* ======================= Frame ======================= */
 
   function render(dt) {
     t += dt;
     const want = mapStyle();
-    if (want !== style) applyStyle(want);
+    if (want !== style) { applyStyle(want); sunBase = sun.intensity; hemiBase = hemi.intensity; }
+    updateWeather(dt);
     // The camera trails you.
     const me = toV(player.lat, player.lng);
     cam.target.lerp(me, cam.target.lengthSq() === 0 ? 1 : 1 - Math.exp(-dt * 6));
@@ -592,7 +675,7 @@ window.RB = window.RB || {};
 
     tileTimer -= dt;
     if (tileTimer <= 0) { tileTimer = 0.5; updateTiles(); }
-    renderer.toneMappingExposure = style === 'day' || style === 'scanner' ? 1.0 : 1.15;
+    renderer.toneMappingExposure = style === 'day' || style === 'scanner' || style === 'satellite' ? 1.0 : 1.15;
     for (const tl of tiles.values()) if (tl.tex && tl.mesh.material.opacity < 1) tl.mesh.material.opacity = Math.min(1, tl.mesh.material.opacity + dt * 3);
     renderer.render(scene, camera);
   }
@@ -676,7 +759,7 @@ window.RB = window.RB || {};
 
   RB.map = {
     SIGHT, player, cam,
-    init, show, resize, render, setPlayer, setEntities, recenter, reset, sourceChanged,
+    init, show, resize, render, setPlayer, setEntities, recenter, reset, sourceChanged, setWeather,
     get sourceName() { return FREE[freeProvider()].name; },
     zoom(f) { cam.dist = clamp(cam.dist * f, MIN_D, MAX_D); },
     get view() { const c = toLL(cam.target); return { lat: c.lat, lng: c.lng, far: cam.dist > 240 }; },
@@ -684,7 +767,7 @@ window.RB = window.RB || {};
     get attribution() {
       if (style === 'grid' || !tiles.size) return '';
       if (provider === 'google') return `Google · ${RB.gmaps.copyright || 'Map data ©Google'}`;
-      return FREE[provider] ? FREE[provider].credit : '';
+      return FREE[provider] ? FREE[provider].credit(style) : '';
     },
     get rotated() { return Math.abs(Math.sin(cam.yaw / 2)) > 0.03; },
   };

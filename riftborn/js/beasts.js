@@ -258,134 +258,256 @@ window.RB = window.RB || {};
   const css = (col) => `#${col.getHexString()}`;
   const mixc = (a, b, k) => hex(a).lerp(hex(b), k);
 
+  // Real animals are rarely neon: tone the species' colours down to
+  // natural, earthy versions (fantasy Void and glowing species keep more).
+  function natural(sp) {
+    const fantasy = sp.el === 'void' || sp.feat.has('glow');
+    return sp.col.map((c, i) => {
+      const col = hex(c), hsl = {};
+      col.getHSL(hsl);
+      const sat = hsl.s * (fantasy ? 0.9 : i === 2 ? 0.78 : 0.62);
+      const lum = clamp(hsl.l * (i === 1 ? 0.95 : 1), 0.1, i === 1 ? 0.78 : 0.62);
+      return css(col.setHSL(hsl.h, sat, lum));
+    });
+  }
+
   function skinTextures(sp, r) {
     const [dorsal, belly, accent] = sp.col;
-    const W = 512, H = 256;
+    const W = 1024, H = 512;
     const c = G.canvas(W, H), g = c.getContext('2d');
     // Countershading: pale belly (top and bottom rows), dark back (middle).
     const gr = g.createLinearGradient(0, 0, 0, H);
     const flank = css(mixc(dorsal, belly, 0.35));
-    const back = css(hex(dorsal).multiplyScalar(0.8));
-    gr.addColorStop(0, belly); gr.addColorStop(0.2, belly); gr.addColorStop(0.33, flank);
-    gr.addColorStop(0.44, dorsal); gr.addColorStop(0.5, back); gr.addColorStop(0.56, dorsal);
-    gr.addColorStop(0.67, flank); gr.addColorStop(0.8, belly); gr.addColorStop(1, belly);
+    const back = css(hex(dorsal).multiplyScalar(0.72));
+    gr.addColorStop(0, belly); gr.addColorStop(0.18, belly); gr.addColorStop(0.32, flank);
+    gr.addColorStop(0.43, dorsal); gr.addColorStop(0.5, back); gr.addColorStop(0.57, dorsal);
+    gr.addColorStop(0.68, flank); gr.addColorStop(0.82, belly); gr.addColorStop(1, belly);
     g.fillStyle = gr;
     g.fillRect(0, 0, W, H);
-    // Mottling
-    for (let i = 0; i < 1400; i++) {
-      const x = r() * W, y = r() * H, rad = 1 + r() * 7;
-      g.fillStyle = r() < 0.5 ? 'rgba(0,0,0,0.13)' : 'rgba(255,255,240,0.08)';
-      g.beginPath(); g.ellipse(x, y, rad * 1.6, rad, 0, 0, Math.PI * 2); g.fill();
-    }
+    // Soft shapes are drawn on a layer, which is then blurred onto the skin
+    // in one go (blurring each shape on its own is very slow).
+    const layer = G.canvas(W, H), lay = layer.getContext('2d');
+    const soft = (px, draw) => {
+      lay.clearRect(0, 0, W, H);
+      draw(lay);
+      try { g.filter = `blur(${px}px)`; } catch (e) { /* older browsers: sharp edges */ }
+      g.drawImage(layer, 0, 0);
+      try { g.filter = 'none'; } catch (e) { /* ignore */ }
+    };
+    // Soft, uneven boundary between back and belly.
+    soft(6, (x) => {
+      for (let i = 0; i < 90; i++) {
+        const px = r() * W, top = r() < 0.5;
+        x.fillStyle = top ? flank : dorsal;
+        x.globalAlpha = 0.35;
+        x.beginPath(); x.ellipse(px, H * (top ? 0.3 : 0.7) + (r() - 0.5) * 30, 14 + r() * 30, 8 + r() * 16, 0, 0, Math.PI * 2); x.fill();
+      }
+      x.globalAlpha = 1;
+    });
+    // Big soft blotches (like a crocodile's or a monitor lizard's).
+    soft(4, (x) => {
+      for (let i = 0; i < 160; i++) {
+        const px = r() * W, y = H * (0.28 + r() * 0.44), rad = 6 + r() * 22;
+        x.fillStyle = r() < 0.6 ? 'rgba(20,12,6,0.16)' : 'rgba(255,248,230,0.08)';
+        x.beginPath(); x.ellipse(px, y, rad * 1.5, rad, r() * 3, 0, Math.PI * 2); x.fill();
+      }
+    });
     const glow = sp.feat.has('glow') ? G.canvas(W, H) : null;
     const gg = glow && glow.getContext('2d');
     if (gg) { gg.fillStyle = '#000'; gg.fillRect(0, 0, W, H); }
     const elc = C.ELEMENTS[sp.el].color;
+    // An irregular stripe from the spine down one flank and the other.
     const band = (ctx, x, w, color, alpha, spread) => {
       ctx.fillStyle = color;
       ctx.globalAlpha = alpha;
-      ctx.beginPath();
-      const y0 = H * (0.5 - spread), y1 = H * (0.5 + spread);
-      ctx.moveTo(x - w / 2, y0);
-      for (let k = 0; k <= 8; k++) { const y = y0 + (y1 - y0) * k / 8; ctx.lineTo(x - w / 2 + Math.sin(k * 1.7 + x) * w * 0.35, y); }
-      for (let k = 8; k >= 0; k--) { const y = y0 + (y1 - y0) * k / 8; ctx.lineTo(x + w / 2 + Math.sin(k * 1.3 + x * 0.7) * w * 0.35, y); }
-      ctx.closePath();
-      ctx.fill();
+      for (const half of [-1, 1]) {
+        ctx.beginPath();
+        const y0 = H * 0.5, y1 = H * (0.5 + half * spread);
+        const lean = (r() - 0.3) * w * 1.4;
+        ctx.moveTo(x - w / 2, y0);
+        for (let k = 0; k <= 10; k++) { const f = k / 10; ctx.lineTo(x - w / 2 * (1 - f * 0.7) + lean * f + Math.sin(k * 1.9 + x) * w * 0.25, y0 + (y1 - y0) * f); }
+        for (let k = 10; k >= 0; k--) { const f = k / 10; ctx.lineTo(x + w / 2 * (1 - f * 0.7) + lean * f + Math.sin(k * 1.4 + x * 0.7) * w * 0.25, y0 + (y1 - y0) * f); }
+        ctx.closePath();
+        ctx.fill();
+      }
       ctx.globalAlpha = 1;
     };
     if (sp.feat.has('stripes')) {
-      const n = 9 + Math.floor(r() * 4);
-      for (let i = 0; i < n; i++) {
-        const x = W * (0.12 + 0.66 * i / (n - 1)) + (r() - 0.5) * 10;
-        const w = 7 + r() * 8;
-        band(g, x, w, accent, 0.85, 0.2 + r() * 0.06);
-        if (gg) band(gg, x, w * 0.6, elc, 1, 0.16);
-      }
+      const n = 11 + Math.floor(r() * 4);
+      const xs = [];
+      soft(2.5, (ctx) => {
+        for (let i = 0; i < n; i++) {
+          const x = W * (0.1 + 0.7 * i / (n - 1)) + (r() - 0.5) * 20;
+          const w = 12 + r() * 14;
+          xs.push([x, w]);
+          band(ctx, x, w, css(hex(accent).multiplyScalar(0.85)), 0.62, 0.17 + r() * 0.06);
+        }
+      });
+      if (gg) for (const [x, w] of xs) band(gg, x, w * 0.6, elc, 1, 0.14);
     }
     if (sp.feat.has('spots')) {
-      for (let i = 0; i < 90; i++) {
-        const x = r() * W, y = H * (0.25 + r() * 0.5), rad = 3 + r() * 7;
-        g.fillStyle = r() < 0.6 ? accent : css(hex(belly).multiplyScalar(1.05));
-        g.globalAlpha = 0.75;
-        g.beginPath(); g.ellipse(x, y, rad * 1.4, rad, 0, 0, Math.PI * 2); g.fill();
-        g.globalAlpha = 1;
-      }
+      soft(2, (ctx) => {
+        for (let i = 0; i < 170; i++) {
+          const x = r() * W, y = H * (0.27 + r() * 0.46), rad = 4 + r() * 11;
+          ctx.fillStyle = r() < 0.6 ? accent : css(hex(belly).multiplyScalar(1.02));
+          ctx.globalAlpha = 0.5 + r() * 0.2;
+          ctx.beginPath(); ctx.ellipse(x, y, rad * (1.2 + r() * 0.6), rad, r() * 3, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      });
     }
-    // Dark dorsal line
-    g.fillStyle = 'rgba(0,0,0,0.18)';
-    g.fillRect(0, H * 0.485, W, H * 0.03);
+    // Fine speckle and a row of darker scutes along the spine.
+    for (let i = 0; i < 6000; i++) {
+      g.fillStyle = r() < 0.55 ? 'rgba(0,0,0,0.12)' : 'rgba(255,250,235,0.07)';
+      g.fillRect(r() * W, r() * H, 1 + r() * 2, 1 + r() * 2);
+    }
+    for (let x = 0; x < W; x += 9 + r() * 4) {
+      g.fillStyle = `rgba(15,10,6,${0.18 + r() * 0.12})`;
+      g.beginPath(); g.ellipse(x, H * 0.5, 3.5, 5, 0, 0, Math.PI * 2); g.fill();
+    }
     if (gg) {
       // Glowing markings along the back and flanks.
       gg.fillStyle = elc;
-      for (let i = 0; i < 30; i++) {
-        const x = W * (0.05 + 0.85 * i / 30);
-        gg.beginPath(); gg.ellipse(x, H * 0.5, 4, 3, 0, 0, Math.PI * 2); gg.fill();
-        gg.beginPath(); gg.ellipse(x + 6, H * 0.36, 2.5, 2, 0, 0, Math.PI * 2); gg.fill();
-        gg.beginPath(); gg.ellipse(x + 6, H * 0.64, 2.5, 2, 0, 0, Math.PI * 2); gg.fill();
+      for (let i = 0; i < 40; i++) {
+        const x = W * (0.05 + 0.85 * i / 40);
+        gg.beginPath(); gg.ellipse(x, H * 0.5, 7, 5, 0, 0, Math.PI * 2); gg.fill();
+        gg.beginPath(); gg.ellipse(x + 12, H * 0.37, 4, 3, 0, 0, Math.PI * 2); gg.fill();
+        gg.beginPath(); gg.ellipse(x + 12, H * 0.63, 4, 3, 0, 0, Math.PI * 2); gg.fill();
       }
     }
-    // Limb texture: same colouring, darker towards the feet.
-    const lc = G.canvas(256, 128), lg = lc.getContext('2d');
-    const lgr = lg.createLinearGradient(0, 0, 0, 128);
+    // Limb texture: same colouring, darker and rougher towards the feet.
+    const lc = G.canvas(512, 256), lg = lc.getContext('2d');
+    const lgr = lg.createLinearGradient(0, 0, 0, 256);
     lgr.addColorStop(0, belly); lgr.addColorStop(0.3, flank); lgr.addColorStop(0.5, dorsal);
     lgr.addColorStop(0.7, flank); lgr.addColorStop(1, belly);
     lg.fillStyle = lgr;
-    lg.fillRect(0, 0, 256, 128);
-    const fade = lg.createLinearGradient(0, 0, 256, 0);
-    fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(0.55, 'rgba(0,0,0,0.1)'); fade.addColorStop(1, 'rgba(20,14,10,0.55)');
+    lg.fillRect(0, 0, 512, 256);
+    const fade = lg.createLinearGradient(0, 0, 512, 0);
+    fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(0.5, 'rgba(0,0,0,0.08)'); fade.addColorStop(1, 'rgba(22,16,12,0.6)');
     lg.fillStyle = fade;
-    lg.fillRect(0, 0, 256, 128);
-    for (let i = 0; i < 500; i++) {
-      lg.fillStyle = r() < 0.5 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,240,0.07)';
-      lg.beginPath(); lg.arc(r() * 256, r() * 128, 1 + r() * 4, 0, Math.PI * 2); lg.fill();
+    lg.fillRect(0, 0, 512, 256);
+    for (let i = 0; i < 3000; i++) {
+      lg.fillStyle = r() < 0.55 ? 'rgba(0,0,0,0.12)' : 'rgba(255,250,235,0.06)';
+      lg.fillRect(r() * 512, r() * 256, 1 + r() * 2, 1 + r() * 2);
     }
     return { skin: G.texture(c), limb: G.texture(lc), glow: glow ? G.texture(glow) : null };
   }
 
-  // Tileable bump map of overlapping scales.
-  let scaleTex = null;
-  function scales() {
-    if (scaleTex) return scaleTex;
-    const N = 256, c = G.canvas(N, N), g = c.getContext('2d');
-    g.fillStyle = '#6a6a6a';
-    g.fillRect(0, 0, N, N);
-    const r = rng('scales');
-    const step = 16;
-    for (let row = -1; row <= N / step + 1; row++) {
-      for (let col = -1; col <= N / step + 1; col++) {
-        const x = col * step + (row % 2 ? step / 2 : 0) + (r() - 0.5) * 3;
-        const y = row * step * 0.8 + (r() - 0.5) * 3;
-        const rad = step * (0.55 + r() * 0.12);
-        for (const [ox, oy] of [[0, 0], [N, 0], [-N, 0], [0, N], [0, -N]]) {
-          const grd = g.createRadialGradient(x + ox - rad * 0.2, y + oy - rad * 0.25, rad * 0.1, x + ox, y + oy, rad);
-          grd.addColorStop(0, '#d8d8d8');
-          grd.addColorStop(0.7, '#8a8a8a');
-          grd.addColorStop(1, '#2a2a2a');
-          g.fillStyle = grd;
-          g.beginPath(); g.arc(x + ox, y + oy, rad, 0, Math.PI * 2); g.fill();
+  // Shared, tileable reptile scales from a Voronoi pattern: a normal map for
+  // the raised scales, and an occlusion/roughness map (red: grooves darken
+  // the ambient light; green: grooves are rough, scale tops a bit glossy).
+  let scaleSet = null;
+  function scaleMaps() {
+    if (scaleSet) return scaleSet;
+    const N = 256, cells = 16;
+    const r = rng('scales-v2');
+    const seed = [];
+    for (let j = 0; j < cells; j++) for (let i = 0; i < cells; i++) seed.push([(i + 0.1 + r() * 0.8) / cells, (j + 0.1 + r() * 0.8) / cells, r()]);
+    const hgt = new Float32Array(N * N), groove = new Float32Array(N * N);
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const px = (x + 0.5) / N, py = (y + 0.5) / N;
+        const ci = Math.floor(px * cells), cj = Math.floor(py * cells);
+        let d1 = 9, d2 = 9, k1 = 0;
+        for (let dj = -2; dj <= 2; dj++) {
+          for (let di = -2; di <= 2; di++) {
+            const ii = (ci + di + cells) % cells, jj = (cj + dj + cells) % cells;
+            const sd = seed[jj * cells + ii];
+            const sx = sd[0] + Math.floor((ci + di) / cells) * 1, sy = sd[1] + Math.floor((cj + dj) / cells) * 1;
+            const d = Math.hypot(px - sx, py - sy);
+            if (d < d1) { d2 = d1; d1 = d; k1 = sd[2]; } else if (d < d2) d2 = d;
+          }
         }
+        const edge = clamp((d2 - d1) * cells * 2.2, 0, 1);
+        const dome = 1 - clamp(d1 * cells * 0.9, 0, 1);
+        hgt[y * N + x] = Math.pow(edge, 0.55) * (0.7 + 0.3 * k1) + dome * 0.25;
+        groove[y * N + x] = edge;
       }
     }
-    scaleTex = G.texture(c, false);
-    scaleTex.wrapS = scaleTex.wrapT = T.RepeatWrapping;
-    return scaleTex;
+    const nc = G.canvas(N, N), oc = G.canvas(N, N);
+    const nd = nc.getContext('2d').createImageData(N, N), od = oc.getContext('2d').createImageData(N, N);
+    const at = (x, y) => hgt[((y + N) % N) * N + ((x + N) % N)];
+    const K = 2.6;
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const dx = (at(x + 1, y) - at(x - 1, y)) * K, dy = (at(x, y + 1) - at(x, y - 1)) * K;
+        const len = Math.hypot(dx, dy, 1);
+        const o = (y * N + x) * 4;
+        nd.data[o] = (-dx / len * 0.5 + 0.5) * 255;
+        nd.data[o + 1] = (dy / len * 0.5 + 0.5) * 255;
+        nd.data[o + 2] = (1 / len * 0.5 + 0.5) * 255;
+        nd.data[o + 3] = 255;
+        const e = groove[y * N + x];
+        od.data[o] = (0.35 + 0.65 * Math.pow(e, 0.5)) * 255;
+        od.data[o + 1] = (0.95 - 0.4 * e) * 255;
+        od.data[o + 2] = 0;
+        od.data[o + 3] = 255;
+      }
+    }
+    nc.getContext('2d').putImageData(nd, 0, 0);
+    oc.getContext('2d').putImageData(od, 0, 0);
+    const wrap = (t) => { t.wrapS = t.wrapT = T.RepeatWrapping; return t; };
+    scaleSet = { normal: wrap(G.texture(nc, false)), orm: wrap(G.texture(oc, false)) };
+    return scaleSet;
   }
 
+  // A reptile eye: golden iris with streaks, a dark rim and a slit pupil.
+  // Mapped so the middle of the texture faces +x on a sphere.
+  function eyeTexture(sp) {
+    const c = G.canvas(256, 128), g = c.getContext('2d');
+    g.fillStyle = '#1A120C';
+    g.fillRect(0, 0, 256, 128);
+    const col = hex(sp.eye);
+    const iris = g.createRadialGradient(128, 64, 4, 128, 64, 34);
+    iris.addColorStop(0, css(col.clone().multiplyScalar(1.1)));
+    iris.addColorStop(0.55, css(col));
+    iris.addColorStop(0.85, css(col.clone().multiplyScalar(0.55)));
+    iris.addColorStop(1, '#1A120C');
+    g.fillStyle = iris;
+    g.beginPath(); g.arc(128, 64, 34, 0, Math.PI * 2); g.fill();
+    const r = rng(`eye:${sp.id}`);
+    for (let i = 0; i < 70; i++) {
+      const a = r() * Math.PI * 2, r0 = 8 + r() * 6, r1 = 20 + r() * 12;
+      g.strokeStyle = r() < 0.5 ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,220,0.2)';
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(128 + Math.cos(a) * r0, 64 + Math.sin(a) * r0); g.lineTo(128 + Math.cos(a) * r1, 64 + Math.sin(a) * r1); g.stroke();
+    }
+    g.fillStyle = '#050403';
+    g.beginPath(); g.ellipse(128, 64, 4.5, 24, 0, 0, Math.PI * 2); g.fill();
+    return G.texture(c);
+  }
+
+  // Wing membrane: thin skin, darker by the arm, with fine stiffening
+  // fibres running out to the trailing edge and a few blood vessels.
   function membraneTexture(sp) {
-    const c = G.canvas(256, 256), g = c.getContext('2d');
+    const c = G.canvas(512, 256), g = c.getContext('2d');
+    const base = mixc(sp.col[0], sp.col[2], 0.45);
     const gr = g.createLinearGradient(0, 0, 0, 256);
-    gr.addColorStop(0, css(hex(sp.col[2]).multiplyScalar(0.7)));
-    gr.addColorStop(1, sp.col[2]);
+    gr.addColorStop(0, css(base.clone().multiplyScalar(0.55)));
+    gr.addColorStop(0.25, css(base.clone().multiplyScalar(0.8)));
+    gr.addColorStop(1, css(base.clone().lerp(hex(sp.col[1]), 0.25)));
     g.fillStyle = gr;
-    g.fillRect(0, 0, 256, 256);
-    g.strokeStyle = 'rgba(0,0,0,0.25)';
-    g.lineWidth = 2;
-    for (let i = 0; i < 12; i++) {
-      g.beginPath();
-      g.moveTo(i * 22, 0);
-      g.quadraticCurveTo(i * 22 + 10, 128, i * 20 - 10, 256);
+    g.fillRect(0, 0, 512, 256);
+    const r = rng(`wing:${sp.id}`);
+    g.lineWidth = 1;
+    for (let i = 0; i < 140; i++) {
+      const x = r() * 560 - 24;
+      g.strokeStyle = `rgba(0,0,0,${0.08 + r() * 0.1})`;
+      g.beginPath(); g.moveTo(x, 20); g.quadraticCurveTo(x + 14, 140, x - 20 + r() * 10, 256); g.stroke();
+    }
+    g.strokeStyle = 'rgba(90,20,20,0.35)';
+    g.lineWidth = 1.6;
+    for (let i = 0; i < 7; i++) {
+      let x = 30 + i * 70, y = 10;
+      g.beginPath(); g.moveTo(x, y);
+      while (y < 230) { x += (r() - 0.5) * 18; y += 12 + r() * 16; g.lineTo(x, y); }
       g.stroke();
     }
+    // Darker, thicker trailing edge.
+    const edge = g.createLinearGradient(0, 220, 0, 256);
+    edge.addColorStop(0, 'rgba(0,0,0,0)'); edge.addColorStop(1, 'rgba(0,0,0,0.35)');
+    g.fillStyle = edge;
+    g.fillRect(0, 220, 512, 36);
     return G.texture(c);
   }
 
@@ -413,7 +535,8 @@ window.RB = window.RB || {};
 
   function asset(id) {
     if (assets.has(id)) return assets.get(id);
-    const sp = C.byId(id);
+    const real = C.byId(id);
+    const sp = Object.assign({}, real, { col: natural(real) });
     const P = PLANS[sp.plan];
     const r = rng(`beast:${id}`);
     const acc = new Acc(true);
@@ -462,13 +585,15 @@ window.RB = window.RB || {};
     for (const L of P.legs || []) {
       for (const side of [1, -1]) {
         const tag = `${L.parent === 'hip' ? 'b' : 'f'}${side > 0 ? 'L' : 'R'}`;
-        const lj = L.pts.map(([z, y], i) => ({ p: V(side * L.x, y, z), hw: L.r[i] * (i === 0 ? 0.85 : 0.9), hh: L.r[i] * (i === 0 ? 1.25 : 1.05) }));
+        // Heavy, muscular thighs that taper to a slim ankle.
+        const bulk = L.dangle ? [1, 1, 1, 1, 1] : L.hoof ? [1.22, 1.0, 0.88, 1.22, 1.3] : [1.25, 1.0, 0.8, 0.88, 1];
+        const lj = L.pts.map(([z, y], i) => ({ p: V(side * L.x, y, z), hw: L.r[i] * bulk[i] * (i === 0 ? 0.9 : 0.88), hh: L.r[i] * bulk[i] * (i === 0 ? 1.35 : 1.08) }));
         const parentName = L.parent === 'hip' ? 'hip' : chestName;
         const names = [];
         for (let i = 0; i < 4; i++) { const n = `${tag}${i}`; addBone(n, i === 0 ? parentName : names[i - 1], lj[i].p); names.push(n); }
         const ids = names.map((n) => bi[n]);
         // Start the skin a little up inside the body so the thigh blends in.
-        const top = { p: lj[0].p.clone().add(V(-side * L.x * 0.35, L.r[0] * 0.9, 0)), hw: L.r[0] * 0.8, hh: L.r[0] * 1.1 };
+        const top = { p: lj[0].p.clone().add(V(-side * L.x * 0.6, L.r[0] * 1.2, 0)), hw: L.r[0] * (L.dangle ? 0.8 : 0.95), hh: L.r[0] * (L.dangle ? 1.1 : 1.45) };
         sweep(acc, [top].concat(lj), { segs: 14, step: 0.015, weight: (p) => chainWeights([0, 1, 2, 3], ids, Math.max(0, p - 1)), mat: 1 });
         // Toes and claws on the last bone.
         const ball = lj[3].p, tip = lj[4].p;
@@ -477,10 +602,12 @@ window.RB = window.RB || {};
           const spread = (k - (L.toes - 1) / 2) * (L.hoof ? 0.5 : 0.45);
           const dir = V(Math.sin(spread) * side * (L.hoof ? 1 : 1), L.dangle ? -0.4 : -0.08, Math.cos(spread)).normalize();
           if (L.dangle) dir.set(Math.sin(spread) * 0.5, -0.6, -0.6).normalize();
-          const base = ball.clone().add(V(0, L.hoof ? -L.r[3] * 0.5 : 0, 0));
-          parts.push({ kind: L.hoof ? 'claw' : 'skinlimb', bone: names[3], shape: 'toe', len: toeLen, rad: L.r[4] * (L.hoof ? 1.4 : 1.1), pos: base, dir });
-          if (!L.hoof) parts.push({ kind: 'claw', bone: names[3], shape: 'claw', len: toeLen * 0.45, rad: L.r[4] * 0.7, pos: base.clone().addScaledVector(dir, toeLen * 0.95), dir: dir.clone().add(V(0, -0.5, 0)).normalize() });
+          const base = ball.clone().add(V(0, L.hoof ? -L.r[3] * 0.45 : 0, 0));
+          parts.push({ kind: 'skinlimb', bone: names[3], shape: 'toe', len: toeLen, rad: L.r[4] * (L.hoof ? 1.15 : 1.1), pos: base, dir });
+          if (L.hoof) parts.push({ kind: 'nail', bone: names[3], shape: 'blob', pos: base.clone().addScaledVector(dir, toeLen * 1.02).add(V(0, L.r[4] * 0.1, 0)), scale: V(L.r[4] * 0.95, L.r[4] * 0.7, L.r[4] * 0.75) });
+          else parts.push({ kind: 'claw', bone: names[3], shape: 'claw', len: toeLen * 0.45, rad: L.r[4] * 0.7, pos: base.clone().addScaledVector(dir, toeLen * 0.95), dir: dir.clone().add(V(0, -0.5, 0)).normalize() });
         }
+
         legs.push({ tag, bones: names, parent: parentName, rest: lj.map((j) => j.p.clone()), knee: L.knee, phase: side > 0 ? L.phase && L.phase[0] : L.phase && L.phase[1], dangle: !!L.dangle, side });
       }
     }
@@ -532,8 +659,8 @@ window.RB = window.RB || {};
           const L = lead[iu];
           const u = iu / NU;
           const trail = rootP.clone().lerp(tip, Math.pow(u, 0.8));
-          trail.z -= Math.sin(u * Math.PI) * 0.12;   // scalloped trailing edge
-          trail.y -= Math.sin(u * Math.PI) * 0.02;
+          trail.z += Math.sin(u * Math.PI) * 0.05 * u;   // the trailing edge curves in towards the tip
+          trail.y -= Math.sin(u * Math.PI) * 0.015;
           const lw = chainWeights([0, 1, 2], ids, L.param);
           const row = [];
           for (let iv = 0; iv <= NV; iv++) {
@@ -591,10 +718,21 @@ window.RB = window.RB || {};
     }
     const [ez, ey, ex, er] = P.eye;
     for (const s of [1, -1]) {
-      parts.push({ kind: 'eye', bone: headName, shape: 'eye', pos: V(s * ex, ey, ez), rad: er });
-      parts.push({ kind: 'pupil', bone: headName, shape: 'blob', pos: V(s * (ex + er * 0.82), ey, ez + er * 0.1), scale: V(er * 0.25, er * 0.78, er * 0.3) });
+      // The eye looks out and a little forward, set in a ring of eyelid.
+      const look = V(s * 0.94, 0.05, 0.34).normalize();
+      parts.push({ kind: 'eye', bone: headName, shape: 'eye', pos: V(s * ex * 0.97, ey, ez), rad: er, look });
+      parts.push({ kind: 'skin', bone: headName, shape: 'lid', pos: V(s * ex * 0.97, ey, ez).addScaledVector(look, er * 0.42), rad: er, look });
       // Brow ridge
-      parts.push({ kind: 'skin', bone: headName, shape: 'blob', pos: V(s * ex * 0.9, ey + er * 0.85, ez), scale: V(er * 0.9, er * 0.45, er * 1.6) });
+      parts.push({ kind: 'skin', bone: headName, shape: 'blob', pos: V(s * ex * 0.92, ey + er * 0.95, ez - er * 0.1), scale: V(er * 0.85, er * 0.5, er * 1.8) });
+    }
+    // Nostrils near the tip of the snout.
+    {
+      const tipJ = J[J.length - 1], preJ = J[J.length - 3] || J[J.length - 2];
+      const at = preJ.p.clone().lerp(tipJ.p, 0.55);
+      const hw = preJ.hw * 0.55 + tipJ.hw * 0.45, hh = preJ.hh * 0.55 + tipJ.hh * 0.45;
+      for (const s of [1, -1]) {
+        parts.push({ kind: 'nostril', bone: headName, shape: 'blob', pos: at.clone().add(V(s * hw * 0.62, hh * 0.45, 0)), scale: V(hw * 0.2, hh * 0.16, hw * 0.34) });
+      }
     }
 
     // Species features
@@ -655,24 +793,32 @@ window.RB = window.RB || {};
 
     // Materials
     const tex = skinTextures(sp, r);
-    const bump = scales();
-    const skinBump = bump.clone(); skinBump.repeat.set(30, 8); skinBump.needsUpdate = true;
-    const limbBump = bump.clone(); limbBump.repeat.set(8, 4); limbBump.needsUpdate = true;
+    const sc = scaleMaps();
+    const tiled = (t, u, v) => { const x = t.clone(); x.repeat.set(u, v); x.needsUpdate = true; return x; };
     const elc = C.ELEMENTS[sp.el].color;
-    const skin = new T.MeshStandardMaterial({ map: tex.skin, bumpMap: skinBump, bumpScale: 0.9, roughness: 0.78, metalness: 0, envMapIntensity: 0.7 });
+    // Scaly skin with a soft sheen, like a lizard's in the sun.
+    const skinLike = (map, u, v) => new T.MeshPhysicalMaterial({
+      map, normalMap: tiled(sc.normal, u, v), normalScale: new T.Vector2(0.75, 0.75),
+      aoMap: tiled(sc.orm, u, v), aoMapIntensity: 1, roughnessMap: tiled(sc.orm, u, v), roughness: 0.95,
+      metalness: 0, envMapIntensity: 0.85,
+      sheen: 0.35, sheenRoughness: 0.55, sheenColor: mixc(sp.col[1], '#FFFFFF', 0.4),
+    });
+    const skin = skinLike(tex.skin, 18, 6);
     if (tex.glow) { skin.emissiveMap = tex.glow; skin.emissive = new T.Color('#FFFFFF'); skin.emissiveIntensity = 1; }
-    const limb = new T.MeshStandardMaterial({ map: tex.limb, bumpMap: limbBump, bumpScale: 0.9, roughness: 0.82, metalness: 0, envMapIntensity: 0.7 });
-    const membrane = new T.MeshStandardMaterial({ map: membraneTexture(sp), roughness: 0.7, side: T.DoubleSide, envMapIntensity: 0.6 });
+    const limb = skinLike(tex.limb, 7, 4);
+    const membrane = new T.MeshStandardMaterial({ map: membraneTexture(sp), roughness: 0.75, side: T.DoubleSide, envMapIntensity: 0.6 });
     const accentCol = hex(sp.col[2]);
     const mats = {
       horn: new T.MeshStandardMaterial({ color: sp.feat.has('crown') ? accentCol : mixc('#EDE3CC', sp.col[2], 0.15), roughness: 0.45, envMapIntensity: 0.8, emissive: sp.feat.has('crown') ? accentCol : new T.Color(0), emissiveIntensity: sp.feat.has('crown') ? 0.8 : 0 }),
       claw: new T.MeshStandardMaterial({ color: '#2A2420', roughness: 0.4 }),
-      eye: new T.MeshStandardMaterial({ color: sp.eye, roughness: 0.08, metalness: 0, envMapIntensity: 1.4, emissive: new T.Color(sp.eye), emissiveIntensity: sp.rar >= 2 ? 0.6 : 0.15 }),
-      pupil: new T.MeshStandardMaterial({ color: '#050505', roughness: 0.05, envMapIntensity: 1.5 }),
-      mouth: new T.MeshStandardMaterial({ color: '#5A1A1E', roughness: 0.55 }),
-      teeth: new T.MeshStandardMaterial({ color: '#F2EAD6', roughness: 0.35 }),
-      frill: new T.MeshStandardMaterial({ map: frillTexture(sp), bumpMap: bump, bumpScale: 0.8, roughness: 0.7, envMapIntensity: 0.7, side: T.DoubleSide, emissive: sp.feat.has('glow') ? new T.Color(elc) : new T.Color(0), emissiveIntensity: sp.feat.has('glow') ? 0.35 : 0 }),
-      accent: new T.MeshStandardMaterial({ color: accentCol, roughness: 0.55, envMapIntensity: 0.8, side: T.DoubleSide, emissive: sp.feat.has('glow') ? new T.Color(elc) : new T.Color(0), emissiveIntensity: sp.feat.has('glow') ? 0.5 : 0 }),
+      nail: new T.MeshStandardMaterial({ color: '#5E5446', roughness: 0.45 }),
+      eye: new T.MeshPhysicalMaterial({ map: eyeTexture(sp), roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.2, emissiveMap: eyeTexture(sp), emissive: new T.Color('#FFFFFF'), emissiveIntensity: sp.rar >= 2 ? 0.45 : 0.08 }),
+      nostril: new T.MeshStandardMaterial({ color: '#140C08', roughness: 0.9 }),
+      mouth: new T.MeshStandardMaterial({ color: '#6A2A2A', roughness: 0.4 }),
+      teeth: new T.MeshStandardMaterial({ color: '#E6DCC2', roughness: 0.3 }),
+      frill: new T.MeshStandardMaterial({ map: frillTexture(sp), normalMap: tiled(sc.normal, 4, 4), normalScale: new T.Vector2(0.7, 0.7), roughness: 0.7, envMapIntensity: 0.7, side: T.DoubleSide, emissive: sp.feat.has('glow') ? new T.Color(elc) : new T.Color(0), emissiveIntensity: sp.feat.has('glow') ? 0.35 : 0 }),
+      // Plates, crests and quills: horny skin, part body colour, part accent.
+      accent: new T.MeshStandardMaterial({ color: mixc(sp.col[0], sp.col[2], sp.feat.has('glow') || sp.el === 'void' ? 0.8 : 0.55), normalMap: tiled(sc.normal, 3, 3), normalScale: new T.Vector2(0.5, 0.5), roughness: 0.7, envMapIntensity: 0.8, side: T.DoubleSide, emissive: sp.feat.has('glow') ? new T.Color(elc) : new T.Color(0), emissiveIntensity: sp.feat.has('glow') ? 0.5 : 0 }),
     };
 
     // Rigid part geometries (shared across instances).
@@ -683,7 +829,8 @@ window.RB = window.RB || {};
       if (shape === 'toe') { g = new T.CapsuleGeometry(1, 2, 3, 8); g.translate(0, 2, 0); g.scale(1, 0.25, 1); }
       else if (shape === 'claw' || shape === 'tooth' || shape === 'horn') { g = new T.ConeGeometry(1, 1, shape === 'horn' ? 12 : 6, 1); g.translate(0, 0.5, 0); }
       else if (shape === 'quill') { g = new T.ConeGeometry(1, 1, 4, 1); g.translate(0, 0.5, 0); g.scale(1, 1, 0.25); }
-      else if (shape === 'blob' || shape === 'eye') { g = new T.SphereGeometry(1, 16, 12); }
+      else if (shape === 'blob') { g = new T.SphereGeometry(1, 16, 12); }
+      else if (shape === 'eye') { g = new T.SphereGeometry(1, 24, 16); }
       return (geoCache[shape] = g);
     };
     const up = V(0, 1, 0);
@@ -704,6 +851,13 @@ window.RB = window.RB || {};
       } else if (pt.shape === 'eye') {
         out.geo = unitGeo('eye');
         out.scale.setScalar(pt.rad);
+        // The iris is in the middle of the texture, which faces +x.
+        out.quat.setFromUnitVectors(V(1, 0, 0), pt.look);
+      } else if (pt.shape === 'lid') {
+        if (!geoCache.lid) geoCache.lid = new T.TorusGeometry(0.86, 0.3, 8, 20);
+        out.geo = geoCache.lid;
+        out.scale.setScalar(pt.rad);
+        out.quat.setFromUnitVectors(V(0, 0, 1), pt.look);
       } else if (pt.shape === 'frill') {
         // A curved shield: a finely divided fan whose sides sweep forward,
         // with a scalloped rim.
@@ -810,7 +964,7 @@ window.RB = window.RB || {};
       m.position.copy(p.pos).sub(A.bones[p.bone].pos);
       m.quaternion.copy(p.quat);
       m.scale.copy(p.scale);
-      m.castShadow = p.kind !== 'pupil' && p.kind !== 'mouth';
+      m.castShadow = p.kind !== 'nostril' && p.kind !== 'mouth' && p.kind !== 'eye';
       bones[p.bone].add(m);
       meshes.push(m);
     }

@@ -122,7 +122,7 @@ window.RB = window.RB || {};
     open('spawn', `
       <canvas class="portrait big" id="sp-pic"></canvas>
       <h2>${esc(sp.name)}</h2>
-      <p class="chips">${chip(sp)}<span class="chip">Lv ${lvl}</span></p>
+      <p class="chips">${chip(sp)}<span class="chip">Lv ${lvl}</span>${spawn.boost && RB.weather.now ? `<span class="chip" style="--c:#7FD4FF">${RB.weather.look(RB.weather.now).icon} Weather boost</span>` : ''}</p>
       <p class="muted">${esc(sp.blurb)}</p>
       <p class="muted small">${dex && dex.caught ? `You've caught ${dex.caught}.` : 'Not caught yet.'} You have ${S.dna(sp.id)} ${esc(sp.name)} DNA. Leaves in ${fmtTime(left)}.</p>
       ${near
@@ -499,6 +499,25 @@ window.RB = window.RB || {};
     reportUp(h);
   }
 
+  // The real weather and what it draws out.
+  function weatherSheet() {
+    const w = RB.weather.now;
+    if (!w) { open('weather', '<h2>Weather</h2><p class="far">No weather yet. It loads once the GPS has found you and you’re online.</p>'); return; }
+    const lk = RB.weather.look(w), el = C.ELEMENTS[RB.weather.boost];
+    const boosted = C.WILD.filter((x) => x.el === RB.weather.boost);
+    open('weather', `
+      <div class="weather-big">${lk.icon}</div>
+      <h2 class="center">${lk.name} · ${w.temp}°C</h2>
+      <p class="muted center">Wind ${w.wind} km/h. This is the real weather where you are.</p>
+      <p class="far center">${el.icon} ${el.name} creatures are boosted</p>
+      <p class="muted small">More of them appear, they come 3 levels stronger, and catching one gives 25% more XP. Boosted creatures have a weather tag.</p>
+      <div class="list">${boosted.map((x) => `<div class="row"><canvas data-sp="${x.id}" data-sil="${S.save.dex[x.id] ? 0 : 1}"></canvas><span><b>${S.save.dex[x.id] ? esc(x.name) : '???'}</b><small>${C.RARITY[x.rar].name}</small></span></div>`).join('')}</div>
+      <h3>What each weather brings</h3>
+      <div class="weather-grid">${Object.entries(RB.weather.KINDS).map(([k, v]) => `<div class="${k === w.kind ? 'on' : ''}"><b>${v.icon}</b>${v.name}<br>${C.ELEMENTS[v.el].icon}</div>`).join('')}</div>
+      <p class="muted small center">Weather data by Open-Meteo.com</p>
+    `);
+  }
+
   // A week of daily rewards, like a login calendar.
   function daily() {
     const p = S.loginPending();
@@ -863,7 +882,7 @@ window.RB = window.RB || {};
       <h2>Menu</h2>
       <div class="actions">
         <button class="btn" data-set="sound">Sound: ${st.sound ? 'on' : 'off'}</button>
-        <button class="btn" data-set="map">Map: ${({ scanner: 'scanner (like Ingress)', auto: 'day and night follow your clock', day: 'always day', night: 'always night', grid: 'no street map (offline)' })[st.map] || 'scanner'}</button>
+        <button class="btn" data-set="map">Map: ${({ scanner: 'scanner (like Ingress)', satellite: 'satellite (real photos)', auto: 'day and night follow your clock', day: 'always day', night: 'always night', grid: 'no street map (offline)' })[st.map] || 'scanner'}</button>
         <button class="btn" data-set="ar">AR camera: ${st.ar === false ? 'off' : 'on'}</button>
         <button class="btn" data-set="tiles">Map source: ${RB.gmaps.active() ? 'Google Maps' : ({ esri: 'Esri', osm: 'OpenStreetMap' })[st.tiles] || `automatic (${RB.map.sourceName})`}</button>
         <button class="btn" data-gmaps>Google Maps: ${RB.gmaps.key() ? (RB.gmaps.status.state === 'error' ? 'key problem' : 'on') : 'off (add a key)'}</button>
@@ -876,7 +895,7 @@ window.RB = window.RB || {};
       on(el, '[data-set]', (b) => {
         const k = b.dataset.set;
         if (k === 'sound') { st.sound = !st.sound; sfx.on = st.sound; }
-        if (k === 'map') st.map = ({ scanner: 'auto', auto: 'day', day: 'night', night: 'grid', grid: 'scanner' })[st.map] || 'scanner';
+        if (k === 'map') st.map = ({ scanner: 'satellite', satellite: 'auto', auto: 'day', day: 'night', night: 'grid', grid: 'scanner' })[st.map] || 'scanner';
         if (k === 'ar') st.ar = st.ar === false;
         if (k === 'tiles') { st.tiles = ({ auto: 'esri', esri: 'osm', osm: 'auto' })[st.tiles || 'auto']; RB.map.sourceChanged(); }
         S.persist();
@@ -951,6 +970,8 @@ window.RB = window.RB || {};
         <p>Eggs turn up in caches, Rift hacks, the daily bonus and Apex raids. Put them in your two incubators (Bag) and walk 2, 5 or 10 km to hatch them. Longer eggs hold rarer creatures.</p>
         <h3>🎁 Daily bonus</h3>
         <p>Play every day for a week of rising rewards (📋 Missions → Daily bonus). Day 7 gives a 10 km egg.</p>
+        <h3>🌦️ Weather</h3>
+        <p>The game uses the real weather where you are. Each kind draws out one element: sun brings Ember, rain and snow bring Tide, storms bring Volt, wind and scattered cloud bring Gale, overcast brings Stone and fog brings Void. Boosted creatures are more common, stronger and worth more XP. Tap the weather badge on the map to see what's boosted.</p>
         <h3>📦 Caches</h3>
         <p>Supply caches refill every 10 minutes. Great for darts.</p>
         <h3>🧭 Moving</h3>
@@ -963,6 +984,6 @@ window.RB = window.RB || {};
     setHooks(h) { hooks = h; },
     toast, open, close, isOpen, refresh, tick, levelUp,
     spawnSheet, dropSheet, riftSheet, lab, creatureSheet, bag, profile, scan, menu, guide, missionsSheet,
-    account, onlineSheet, hatched, daily,
+    account, onlineSheet, hatched, daily, weatherSheet,
   };
 })(window.RB);

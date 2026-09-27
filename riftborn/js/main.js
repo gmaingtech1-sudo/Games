@@ -59,6 +59,15 @@
     }
     if (RB.auth.user) pullCloud();
     S.onXP(xpPop);
+    RB.weather.onChange((w) => {
+      if (mapReady) M.setWeather(w);
+      refreshEntities(true);
+      showWeather();
+      if (mode === 'map' && w) {
+        const lk = RB.weather.look(w), el = C.ELEMENTS[RB.weather.boost];
+        UI.toast(`${lk.icon} ${lk.name}: ${el.icon} ${el.name} creatures are out in force.`, 'good');
+      }
+    });
     window.addEventListener('resize', resize);
     resize();
     requestAnimationFrame(frame);
@@ -261,6 +270,7 @@
     $('btn-scan').addEventListener('click', () => { sfx.tap(); scanPulse(); UI.scan(ents); });
     $('btn-menu').addEventListener('click', () => { sfx.tap(); UI.menu(); });
     $('btn-missions').addEventListener('click', () => { sfx.tap(); UI.missionsSheet(); });
+    $('hud-weather').addEventListener('click', () => { sfx.tap(); UI.weatherSheet(); });
     $('btn-profile').addEventListener('click', () => { sfx.tap(); UI.profile(); });
     $('btn-profile2').addEventListener('click', () => { sfx.tap(); UI.profile(); });
     $('btn-center').addEventListener('click', () => { sfx.tap(); M.recenter(); $('btn-center').classList.remove('show'); });
@@ -300,6 +310,8 @@
     $('onboard').hidden = true;
     $('map-screen').hidden = false;
     initMap();
+    M.setWeather(RB.weather.now);
+    showWeather();
     mode = 'map';
     const start = save.lastPos || DEFAULT_POS;
     pos.lat = start.lat;
@@ -391,6 +403,7 @@
       if (d < 150 && !gps.tooFast) walkRewards(S.walked(d));
     }
     gps.last = { lat: ll.lat, lng: ll.lng, t: p.timestamp };
+    RB.weather.update(ll.lat, ll.lng);
     gps.target = ll;
     status(gps.tooFast ? 'Moving too fast. Creatures are hiding.' : p.coords.accuracy > 60 ? 'Weak GPS signal…' : '', gps.tooFast || p.coords.accuracy > 60 ? 'warn' : '');
   }
@@ -473,6 +486,15 @@
       else if (n.kind === 'hatch') { if (mode === 'map') UI.hatched(n); else UI.toast(`🥚 Your ${n.km} km egg hatched into ${esc(C.byId(n.creature.sp).name)}!`, 'good'); }
       else { sfx.crate(); UI.toast(`🎒 1 km walked! Supply stash: 🔮 ${n.loot.orbs} · 🎯 ${n.loot.darts} · 💠 ${n.loot.shards}`, 'good'); }
     }
+  }
+
+  // The weather badge on the map.
+  function showWeather() {
+    const w = RB.weather.now, el = $('hud-weather');
+    el.hidden = !w;
+    if (!w) return;
+    const lk = RB.weather.look(w);
+    el.innerHTML = `${lk.icon} ${w.temp}° <small>${C.ELEMENTS[RB.weather.boost].icon}</small>`;
   }
 
   // "+50 XP" floating up by your level bar.

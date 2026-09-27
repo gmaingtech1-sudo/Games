@@ -2,7 +2,8 @@
 
    With a key (set in Menu → Google Maps, or baked into config.js for the
    Android build), the 3D map lays Google's roadmap tiles on the ground in a
-   day style or a night style. Each style needs a session from
+   day, night or scanner style, or Google's aerial photos for the satellite
+   map. Each style needs a session from
    createSession; tiles are then fetched by z/x/y. Google's copyright line
    for the area in view comes from the viewport endpoint and is shown in the
    corner, as Google requires.
@@ -74,17 +75,15 @@ window.RB = window.RB || {};
     const k = key();
     const m = /^[a-z]{2,3}(-[A-Za-z]{2})?/.exec(navigator.language || '');
     const lang = m ? m[0] : 'en-US';
+    const region = (lang.split('-')[1] || 'US').toUpperCase();
+    // Satellite: Google's aerial photos. Otherwise a styled road map.
+    const req = style === 'satellite'
+      ? { mapType: 'satellite', language: lang, region }
+      : { mapType: 'roadmap', language: lang, region, scale: 'scaleFactor2x', highDpi: true, styles: STYLES[style] };
     const res = await fetch(`${API}/v1/createSession?key=${encodeURIComponent(k)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mapType: 'roadmap',
-        language: lang,
-        region: (lang.split('-')[1] || 'US').toUpperCase(),
-        scale: 'scaleFactor2x',
-        highDpi: true,
-        styles: STYLES[style],
-      }),
+      body: JSON.stringify(req),
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok || !body.session) {

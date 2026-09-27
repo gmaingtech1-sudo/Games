@@ -48,6 +48,7 @@
   </header>
 
   <div id="gps-status" class="gps-status" role="status" aria-live="polite"></div>
+  <button id="hud-weather" class="weather-chip" type="button" hidden aria-label="Weather"></button>
 
   <div class="map-side">
     <button id="btn-missions" class="round-btn missions-btn" type="button" aria-label="Field missions">📋</button>
@@ -228,7 +229,7 @@
 
   <div class="ob-step" data-step="where" hidden>
     <h2>Get walking</h2>
-    <p class="muted">Riftborn puts Rifts and creatures on your real streets. To reach them you walk there in real life: the game follows your phone's GPS. Your location stays on your phone.</p>
+    <p class="muted">Riftborn puts Rifts and creatures on your real streets. To reach them you walk there in real life: the game follows your phone's GPS. Your exact position stays on your phone; only the map and the local weather are looked up for roughly where you are.</p>
     <button id="ob-gps" class="btn btn-main btn-big" type="button">📍 Turn on location and start</button>
     <p class="fineprint">Stay aware of your surroundings. Don't trespass, and never play while driving or cycling.</p>
   </div>
@@ -247,6 +248,7 @@
 <script src="js/world.js"></script>
 <script src="js/state.js"></script>
 <script src="js/ar.js"></script>
+<script src="js/weather.js"></script>
 <script src="js/gmaps.js"></script>
 <script src="js/map.js"></script>
 <script src="js/encounter.js"></script>

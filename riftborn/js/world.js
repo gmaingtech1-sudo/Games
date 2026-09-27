@@ -6,7 +6,8 @@
    - a Rift (fixed; like an Ingress portal): owned by a faction or neutral;
    - a Supply Cache (fixed; like a PokéStop or supply drop);
    - creatures (they change every 10 minutes, staggered per cell).
-   Creature kinds are biased by a coarse "biome" element and time of day. */
+   Creature kinds are biased by a coarse "biome" element, the time of day
+   and the real weather (RB.weather). */
 window.RB = window.RB || {};
 (function (RB) {
   'use strict';
@@ -99,8 +100,9 @@ window.RB = window.RB || {};
     return cell;
   }
 
-  function speciesWeight(sp, biome, night) {
+  function speciesWeight(sp, biome, night, boost) {
     let w = C.RARITY[sp.rar].weight / C.WILD.filter((s) => s.rar === sp.rar).length;
+    if (sp.el === boost) w *= 2.5;
     if (sp.el === biome) w *= 3;
     if (night && sp.el === 'void') w *= 3;
     if (!night && sp.el === 'void') w *= 0.6;
@@ -115,9 +117,10 @@ window.RB = window.RB || {};
     const n = x < 0.6 ? 0 : x < 0.92 ? 1 : 2;
     const hour = new Date(now).getHours();
     const night = hour >= 20 || hour < 5;
+    const boost = RB.weather ? RB.weather.boost : null;
     const out = [];
     for (let k = 0; k < n; k++) {
-      const sp = weighted(C.WILD, (s) => speciesWeight(s, cell.biome, night), r);
+      const sp = weighted(C.WILD, (s) => speciesWeight(s, cell.biome, night, boost), r);
       out.push({
         kind: 'spawn',
         id: `s${cell.key}:${win}:${k}`,
@@ -128,6 +131,7 @@ window.RB = window.RB || {};
         ivs: [randInt(0, 10, r), randInt(0, 10, r), randInt(0, 10, r)],
         expires: (win + 1) * SPAWN_MS - cell.offset,
         seed: r() * 100,
+        boost: sp.el === boost,   // drawn out by the weather: stronger, more XP
       });
     }
     return out;

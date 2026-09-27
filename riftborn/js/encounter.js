@@ -29,7 +29,7 @@ window.RB = window.RB || {};
 
   let E = null;            // current encounter
   let canvas = null, ctx = null, dpr = 1;
-  let scene = null, camera = null, renderer = null, sun = null, catcher = null, plain = null, tear = null, orbMesh = null;
+  let scene = null, camera = null, renderer = null, sun = null, hemi = null, catcher = null, plain = null, tear = null, orbMesh = null;
 
   const to3 = (p) => new T.Vector3(p[0], p[2], -p[1]);
   const from3 = (v) => [v.x, -v.z, v.y];
@@ -53,7 +53,8 @@ window.RB = window.RB || {};
     scene = new T.Scene();
     scene.environment = GX.environment(renderer);
     camera = new T.PerspectiveCamera(60, 1, 0.05, 600);
-    scene.add(new T.HemisphereLight('#EEF2FF', '#6A5A48', 1.3));
+    hemi = new T.HemisphereLight('#EEF2FF', '#6A5A48', 1.3);
+    scene.add(hemi);
     sun = new T.DirectionalLight('#FFF6EA', 2.2);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
@@ -501,7 +502,7 @@ window.RB = window.RB || {};
     const rc = C.RARITY[E.sp.rar];
     $('enc-result-title').textContent = r.caught ? `${E.sp.name} caught!` : 'It got away';
     $('enc-result-text').innerHTML = r.caught
-      ? `<b style="color:${rc.color}">${rc.name}</b> · Level ${out.creature.lvl} · Power ${C.power(out.creature)}<br>+${E.dna + 25} ${E.sp.name} DNA · +${rc.xp + E.bonusXP} XP`
+      ? `<b style="color:${rc.color}">${rc.name}</b> · Level ${out.creature.lvl} · Power ${C.power(out.creature)}<br>+${E.dna + 25} ${E.sp.name} DNA · +${rc.xp + E.bonusXP + out.weatherXP} XP${out.weatherXP ? ' (weather boost)' : ''}`
       : `${RB.util.esc(r.text || '')}<br>${E.dna ? `You kept +${E.dna} ${E.sp.name} DNA.` : 'Dart it next time to keep some DNA.'}`;
     el.hidden = false;
     RB.beasts.portrait($('enc-result-pic'), E.sp.id, { silhouette: !r.caught && !(S.save.dex[E.sp.id] && S.save.dex[E.sp.id].caught) });
@@ -562,8 +563,49 @@ window.RB = window.RB || {};
     for (const m of e.msgs) { m.life -= dt; m.y -= 30 * dt; }
     e.msgs = e.msgs.filter((m) => m.life > 0);
     $('enc-timer-bar').style.width = `${clamp(e.timeLeft / TIME, 0, 1) * 100}%`;
+    matchLight(dt);
     render3d();
     render2d();
+  }
+
+  // Light the creature like your room: a few times a second, sample how
+  // bright and what colour the camera picture is (like ARCore's light
+  // estimate), so it isn't brightly lit in a dim room, and picks up warm
+  // lamp light or cool daylight.
+  const probe = { cv: null, g: null, t: 0, k: 1, col: new T.Color(1, 1, 1), wantK: 1, want: new T.Color(1, 1, 1) };
+  const WHITE = new T.Color(1, 1, 1);
+  function matchLight(dt) {
+    const v = ar.video;
+    const live = ar.view.camera && v && v.videoWidth > 0;
+    if (!live) {
+      probe.wantK = 1;
+      probe.want.copy(WHITE);
+    } else if ((probe.t -= dt) <= 0) {
+      probe.t = 0.4;
+      try {
+        if (!probe.cv) { probe.cv = GX.canvas(24, 16); probe.g = probe.cv.getContext('2d', { willReadFrequently: true }); }
+        probe.g.drawImage(v, 0, 0, 24, 16);
+        const d = probe.g.getImageData(0, 0, 24, 16).data;
+        let r = 0, g = 0, b = 0;
+        const lin = (x) => Math.pow(x / 255, 2.2);
+        for (let i = 0; i < d.length; i += 4) { r += lin(d[i]); g += lin(d[i + 1]); b += lin(d[i + 2]); }
+        const n = d.length / 4;
+        r /= n; g /= n; b /= n;
+        const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        // Mid grey (0.18) keeps the normal lighting.
+        probe.wantK = clamp(Math.sqrt(lum / 0.18), 0.3, 1.5);
+        const m = Math.max(r, g, b, 1e-4);
+        probe.want.setRGB(r / m, g / m, b / m).lerp(WHITE, 0.55);
+      } catch (e) { /* the picture can't be read: keep the normal lighting */ }
+    }
+    const k = 1 - Math.exp(-dt * 3);
+    probe.k += (probe.wantK - probe.k) * k;
+    probe.col.lerp(probe.want, k);
+    hemi.intensity = 1.3 * probe.k;
+    hemi.color.setRGB(0.93, 0.95, 1).multiply(probe.col);
+    sun.intensity = 2.2 * probe.k;
+    sun.color.set('#FFF6EA').multiply(probe.col);
+    scene.environmentIntensity = probe.k;
   }
 
   // The 3D layer: sync the camera with the phone, then draw the creature.

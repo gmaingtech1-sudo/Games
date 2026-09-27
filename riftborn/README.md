@@ -10,7 +10,7 @@ It mixes three games:
 
 Everything is in 3D, like those games: a tilted 3D map of your real streets with a day/night sky, animated 3D dinosaurs that stand in your room through the camera with real shadows, and a 3D battle arena.
 
-It's plain HTML, CSS and JavaScript on top of [three.js](https://threejs.org) (included in `vendor/`, MIT licence). There's no build step and nothing to install. The camera feed and your location stay on your phone.
+It's plain HTML, CSS and JavaScript on top of [three.js](https://threejs.org) (included in `vendor/`, MIT licence). There's no build step and nothing to install. The camera feed and your exact position stay on your phone. The map tiles and the weather (rounded to about 1 km) are fetched for roughly where you are.
 
 ## Playing
 
@@ -63,6 +63,7 @@ Like Ingress, you play by walking around in real life. Your agent follows your p
 The camera hovers behind your agent, looking out across the streets to the horizon. Drag sideways to swing it around you (tap **N** to face north again), and pinch or scroll to zoom. The map looks like the Ingress scanner by default: a near-black world with faint teal streets, no labels, a dark horizon and glowing XM on the ground. Ingress draws its own map from OpenStreetMap data (Niantic's map isn't open to other apps), so Riftborn recreates the look from the same OpenStreetMap data, or from Google Maps if you've added a key. **Menu → Map** switches between:
 
 - **Scanner (like Ingress):** the default.
+- **Satellite (real photos):** real aerial photos of your streets (Esri World Imagery, or Google's satellite photos with a Google Maps key).
 - **Day and night follow your clock:** a bright street map by day (6:30 to 19:30) and a dark one at night, like Pokémon GO.
 - **Always day**, **always night**, or **no street map** (plain ground, for offline).
 
@@ -74,6 +75,21 @@ The camera hovers behind your agent, looking out across the streets to the horiz
 | Glowing circle around you | Your reach (60 m). You have to be this close to interact with anything. |
 
 The row of creatures above the bottom bar shows the closest ones. **Scan** (the big button) lists everything around you by distance.
+
+### Real weather
+
+Like Pokémon GO, Riftborn uses the real weather where you are (from [Open-Meteo](https://open-meteo.com), free and keyless, checked every 20 minutes). The badge under your agent shows it; tap it for details. Each kind of weather draws out one element:
+
+| Weather | Boosts |
+| --- | --- |
+| ☀️ Sunny / clear | 🔥 Ember |
+| ⛅ Partly cloudy, 💨 windy | 🌪️ Gale |
+| ☁️ Cloudy | 🪨 Stone |
+| 🌧️ Rain, 🌨️ snow | 💧 Tide |
+| ⛈️ Thunderstorm | ⚡ Volt |
+| 🌫️ Fog | 🌀 Void |
+
+Boosted creatures appear 2.5 times as often, come 3 levels stronger and give 25% more XP when caught (they carry a weather tag). The map shows it too: rain streaks, drifting snow, fog closing in, darker skies under cloud and lightning in a storm. Offline there's no weather boost.
 
 ### Google Maps
 
@@ -141,9 +157,9 @@ Battles happen in a 3D arena under the Rift. Your team fights the guardians one 
 
 - **The world:** there's no server. The globe is cut into cells about 120 m across, and each cell's Rift, cache and creatures are generated from its coordinates with a seeded random number generator. Everyone playing in the same place sees the same Rifts. Creatures reroll every 10 minutes per cell, and a few Rifts change hands each day, so the Rift war keeps moving.
 - **Your progress** (creatures, items, the Rifts you took, your links and fields) is saved on your phone.
-- **The 3D creatures** are modelled in code, so there are no model or image files. Each of six body plans (raptor, rex, horned, plated, longneck, flyer) is a bone rig with a skinned mesh swept along it: tail, body, neck and head in one smooth skin, plus legs, arms or wings. The skin texture is generated per species (pale belly, darker back, stripes or spots, scales in a bump map), and eyes, teeth, claws, horns, frills, plates and crests ride on the bones. Legs walk with inverse kinematics so the feet plant on the ground; tails sway, heads look around, jaws open to roar, wings flap. Lighting uses a generated sky for soft reflections.
+- **The 3D creatures** are modelled in code, so there are no model or image files. Each of six body plans (raptor, rex, horned, plated, longneck, flyer) is a bone rig with a skinned mesh swept along it: tail, body, neck and head in one smooth skin, plus legs, arms or wings. The skin is generated per species in natural, earthy colours (pale belly, darker back, soft-edged stripes, blotches and spots, a row of scutes down the spine), with thousands of small raised scales from a Voronoi pattern in the normal, occlusion and roughness maps, and a soft sheen like a lizard's. Thighs are heavy and muscular and blend into the body; the big four-legged ones stand on broad, elephant-like feet with nails. Eyes are glossy, with a streaked iris and a slit pupil set in an eyelid; there are nostrils, brow ridges, teeth, claws, horns, frills, plates and crests, all riding on the bones. Pterosaur wings are thin membranes with fibres and blood vessels. Legs walk with inverse kinematics so the feet plant on the ground; tails sway, heads look around, jaws open to roar, wings flap. Lighting uses a generated sky for soft reflections.
 - **The map** lays street tiles on the ground in 3D (tinted teal for the scanner look), with fog to the horizon and sun shadows: Google's roadmap through the Map Tiles API when you've added a key, otherwise a free map that needs no key: Esri's Dark Gray Canvas for the scanner and night and Esri's street map by day, switching to OpenStreetMap by itself if Esri can't be reached. **Menu → Map source** picks one yourself if a map ever looks wrong. Offline, or with **Menu → Map → no street map**, it shows plain ground instead and plays the same.
-- **The AR** is the same approach as [Pet Cam](../pet-cam): `getUserMedia` shows the rear camera, and the motion sensors (`deviceorientation`) tell the game which way the phone points. The 3D camera is turned to match every frame, so the creature stays at a real spot in the room, and an invisible floor catches its shadow over the camera picture. Without motion sensors you drag to look around. Without a camera, you get a glowing rift plain instead. **Menu → AR camera: off** uses the rift plain always.
+- **The AR** is the same approach as [Pet Cam](../pet-cam): `getUserMedia` shows the rear camera, and the motion sensors (`deviceorientation`) tell the game which way the phone points. The 3D camera is turned to match every frame, so the creature stays at a real spot in the room, and an invisible floor catches its shadow over the camera picture. The creature is lit like your room: a few times a second the game measures how bright and what colour the camera picture is (like ARCore's light estimate), so it's dim in a dim room and warm under lamp light. Without motion sensors you drag to look around. Without a camera, you get a glowing rift plain instead. **Menu → AR camera: off** uses the rift plain always.
 - **Sound** is synthesized with WebAudio.
 
 It needs a phone or computer with WebGL (nearly all do). The 3D runs best in a recent Chrome or Safari.

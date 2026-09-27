@@ -265,6 +265,19 @@ canvas.gl { position: absolute; inset: 0; width: 100% !important; height: 100% !
   pointer-events: none;
 }
 .gps-status.show { opacity: 1; transform: translate(-50%, 0); }
+.weather-chip {
+  position: absolute; left: 10px; top: calc(var(--safe-t) + 110px);
+  display: flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 99px;
+  border: 1px solid var(--line); background: var(--glass);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  font-size: 14px; font-weight: 700;
+}
+.weather-chip small { font-size: 12px; opacity: 0.9; }
+.weather-big { font-size: 64px; text-align: center; line-height: 1.1; }
+.weather-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0; }
+.weather-grid div { padding: 8px 4px; border-radius: 12px; text-align: center; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+.weather-grid div.on { border-color: #7FD4FF; color: var(--ink); background: rgba(127, 212, 255, 0.12); }
+.weather-grid b { display: block; font-size: 20px; }
 .gps-status.warn { color: var(--gold); border-color: rgba(255, 176, 32, 0.4); }
 
 /* Until the GPS finds you, the map waits behind this. The HUD and bottom

@@ -111,32 +111,87 @@ window.RB = window.RB || {};
 
   /* ------------------ Rocks ------------------ */
 
-  const stone = std({ color: '#4A4452', roughness: 0.95, flatShading: true });
+  // Smooth 3D value noise (for natural-looking rock).
+  const seeds = {};
+  function noise3(x, y, z, seed) {
+    const sn = seeds[seed] || (seeds[seed] = RB.util.hash(seed) | 0);
+    const h = (i, j, k) => {
+      let n = Math.imul(i, 374761393) ^ Math.imul(j, 668265263) ^ Math.imul(k, 1274126177) ^ sn;
+      n = Math.imul(n ^ (n >>> 13), 1274126177);
+      return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+    };
+    const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+    const f = (t) => t * t * (3 - 2 * t);
+    const u = f(x - xi), v = f(y - yi), w = f(z - zi);
+    const L = (a, b, t) => a + (b - a) * t;
+    return L(
+      L(L(h(xi, yi, zi), h(xi + 1, yi, zi), u), L(h(xi, yi + 1, zi), h(xi + 1, yi + 1, zi), u), v),
+      L(L(h(xi, yi, zi + 1), h(xi + 1, yi, zi + 1), u), L(h(xi, yi + 1, zi + 1), h(xi + 1, yi + 1, zi + 1), u), v), w);
+  }
+
+  // Weathered granite: speckled grey with darker streaks.
+  function stoneTexture() {
+    const c = G.canvas(512, 256), g = c.getContext('2d');
+    g.fillStyle = '#6E6A66';
+    g.fillRect(0, 0, 512, 256);
+    const r = RB.util.rng('granite');
+    for (let i = 0; i < 9000; i++) {
+      const v = r();
+      g.fillStyle = v < 0.45 ? 'rgba(30,28,26,0.35)' : v < 0.8 ? 'rgba(210,205,196,0.3)' : 'rgba(120,96,70,0.3)';
+      g.fillRect(r() * 512, r() * 256, 1 + r() * 2.5, 1 + r() * 2.5);
+    }
+    for (let i = 0; i < 26; i++) {
+      g.strokeStyle = `rgba(20,18,16,${0.12 + r() * 0.15})`;
+      g.lineWidth = 1 + r() * 2;
+      let x = r() * 512, y = r() * 256;
+      g.beginPath(); g.moveTo(x, y);
+      for (let k = 0; k < 8; k++) { x += (r() - 0.5) * 50; y += (r() - 0.3) * 30; g.lineTo(x, y); }
+      g.stroke();
+    }
+    const t = G.texture(c);
+    t.wrapS = t.wrapT = T.RepeatWrapping;
+    return t;
+  }
+
+  let stone = null;
   const rockGeos = [];
-  // A few lumpy boulders: an icosphere pushed in and out by noise.
+  // Boulders: a finely divided sphere pushed in and out by layered noise,
+  // with darker crevices and lichen patches painted into its colours.
   function rockGeometry(i) {
     const k = i % 4;
     if (rockGeos[k]) return rockGeos[k];
-    const g = new T.IcosahedronGeometry(1, 2);
+    const g = new T.IcosahedronGeometry(1, 4);
     const p = g.attributes.position;
     const r = RB.util.rng(`rock${k}`);
     const bumps = Array.from({ length: 6 }, () => [V(r() - 0.5, r() - 0.5, r() - 0.5).normalize(), (r() - 0.4) * 0.5]);
     const v = new T.Vector3();
+    const cols = new Float32Array(p.count * 3);
     for (let j = 0; j < p.count; j++) {
       v.fromBufferAttribute(p, j);
       const n = v.clone().normalize();
       let s = 1;
       for (const [d, a] of bumps) s += a * Math.max(0, n.dot(d)) ** 2;
-      s += (RB.util.hash(`${k}:${v.x.toFixed(3)}:${v.y.toFixed(3)}:${v.z.toFixed(3)}`) % 100) / 100 * 0.12;
-      v.multiplyScalar(s);
+      const big = noise3(n.x * 2.2 + k * 7, n.y * 2.2, n.z * 2.2, 'rk');
+      const mid = noise3(n.x * 6 + k * 3, n.y * 6, n.z * 6, 'rm');
+      const fine = noise3(n.x * 16, n.y * 16 + k, n.z * 16, 'rf');
+      s += (big - 0.5) * 0.35 + (mid - 0.5) * 0.12 + (fine - 0.5) * 0.04;
+      // Flat facets where it has split, like real boulders.
+      s = Math.min(s, 1.12 - Math.abs(n.dot(bumps[0][0])) * 0.1);
+      v.copy(n).multiplyScalar(s);
       if (v.y < -0.3) v.y = -0.3 + (v.y + 0.3) * 0.3;
       p.setXYZ(j, v.x, v.y, v.z);
+      // Crevices darker; a little green-grey lichen on top.
+      const cav = 0.55 + 0.45 * Math.min(1, Math.max(0, (mid - 0.25) * 1.6));
+      const lichen = n.y > 0.3 && noise3(n.x * 9, n.y * 9, n.z * 9 + k, 'li') > 0.62 ? 1 : 0;
+      cols.set(lichen ? [0.62 * cav, 0.68 * cav, 0.5 * cav] : [cav, cav * 0.98, cav * 0.95], j * 3);
     }
+    g.setAttribute('color', new T.BufferAttribute(cols, 3));
     g.computeVertexNormals();
     return (rockGeos[k] = g);
   }
 
   function rock(i) {
+    if (!stone) stone = std({ map: stoneTexture(), vertexColors: true, roughness: 0.92, envMapIntensity: 0.6 });
     return shadowy(new T.Mesh(rockGeometry(i), stone));
   }
 

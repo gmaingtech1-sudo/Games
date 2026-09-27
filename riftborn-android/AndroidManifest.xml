@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="app.riftborn.game"
-    android:versionCode="7"
-    android:versionName="1.5.0">
+    android:versionCode="8"
+    android:versionName="1.6.0">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
-    <!-- Street map tiles and fonts; the game itself ships in the APK. -->
+    <!-- Street map tiles, weather and fonts; the game itself ships in the APK. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    <!-- You play by walking: the game follows your GPS position. It never leaves the phone. -->
+    <!-- You play by walking: the game follows your GPS position. Your exact position stays on the phone; map tiles and weather are fetched for roughly where you are. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- AR encounters show creatures through the rear camera. The picture never leaves the phone. -->
