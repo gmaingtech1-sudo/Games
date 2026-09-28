@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Starforge</title>
+<meta name="description" content="A space shooter for your phone. Build and paint your own starfighter in the hangar, then blast through waves of enemy ships and bosses.">
+<meta name="theme-color" content="#04050E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Starforge">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;700&family=Orbitron:wght@600;800&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== Hangar ===================== -->
+  <section id="hangar" class="screen hangar" aria-label="Hangar">
+    <header class="h-top">
+      <h1 class="brand">STAR<span>FORGE</span></h1>
+      <div class="credits" id="credits-box" aria-label="Credits">
+        <span class="cr" aria-hidden="true"></span><span id="credits">0</span>
+      </div>
+      <button id="btn-settings" class="icon-btn" type="button" aria-label="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.5"/><circle cx="9.5" cy="17" r="2.5"/></svg>
+      </button>
+    </header>
+
+    <div class="h-body">
+      <div class="h-left">
+        <div class="preview">
+          <canvas id="preview" aria-label="Your starfighter, test-firing its weapon"></canvas>
+          <button id="ship-name" class="ship-name" type="button" aria-label="Rename your ship">
+            <span id="ship-name-text">NOVA-7</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>
+          </button>
+          <div id="records" class="records"></div>
+        </div>
+
+        <div class="stats" aria-label="Ship stats">
+          <div class="stat" data-k="armor"><span class="lbl">Armour</span><div class="bar"><i class="cur"></i><i class="delta"></i></div><span class="val"></span></div>
+          <div class="stat" data-k="shield"><span class="lbl">Shield</span><div class="bar"><i class="cur"></i><i class="delta"></i></div><span class="val"></span></div>
+          <div class="stat" data-k="speed"><span class="lbl">Speed</span><div class="bar"><i class="cur"></i><i class="delta"></i></div><span class="val"></span></div>
+          <div class="stat" data-k="fire"><span class="lbl">Firepower</span><div class="bar"><i class="cur"></i><i class="delta"></i></div><span class="val"></span></div>
+          <div class="stat" data-k="special"><span class="lbl">Special</span><div class="bar"><i class="cur"></i><i class="delta"></i></div><span class="val"></span></div>
+        </div>
+      </div>
+
+      <div class="h-right">
+        <nav id="tabs" class="tabs" role="tablist" aria-label="Customise">
+          <button type="button" role="tab" data-tab="hull">Hull</button>
+          <button type="button" role="tab" data-tab="wings">Wings</button>
+          <button type="button" role="tab" data-tab="engine">Engine</button>
+          <button type="button" role="tab" data-tab="weapon">Weapon</button>
+          <button type="button" role="tab" data-tab="special">Special</button>
+          <button type="button" role="tab" data-tab="paint">Paint</button>
+          <button type="button" role="tab" data-tab="upgrades">Upgrades</button>
+        </nav>
+        <div id="panel" class="panel" role="tabpanel"></div>
+        <div id="detail" class="detail">
+          <div class="d-text">
+            <div id="d-name" class="d-name"></div>
+            <div id="d-desc" class="d-desc"></div>
+          </div>
+          <button id="d-btn" class="d-btn" type="button"></button>
+        </div>
+        <button id="btn-launch" class="launch" type="button">
+          <span>Launch</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3 2.5 4.5 6 4.5 10l-2 3h-5l-2-3c0-4 1.5-7.5 4.5-10z"/><path d="M9.5 16l-2.5 4M14.5 16l2.5 4M12 17v4"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Flight ===================== -->
+  <section id="flight" class="screen flight" aria-label="Flight" hidden>
+    <canvas id="stage" aria-label="Space. Drag to fly your ship."></canvas>
+    <div id="hud" class="hud">
+      <div class="hud-top">
+        <div class="score-box">
+          <div id="score" class="score">0</div>
+          <div id="mult" class="mult"></div>
+        </div>
+        <div class="sector-box">
+          <div id="sector-lbl" class="sector">Sector 1</div>
+          <div id="wave-lbl" class="wave">Wave 1/6</div>
+        </div>
+        <div class="coins-box" aria-label="Credits this run"><span class="cr" aria-hidden="true"></span><span id="run-coins">0</span></div>
+        <button id="btn-pause" class="icon-btn small" type="button" aria-label="Pause">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>
+        </button>
+      </div>
+
+      <div id="boss" class="boss" hidden>
+        <div id="boss-name" class="boss-name"></div>
+        <div class="boss-track"><div id="boss-fill"></div></div>
+      </div>
+
+      <div class="hud-bottom">
+        <div class="vitals">
+          <div class="vrow"><span class="vlbl">Shield</span><div class="vbar shield"><div id="shield-fill"></div></div></div>
+          <div class="vrow"><span class="vlbl">Hull</span><div class="vbar hull"><div id="hull-fill"></div></div></div>
+          <div id="power" class="power" data-level="1" aria-label="Weapon power"><span class="vlbl">Power</span><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <button id="btn-special" class="special" type="button" aria-label="Use special">
+          <svg class="ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="bg" cx="50" cy="50" r="44"/><circle id="special-ring" class="fg" cx="50" cy="50" r="44"/></svg>
+          <canvas id="special-icon" width="96" height="96" aria-hidden="true"></canvas>
+          <span id="special-name" class="special-name"></span>
+        </button>
+      </div>
+
+      <div id="banner" class="banner" hidden><div id="banner-title" class="b-title"></div><div id="banner-sub" class="b-sub"></div></div>
+      <div id="tip" class="tip" hidden></div>
+    </div>
+
+    <div id="pause" class="overlay" hidden>
+      <div class="card-box">
+        <h2>Paused</h2>
+        <div class="quick">
+          <label class="switch"><input type="checkbox" data-setting="sound"><span></span>Sound</label>
+          <label class="switch"><input type="checkbox" data-setting="music"><span></span>Music</label>
+        </div>
+        <button id="btn-resume" class="btn primary" type="button">Resume</button>
+        <button id="btn-quit" class="btn" type="button">End run</button>
+      </div>
+    </div>
+
+    <div id="over" class="overlay" hidden>
+      <div class="card-box">
+        <h2 id="over-title">Ship destroyed</h2>
+        <div class="over-score"><span id="over-score">0</span><span id="over-best" class="new-best" hidden>New best!</span></div>
+        <div class="over-credits"><span class="cr" aria-hidden="true"></span><span id="over-credits">+0</span><span class="lbl">credits earned</span></div>
+        <dl id="over-stats" class="over-stats"></dl>
+        <button id="btn-again" class="btn primary" type="button">Fly again</button>
+        <button id="btn-home" class="btn" type="button">Hangar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Sheets ===================== -->
+  <div id="scrim" class="scrim" hidden></div>
+
+  <section id="sheet-settings" class="sheet" aria-label="Settings" hidden>
+    <h2>Settings</h2>
+    <label class="switch row"><input type="checkbox" data-setting="sound"><span></span>Sound effects</label>
+    <label class="switch row"><input type="checkbox" data-setting="music"><span></span>Music</label>
+    <label class="switch row"><input type="checkbox" data-setting="vibe"><span></span>Vibration</label>
+    <label class="switch row"><input type="checkbox" data-setting="shake"><span></span>Screen shake</label>
+    <label class="slider row">
+      <span>Touch sensitivity <b id="set-sens-val">1.3×</b></span>
+      <input id="set-sens" type="range" min="0.8" max="2.2" step="0.1" value="1.3">
+    </label>
+    <button id="btn-reset" class="btn danger" type="button">Reset progress</button>
+    <button id="settings-close" class="btn primary" type="button">Done</button>
+  </section>
+
+  <section id="sheet-name" class="sheet" aria-label="Rename ship" hidden>
+    <h2>Name your ship</h2>
+    <form id="name-form">
+      <input id="name-input" class="name-input" type="text" maxlength="14" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Ship name">
+      <div class="sheet-btns">
+        <button id="name-cancel" class="btn" type="button">Cancel</button>
+        <button class="btn primary" type="submit">Save</button>
+      </div>
+    </form>
+  </section>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+</div>
+
+<script src="js/core.js"></script>
+<script src="js/parts.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/art.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/weapons.js"></script>
+<script src="js/enemies.js"></script>
+<script src="js/waves.js"></script>
+<script src="js/game.js"></script>
+<script src="js/hangar.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
