@@ -2,7 +2,7 @@
 
 The Pocket Mochi virtual pet as a regular Android app: download the APK, install it, and it gets its own icon on your home screen. No Expo Go, no app store.
 
-**Download:** [`dist/pocket-mochi.apk`](dist/pocket-mochi.apk) (about 250 KB, version 1.4.0)
+**Download:** [`dist/pocket-mochi.apk`](dist/pocket-mochi.apk) (about 250 KB, version 1.5.0)
 
 ## Installing it
 
@@ -20,6 +20,7 @@ Works on Android 7.0 and newer, as long as Android System WebView is up to date 
 It's the same game as the web version in [`../pocket-mochi`](../pocket-mochi), packaged into a small native app:
 
 - The game files are inside the APK. The app serves them to its WebView from a private `https://appassets.androidplatform.net/` address, so the game works offline. Only the fonts come from Google Fonts (it falls back to the phone's font without a connection), and online playdates with a friend need the internet.
+- Turning on Notifications schedules a real Android alarm for whenever your pet is expected to next need something, so a reminder like "Mochi is hungry" still arrives after you've closed the app. Android 13 and up asks permission the first time.
 - Your pet is saved in the app's own storage.
 - Vibration uses the phone's tuned click and tick effects on Android 10+.
 - The back button closes the shop, snack tray, washing, the mini-game or a duel invite before it leaves the app, and collects the daily reward when its card is open.
@@ -27,8 +28,9 @@ It's the same game as the web version in [`../pocket-mochi`](../pocket-mochi), p
 
 | File | What it does |
 | --- | --- |
-| `src/app/pocketmochi/game/MainActivity.java` | The whole native side: WebView setup, serving the game files, saving, vibration, back button, pause/resume |
-| `AndroidManifest.xml` | App name, icon, permissions (internet for fonts and playdates, vibration), portrait screen |
+| `src/app/pocketmochi/game/MainActivity.java` | The whole native side: WebView setup, serving the game files, saving, vibration, back button, pause/resume, scheduling reminders |
+| `src/app/pocketmochi/game/NotifyReceiver.java` | Posts the reminder notification when its alarm fires, even if the app has since been closed |
+| `AndroidManifest.xml` | App name, icon, permissions (internet for fonts and playdates, vibration, posting notifications), portrait screen |
 | `res/` | Launcher icons (including the Android 8+ adaptive icon and the Android 13+ themed icon) and the dark theme |
 | `build.sh` | Builds `dist/pocket-mochi.apk` |
 | `signing.keystore` | The key the APK is signed with |

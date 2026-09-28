@@ -1,8 +1,11 @@
 /* Pocket Mochi — platform bridge. The game runs in two places:
-   - a browser: saves go to localStorage, vibration uses navigator.vibrate;
+   - a browser: saves go to localStorage, vibration uses navigator.vibrate,
+     and a reminder is a setTimeout that only fires while this page survives;
    - the Android app: it exposes window.AndroidHost, which saves to the app's
-     own storage and drives the vibration motor, and it calls PM.host.receive()
-     with lifecycle messages (pause, resume, back). */
+     own storage, drives the vibration motor, and schedules a reminder as a
+     real OS alarm that still fires after the app is closed. It calls
+     PM.host.receive() with lifecycle messages (pause, resume, back,
+     notifyPermission). */
 (function (PM) {
   'use strict';
 
@@ -43,8 +46,50 @@
     };
   }
 
+  /* ---------------- reminders: "Mochi is hungry", sent while you're away ---------------- */
+
+  // Android schedules a real OS alarm, so it fires even if the app was
+  // closed. A browser tab can only set a timer that runs while the page (or
+  // installed PWA) is still alive in the background — a smaller promise, but
+  // still worth keeping for anyone who hasn't installed the Android app.
+  function androidNotify(bridge) {
+    const call = (fn) => { try { return fn(); } catch (e) { return null; } };
+    return {
+      supported: () => true,
+      permission: () => call(() => bridge.notifyPermission()) || 'default',
+      // Android answers this later via PM.host.receive({t:'notifyPermission', granted}),
+      // since showing the system prompt isn't something a return value can carry.
+      request: () => { call(() => bridge.requestNotifyPermission()); },
+      schedule: (minutes, title, body) => call(() => bridge.scheduleNotification(title, body, minutes)),
+      cancel: () => call(() => bridge.cancelNotification()),
+    };
+  }
+
+  function browserNotify() {
+    const supported = () => typeof window.Notification === 'function';
+    let timer = null;
+    return {
+      supported,
+      permission: () => (supported() ? window.Notification.permission : 'unsupported'),
+      // Returns a promise of 'granted' | 'denied' | 'default', unlike Android's request().
+      request: () => (supported() ? window.Notification.requestPermission() : Promise.resolve('unsupported')),
+      schedule(minutes, title, body) {
+        this.cancel();
+        if (!supported() || window.Notification.permission !== 'granted') return;
+        timer = setTimeout(() => {
+          timer = null;
+          try { new window.Notification(title, { body, icon: 'icons/icon-192.png', tag: 'pocket-mochi-need' }); } catch (e) { /* ignore */ }
+        }, Math.max(0, minutes) * 60000);
+      },
+      cancel() {
+        if (timer) { clearTimeout(timer); timer = null; }
+      },
+    };
+  }
+
   const kind = window.AndroidHost ? 'android' : 'browser';
   const impl = kind === 'android' ? androidHost(window.AndroidHost) : browserHost();
+  const notifyImpl = kind === 'android' ? androidNotify(window.AndroidHost) : browserNotify();
 
   PM.host = {
     kind,
@@ -62,6 +107,9 @@
       overlay = open;
       impl.overlay(open);
     },
+
+    // A reminder for while the app is closed, e.g. "Mochi is hungry".
+    notify: notifyImpl,
 
     on(name, fn) { handlers[name] = fn; },
 

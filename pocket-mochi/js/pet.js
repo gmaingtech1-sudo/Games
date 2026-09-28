@@ -60,7 +60,7 @@
       weekly: null,
       outfit: null,
       outfits: [],
-      settings: { sound: true, vibe: true },
+      settings: { sound: true, vibe: true, notify: false },
     };
   }
 
@@ -70,7 +70,7 @@
     const base = create({ name: raw.name, species: raw.species, color: raw.color });
     const s = Object.assign(base, raw);
     s.stats = Object.assign(base.stats, raw.stats || {});
-    s.settings = Object.assign({ sound: true, vibe: true }, raw.settings || {});
+    s.settings = Object.assign({ sound: true, vibe: true, notify: false }, raw.settings || {});
     s.inv = Object.assign({}, raw.inv || {});
     s.hats = Array.isArray(raw.hats) ? raw.hats : [];
     s.poops = Array.isArray(raw.poops) ? raw.poops : [];
@@ -187,6 +187,36 @@
       left -= h;
     }
     return ev;
+  }
+
+  /* ---------- looking ahead, for a reminder while the app is closed ---------- */
+
+  // The same threshold the thought bubble uses (need()), so a notification
+  // arrives right around the moment the pet would start asking for something.
+  const NOTIFY_AT = 35;
+
+  // Predicts when the pet will next want attention, so a reminder can be
+  // scheduled for while the app is closed. Uses the same rates as step(),
+  // projected forward in closed form rather than simulated minute by minute.
+  function timeToNeed(s) {
+    if (!s.hatched) return null;
+    if (s.asleep) {
+      const rate = SLEEP_RATE.energy;
+      if (rate <= 0 || s.stats.energy >= 100) return null;
+      return { hours: (100 - s.stats.energy) / rate, need: 'wake' };
+    }
+    let best = null;
+    for (const k of STAT_KEYS) {
+      if (s.stats[k] <= NOTIFY_AT) continue; // already there; the app would have said so
+      let rate = AWAKE_RATE[k];
+      if (s.sick && rate < 0) rate *= 1.3;
+      // poops speed up how fast clean drops, on top of its own rate
+      if (k === 'clean' && s.poops.length) rate -= s.poops.length * 4;
+      if (rate >= 0) continue;
+      const hours = (s.stats[k] - NOTIFY_AT) / -rate;
+      if (best === null || hours < best.hours) best = { hours, need: k };
+    }
+    return best;
   }
 
   /* ---------- levels ---------- */
@@ -514,6 +544,7 @@
     xpForLevel, levelOf, levelInfo, isUnlocked,
     GOAL_REWARD, GOAL_BONUS, ensureGoals, track, goalText, goalsReady, claimGoal,
     WEEKLY_REWARD, ensureWeekly, weeklyText, weeklyReady, claimWeekly,
+    timeToNeed,
     LOGIN_REWARDS, loginDay, collectLogin,
     birthdayToday, startParty, STICKERS, STICKER_COINS, checkStickers,
 

@@ -50,6 +50,14 @@
     online: { label: 'You', tip: 'Duel! Pop more bubbles than your friend in 30 seconds.' },
   };
   const NEED_ROOM = { hunger: 'kitchen', clean: 'bathroom', energy: 'bedroom', fun: 'playroom' };
+  // What a reminder says while you're away, keyed by M.timeToNeed()'s `need`.
+  const NEED_NOTICE = {
+    hunger: (n) => ({ title: `${n} is hungry`, body: `${n} is hungry! Time for a snack.` }),
+    fun: (n) => ({ title: `${n} is bored`, body: `${n} is bored. Come play for a bit!` }),
+    clean: (n) => ({ title: `${n} needs a bath`, body: `${n} could use a bubble bath.` }),
+    energy: (n) => ({ title: `${n} is sleepy`, body: `${n} is getting sleepy. A nap would help.` }),
+    wake: (n) => ({ title: `${n} is awake`, body: `${n} woke up rested and ready to play!` }),
+  };
 
   let s = null;             // the saved pet
   let mode = 'home';        // home | game | gameover
@@ -1650,6 +1658,7 @@
     }
     if (Date.now() - resetArmed > 6000) { disarmReset(); onReset(); return; }
     if (friend || PM.online.state !== 'off') leavePlaydate();
+    PM.host.notify.cancel();
     wipe();
     s = null;
     closeSheets();
@@ -1917,6 +1926,7 @@
     let note = 'Your pet throws you a party on your birthday.';
     if (s.hatched) note += ` ${s.name}\u2019s own birthday is on the ${ordinal(new Date(s.born).getDate())} of every month.`;
     $('bday-note').textContent = note;
+    syncNotifyToggle();
     openSheet(els.settingsSheet);
   }
 
@@ -1930,6 +1940,51 @@
     if (bday !== s.owner.bday) settingsDirty = true;
     s.owner.bday = bday;
     sendHello();
+    save();
+  }
+
+  /* ---------------- reminders while you're away ---------------- */
+
+  // Called whenever the app is backgrounded: works out roughly when the pet
+  // will next want something and asks the host to schedule a reminder for
+  // then. Cleared again as soon as you come back (see onForeground).
+  function scheduleNeedNotice() {
+    if (!s || !s.hatched || !s.settings.notify) { PM.host.notify.cancel(); return; }
+    const t = M.timeToNeed(s);
+    if (!t) { PM.host.notify.cancel(); return; }
+    const minutes = Math.max(1, Math.round(t.hours * 60));
+    const notice = (NEED_NOTICE[t.need] || NEED_NOTICE.hunger)(s.name);
+    PM.host.notify.schedule(minutes, notice.title, notice.body);
+  }
+
+  function onBackground() {
+    if (!s) return;
+    save();
+    scheduleNeedNotice();
+  }
+
+  function onForeground() {
+    if (!s) return;
+    PM.host.notify.cancel();
+    lastFrame = performance.now();
+    tickModel();
+    dailyCheck();
+  }
+
+  // The checkbox reflects what the OS will actually deliver, not just what
+  // was last asked for — a permission can be revoked outside the game.
+  function syncNotifyToggle() {
+    const el = $('set-notify');
+    if (!el) return;
+    if (s && s.settings.notify && PM.host.notify.permission() === 'denied') s.settings.notify = false;
+    el.checked = !!(s && s.settings.notify);
+  }
+
+  function onNotifyPermission(granted) {
+    if (!s) return;
+    s.settings.notify = granted;
+    syncNotifyToggle();
+    if (!granted) toast('Notifications are off for Pocket Mochi. Turn them on in your phone’s settings to use this.', 3800);
     save();
   }
 
@@ -2798,6 +2853,7 @@
     A.setVibe(s.settings.vibe);
     $('set-sound').checked = s.settings.sound;
     $('set-vibe').checked = s.settings.vibe;
+    syncNotifyToggle();
     shownRoom = null;
     trans = null;
     ball = null;
@@ -2928,6 +2984,22 @@
       A.buzz(20);
       save();
     });
+    $('set-notify').addEventListener('change', (e) => {
+      if (!s) return;
+      if (!e.target.checked) {
+        s.settings.notify = false;
+        PM.host.notify.cancel();
+        save();
+        return;
+      }
+      A.play('click');
+      e.target.checked = false; // stays off until permission actually comes back
+      const r = PM.host.notify.request();
+      // Android answers later via the 'notifyPermission' message; a browser
+      // resolves this promise directly.
+      if (r && typeof r.then === 'function') r.then((perm) => onNotifyPermission(perm === 'granted'));
+    });
+    PM.host.on('notifyPermission', (m) => onNotifyPermission(!!m.granted));
     $('btn-reset').addEventListener('click', onReset);
 
     $('btn-random-name').addEventListener('click', () => {
@@ -2949,23 +3021,16 @@
     window.addEventListener('resize', () => { if (s) resize(); });
     if (window.ResizeObserver) new ResizeObserver(() => { if (s) resize(); }).observe(els.room);
     document.addEventListener('visibilitychange', () => {
-      if (!s) return;
-      if (document.hidden) save();
-      else { lastFrame = performance.now(); tickModel(); dailyCheck(); }
+      if (document.hidden) onBackground(); else onForeground();
     });
-    window.addEventListener('pagehide', save);
+    window.addEventListener('pagehide', () => { if (s) save(); });
 
     // iOS only lets sound start from certain gestures, so try on each of them.
     ['touchend', 'click', 'keydown'].forEach((ev) => document.addEventListener(ev, () => A.unlock(), { passive: true }));
 
     PM.host.on('back', handleBack);
-    PM.host.on('pause', save);
-    PM.host.on('resume', () => {
-      if (!s) return;
-      lastFrame = performance.now();
-      tickModel();
-      dailyCheck();
-    });
+    PM.host.on('pause', onBackground);
+    PM.host.on('resume', onForeground);
   }
 
   function registerServiceWorker() {
@@ -2991,6 +3056,7 @@
       PM.debug = {
         get s() { return s; }, get game() { return game; }, get layout() { return layout; },
         get friend() { return friend; }, get duel() { return duel; }, pet, goRoom, dailyCheck, partyCheck,
+        onBackground, onForeground, scheduleNeedNotice,
       };
     }
   }

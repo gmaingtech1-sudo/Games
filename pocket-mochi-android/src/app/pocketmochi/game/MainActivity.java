@@ -1,8 +1,12 @@
 package app.pocketmochi.game;
 
 import android.app.Activity;
+import android.app.AlarmManager;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -38,6 +42,9 @@ public class MainActivity extends Activity {
     private static final String START_URL = "https://" + ASSET_HOST + "/game/index.html";
     private static final String SAVE_KEY = "pocket-mochi-save-v1";
     private static final int SHELL = Color.rgb(0x2A, 0x2C, 0x52);
+    private static final String POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS";
+    private static final int NOTIFY_ALARM_CODE = 1001;
+    private static final int NOTIFY_PERMISSION_CODE = 1002;
 
     private WebView web;
     private SharedPreferences prefs;
@@ -116,6 +123,24 @@ public class MainActivity extends Activity {
         web.evaluateJavascript("window.PM && PM.host && PM.host.receive({t: '" + type + "'});", null);
     }
 
+    private void send(String type, boolean flag) {
+        web.evaluateJavascript("window.PM && PM.host && PM.host.receive({t: '" + type + "', granted: " + flag + "});", null);
+    }
+
+    // PendingIntent.FLAG_IMMUTABLE has been required for a pending intent that,
+    // like this one, is never filled in with extra data later.
+    private static int pendingFlags() {
+        return PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != NOTIFY_PERMISSION_CODE) return;
+        boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+        send("notifyPermission", granted);
+    }
+
     /** Serves assets/ at https://appassets.androidplatform.net/ and keeps other links out of the app. */
     private final class GameClient extends WebViewClient {
         @Override
@@ -184,6 +209,60 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void setOverlay(boolean open) {
             overlayOpen = open;
+        }
+
+        // A reminder for while the app is closed, e.g. "Mochi is hungry". Only
+        // one is ever pending: scheduling again replaces it, matching how the
+        // game only ever cares about the next thing the pet will need.
+        @JavascriptInterface
+        public void scheduleNotification(String title, String body, double minutes) {
+            AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+            if (am == null) return;
+            Intent i = new Intent(MainActivity.this, NotifyReceiver.class);
+            i.putExtra("title", title);
+            i.putExtra("body", body);
+            PendingIntent pi = PendingIntent.getBroadcast(MainActivity.this, NOTIFY_ALARM_CODE, i, pendingFlags());
+            long at = System.currentTimeMillis() + Math.max(60000, Math.round(minutes * 60000));
+            try {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+            } catch (Exception e) {
+                // some OEMs restrict alarms further; the reminder just won't fire
+            }
+        }
+
+        @JavascriptInterface
+        public void cancelNotification() {
+            AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+            if (am != null) {
+                Intent i = new Intent(MainActivity.this, NotifyReceiver.class);
+                am.cancel(PendingIntent.getBroadcast(MainActivity.this, NOTIFY_ALARM_CODE, i, pendingFlags()));
+            }
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) nm.cancel(NotifyReceiver.NOTIFICATION_ID);
+        }
+
+        // Whether the app can actually show a notification right now. Always
+        // true before Android 13, which is the first to ask permission at all.
+        @JavascriptInterface
+        public boolean notifyPermission() {
+            if (Build.VERSION.SDK_INT < 33) return true;
+            return checkSelfPermission(POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+        }
+
+        // Answers later with PM.host.receive({t:'notifyPermission', granted}),
+        // since the system prompt's result isn't something a return value can carry.
+        @JavascriptInterface
+        public void requestNotifyPermission() {
+            if (Build.VERSION.SDK_INT < 33 || checkSelfPermission(POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                send("notifyPermission", true);
+                return;
+            }
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    MainActivity.this.requestPermissions(new String[] { POST_NOTIFICATIONS }, NOTIFY_PERMISSION_CODE);
+                }
+            });
         }
 
         @JavascriptInterface

@@ -44,6 +44,13 @@ The friend's pet walks into your house and follows you from room to room. The ro
 
 Playdates need an internet connection. The two phones find each other through the free [PeerJS](https://peerjs.com) server and then talk directly, so it works best when both are on the same Wi-Fi; some mobile networks block direct connections. Only small game messages are sent: pet names, looks and level, emotes, snacks and duel scores. There's no chat.
 
+### Notifications
+
+Turn on **Notifications** in Settings for a reminder while you're away — when your pet gets hungry, bored, needs a bath, is getting sleepy, or wakes up from a nap. It works out roughly when that will happen from how fast its needs are dropping, and asks for one reminder for whichever comes soonest.
+
+- In the **Android app**, it's a real OS notification scheduled for that moment, so it still arrives even if you've closed the app (Android 13+ asks permission the first time you turn it on).
+- In a **browser tab or installed PWA**, it's a browser notification, which can only fire while that tab or app is still running somewhere in the background — a smaller promise, but still worth it if you keep the game open.
+
 Nothing bad is permanent: a neglected pet gets sad and sick, but medicine and care always bring it back.
 
 There are four kinds (Mochi, Kitty, Bunny, Pup) and five flavors (Strawberry, Matcha, Yuzu, Taro, Soda).
@@ -76,7 +83,7 @@ Then open <http://localhost:8000>. To try it on your phone, connect it to the sa
 | --- | --- |
 | `index.html` | Layout: pet card, need rings, the room canvas, room tabs, the shop/goals/playdate/settings sheets (goals sheet has Today/Week/Stickers tabs), the daily reward card, adopt screen |
 | `css/style.css` | All styling. Mobile-first, respects safe areas (notches) and reduced-motion settings |
-| `js/host.js` | Where saves and vibration go: the browser, or the Android app when running inside it |
+| `js/host.js` | Where saves, vibration and reminders go: the browser (localStorage, `navigator.vibrate`, the Notification API), or the Android app when running inside it |
 | `js/audio.js` | Sound effects synthesized with WebAudio (no audio files), plus vibration |
 | `js/art.js` | Canvas drawings: snacks, hats, poop, particles |
 | `js/rooms.js` | The house: each room's art, wallpapers, its tappable props (fridge, duck, lamp, arcade), the birthday party and where the pet stands |
@@ -99,6 +106,7 @@ If you change the game, run `./build.sh` in `../pocket-mochi-android` so the And
 - Daily rewards and stickers: `LOGIN_REWARDS` and `STICKERS` in `js/pet.js`.
 - The weekly quest and its reward: `WEEKLY_GOALS` and `WEEKLY_REWARD` in `js/pet.js`.
 - Outfit prices, levels and drawings: `OUTFITS` and `outfitDraw` in `js/art.js`.
+- The reminder threshold and prediction: `NOTIFY_AT` and `timeToNeed` in `js/pet.js`; what each one says: `NEED_NOTICE` in `js/main.js`.
 - Snack and hat prices, effects and unlock levels: `FOODS` and `HATS` in `js/art.js`; wallpapers: `WALLS` in `js/rooms.js`.
 - Open the game with `?debug` in the address to reach its state from the browser console (`PM.debug.s`).
 - To test playdates with your own PeerJS server (`npx -p peer peerjs --port 9000 --path /pm`), add `?peerhost=localhost&peerport=9000&peerpath=/pm` to the address on both devices (`&peersecure=1` for HTTPS).
