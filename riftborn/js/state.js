@@ -10,10 +10,17 @@ window.RB = window.RB || {};
   const C = RB.creatures;
   const W = RB.world;
 
+  // The teams, like Ingress's factions. Wardens, Breachers and Primals are
+  // played by agents; the Hollow are Rift-eating machines (like Ingress's
+  // Machina) that take Rifts from everyone and that anyone can knock out.
   const FACTIONS = {
-    W: { id: 'W', name: 'Wardens', one: 'Warden', color: '#2EE6C5', glyph: '⬡', motto: 'Seal the Rifts. Protect both worlds.' },
-    B: { id: 'B', name: 'Breachers', one: 'Breacher', color: '#FF4FA3', glyph: '✶', motto: 'Tear them open. Claim the power beyond.' },
+    W: { id: 'W', name: 'Wardens', one: 'Warden', color: '#2EE6C5', glyph: '⬡', motto: 'Seal the Rifts. Protect both worlds.', about: 'Keepers of the line between worlds. They hold the Rifts to keep them closed and the creatures in check.' },
+    B: { id: 'B', name: 'Breachers', one: 'Breacher', color: '#FF4FA3', glyph: '✶', motto: 'Tear them open. Claim the power beyond.', about: 'Thrill-seekers and scientists who want the Rifts wide open, and everything on the other side.' },
+    P: { id: 'P', name: 'Primals', one: 'Primal', color: '#FFA028', glyph: '❖', motto: 'The creatures belong here. Let the wild take back the streets.', about: 'They side with the creatures, and hold the Rifts so the wild can pour through and take the city back.' },
+    H: { id: 'H', name: 'Hollow', one: 'Hollow', color: '#E0282E', glyph: '✖', motto: 'Consume. Corrupt. Repeat.', about: 'Machines born in the Rifts that feed on their energy. Nobody controls them. They grab Rifts from every team and guard them with corrupted Void and Volt creatures.', npc: true },
   };
+  const PLAYABLE = ['W', 'B', 'P'];
+  const SWITCH_DAYS = 30;
   const NEUTRAL = '#A9A3C9';
 
   const HACK_MS = 5 * 60e3;
@@ -46,7 +53,7 @@ window.RB = window.RB || {};
       hacks: {},         // riftId → time
       drops: {},         // dropId → time
       events: [],        // news to show on next look ("your Rift fell")
-      stats: { caught: 0, darts: 0, hits: 0, hacks: 0, claimed: 0, links: 0, fields: 0, wins: 0, fused: 0, meters: 0, hatched: 0, apex: 0 },
+      stats: { caught: 0, darts: 0, hits: 0, hacks: 0, claimed: 0, links: 0, fields: 0, wins: 0, fused: 0, meters: 0, hatched: 0, apex: 0, purged: 0 },
       medals: {},        // medal id → tier reached (1 bronze … 5 onyx)
       settings: { sound: true, map: 'scanner', mapV: 2, tiles: 'auto', ar: true, googleKey: '' },
       missions: null,    // today's field missions
@@ -158,7 +165,11 @@ window.RB = window.RB || {};
   }
 
   const faction = () => FACTIONS[save.agent.faction];
-  const enemyId = () => (save.agent.faction === 'W' ? 'B' : 'W');
+  // Another team (a random one; the Hollow are the likeliest to pounce).
+  const enemyId = () => {
+    const others = PLAYABLE.filter((f) => f !== save.agent.faction).concat(['H', 'H']);
+    return others[randInt(0, others.length - 1)];
+  };
 
   /* ------------------ Items ------------------ */
 
@@ -290,7 +301,7 @@ window.RB = window.RB || {};
       if (o.faction && o.mine) health = Math.max(0, o.health - (now - o.t) / 86400e3 * DECAY_PER_DAY);
       return {
         faction: o.faction, level: o.level, health: Math.round(health), mine: !!o.mine,
-        guard: o.mine ? (o.guard || []).map(creature).filter(Boolean) : o.faction ? W.guardians(rift, o.level, o.gseed) : [],
+        guard: o.mine ? (o.guard || []).map(creature).filter(Boolean) : o.faction ? W.guardians(rift, o.level, o.gseed, o.faction === 'H') : [],
       };
     }
     // Untouched: the generated owner, but the Rift war shifts a few every day.
@@ -298,11 +309,11 @@ window.RB = window.RB || {};
     const r = rng(`contest:${rift.id}:${day(now)}`);
     if (r() < 0.1) {
       const x = r();
-      f = x < 0.4 ? 'W' : x < 0.8 ? 'B' : null;
+      f = x < 0.25 ? 'W' : x < 0.5 ? 'B' : x < 0.7 ? 'P' : x < 0.85 ? 'H' : null;
       L = f ? randInt(1, 6, r) : 0;
     }
     const health = f ? 55 + (hash(`hp:${rift.id}:${day(now)}`) % 46) : 0;
-    return { faction: f, level: L, health, mine: false, guard: f ? W.guardians(rift, L, day(now)) : [] };
+    return { faction: f, level: L, health, mine: false, guard: f ? W.guardians(rift, L, day(now), f === 'H') : [] };
   }
 
   function riftColor(st) {
@@ -400,10 +411,44 @@ window.RB = window.RB || {};
     for (const g of st.guard) addDNA(g.sp, 15 + g.lvl);
     save.stats.wins++;
     track('win');
+    // Clearing out the Hollow is worth extra.
+    const hollow = st.faction === 'H';
+    if (hollow) { save.stats.purged = (save.stats.purged || 0) + 1; track('purge'); }
     validateLinks();
-    const up = addXP(400 + st.level * 50);
+    const up = addXP((400 + st.level * 50) * (hollow ? 1.5 : 1));
     persist();
-    return { ok: true, up, dna: st.guard.map((g) => ({ sp: g.sp, n: 15 + g.lvl })) };
+    return { ok: true, up, hollow, dna: st.guard.map((g) => ({ sp: g.sp, n: 15 + g.lvl })) };
+  }
+
+  /* ------------------ Teams ------------------ */
+
+  // Who holds the Rifts near you, like Ingress's regional score.
+  function control(rifts) {
+    const n = { W: 0, B: 0, P: 0, H: 0, none: 0 };
+    for (const r of rifts) { const f = riftState(r).faction; n[f || 'none']++; }
+    return n;
+  }
+
+  // Days until you can switch team again (0: you can).
+  function switchWait() {
+    const t = save.agent.switched || 0;
+    return Math.max(0, Math.ceil((t + SWITCH_DAYS * 86400e3 - Date.now()) / 86400e3));
+  }
+
+  // Join another team. Your Rifts stay with your old team, and your links
+  // and fields are gone; everything else (creatures, XP, items) comes along.
+  function switchTeam(to) {
+    if (!PLAYABLE.includes(to) || to === save.agent.faction) return { ok: false };
+    if (switchWait() > 0) return { ok: false, why: `You can switch again in ${switchWait()} days.` };
+    const from = save.agent.faction;
+    let kept = 0;
+    for (const o of Object.values(save.rifts)) if (o.mine) { o.mine = false; o.faction = from; o.guard = null; o.gseed = randInt(1, 1e6); kept++; }
+    save.links = [];
+    save.fields = [];
+    save.agent.faction = to;
+    save.agent.switched = Date.now();
+    persist(true);
+    return { ok: true, from, to, left: kept };
   }
 
   /* ------------------ Links & fields ------------------ */
@@ -586,6 +631,7 @@ window.RB = window.RB || {};
     { id: 'geneticist', name: 'Geneticist', icon: '🧬', stat: 'fused', what: 'fusions', tiers: [3, 30, 150, 500, 2000] },
     { id: 'breeder', name: 'Breeder', icon: '🥚', stat: 'hatched', what: 'eggs hatched', tiers: [3, 30, 150, 600, 2500] },
     { id: 'apex', name: 'Apex Hunter', icon: '👑', stat: 'apex', what: 'Apex raids won', tiers: [1, 10, 50, 200, 1000] },
+    { id: 'purifier', name: 'Purifier', icon: '🛡️', stat: 'purged', what: 'Hollow Rifts cleared', tiers: [1, 15, 75, 300, 1500] },
   ];
 
   // Progress on every medal: { m, tier (0 = none yet), value, next }.
@@ -626,6 +672,7 @@ window.RB = window.RB || {};
     { kind: 'darts', need: [8, 16], text: (n) => `Land ${n} dart hits` },
     { kind: 'win', need: [1, 1], text: () => 'Win a Rift battle' },
     { kind: 'claim', need: [1, 2], text: (n) => `Claim ${n} Rift${n > 1 ? 's' : ''} for your faction` },
+    { kind: 'purge', need: [1, 1], text: () => 'Clear a Rift held by the Hollow' },
     { kind: 'el', need: [2, 3], text: (n, el) => `Catch ${n} ${C.ELEMENTS[el].name} creatures` },
   ];
 
@@ -844,7 +891,7 @@ window.RB = window.RB || {};
     const pool = C.SPECIES.filter((x) => x.rar <= maxRar && (!x.hybrid || tier >= 2));
     return [['Easy', -2, 18, -8], ['Even', 0, 28, -14], ['Hard', 3, 42, -20]].map(([level, off, win, loss]) => ({
       name: `${RIVAL_A[randInt(0, RIVAL_A.length - 1)]}${RIVAL_B[randInt(0, RIVAL_B.length - 1)]}${Math.random() < 0.5 ? randInt(2, 99) : ''}`,
-      faction: Math.random() < 0.5 ? 'W' : 'B',
+      faction: PLAYABLE[randInt(0, PLAYABLE.length - 1)],
       trophies: Math.max(0, A.trophies + off * 35 + randInt(-30, 30)),
       level, win, loss,
       team: [0, 1, 2].map(() => {
@@ -948,7 +995,7 @@ window.RB = window.RB || {};
   }
 
   RB.state = {
-    FACTIONS, NEUTRAL, RANGE, MAX_TEAM, HACK_MS, DROP_MS, claimCost, upgradeCost, maxRiftLevel, maxGuards, linkRange,
+    FACTIONS, PLAYABLE, SWITCH_DAYS, control, switchWait, switchTeam, NEUTRAL, RANGE, MAX_TEAM, HACK_MS, DROP_MS, claimCost, upgradeCost, maxRiftLevel, maxGuards, linkRange,
     get save() { return save; },
     load, persist, newGame, reset,
     level, addXP, onXP, title, levelReward, TITLES, MAX_LEVEL, faction, enemyId, xpFor,

@@ -45,6 +45,12 @@
       raid,
       duel,
       changed: () => { refreshEntities(true); updateHud(); },
+      teamChanged: () => {
+        if (mapReady) M.recolor();
+        refreshEntities(true);
+        updateHud();
+        RB.auth.publish({ name: S.save.agent.name, faction: S.save.agent.faction, level: S.level().level, xp: S.save.agent.xp });
+      },
       goOnline,
       // Online accounts were turned on or off.
       accountsChanged: () => { if (mode === 'onboard') onboarding(RB.auth.user ? S.save : null); },
@@ -600,6 +606,7 @@
       M.show();
       if (out && out.win) {
         const r = S.neutralize(rift);
+        if (r.hollow) UI.toast('🛡️ The Hollow are driven out! +50% XP.', 'good');
         UI.toast(`Guardians defeated! DNA: ${r.dna.map((d) => `+${d.n} ${esc(C.byId(d.sp).name)}`).join(', ')}`, 'good');
         if (r.up) UI.levelUp(r.up);
         refreshEntities(true);
@@ -679,7 +686,8 @@
     c.fillStyle = 'rgba(8,5,20,0.35)';
     c.fillRect(0, 0, w, h);
     const cx = w / 2, cy = h * 0.3, R = Math.max(w, h) * 0.55;
-    const col = document.body.dataset.faction === 'B' ? '255,79,163' : document.body.dataset.faction === 'W' ? '46,230,197' : '180,92,255';
+    const fc = (S.FACTIONS[document.body.dataset.faction] || {}).color || '#B45CFF';
+    const col = [1, 3, 5].map((k) => parseInt(fc.slice(k, k + 2), 16)).join(',');
     for (const m of motes) {
       m.a += dt * m.s * (0.6 - m.r * 0.4);
       m.r -= dt * 0.03 * m.s;

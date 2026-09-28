@@ -4,7 +4,7 @@ An AR game on your real streets. Rifts between worlds have torn open all over th
 
 It mixes three games:
 
-- **Like Ingress:** two factions fight over Rifts pinned to real places. Hack them for gear, claim them, link them together, and close triangles of links into control fields that earn Aether.
+- **Like Ingress:** three teams (plus the Hollow, machines like Ingress's Machina) fight over Rifts pinned to real places. Hack them for gear, claim them, link them together, and close triangles of links into control fields that earn Aether.
 - **Like Pokémon GO:** creatures roam the streets around you. Walk up to one, and it steps out of a rift tear into your camera. Flick a Rift Orb at it to catch it. Hatch eggs by walking, and come back daily for a week of login rewards.
 - **Like Jurassic World Alive:** the creatures are dinosaur-like beasts. Fire darts at them in AR to collect their DNA, spend DNA to level them up, fuse DNA into hybrids, battle the guardians of enemy Rifts, and take on huge Apex creatures in raids.
 
@@ -18,7 +18,22 @@ It's plain HTML, CSS and JavaScript on top of [three.js](https://threejs.org) (i
 
 ### Getting started
 
-**Sign up** with an agent codename, email and password (or **Log in**), pick a faction (**Wardens** or **Breachers**) and a first creature (Cindertail, Ripplehorn or Zephyrix), then turn on location. The game remembers your login until you log out (**Menu → Account**).
+**Sign up** with an agent codename, email and password (or **Log in**), pick a team (**Wardens**, **Breachers** or **Primals**, see [Teams](#teams)) and a first creature (Cindertail, Ripplehorn or Zephyrix), then turn on location. The game remembers your login until you log out (**Menu → Account**).
+
+### Teams
+
+Like Ingress's factions, three teams fight over the Rifts, and a fourth force takes them from everyone:
+
+| Team | Colour | Motto |
+| --- | --- | --- |
+| ⬡ **Wardens** | teal | Seal the Rifts. Protect both worlds. |
+| ✶ **Breachers** | magenta | Tear them open. Claim the power beyond. |
+| ❖ **Primals** | orange | The creatures belong here. Let the wild take back the streets. |
+| ✖ **The Hollow** | red | Rift-eating machines, like Ingress's Machina. Nobody plays them. |
+
+The Hollow grab Rifts from every team (including yours, when your Rifts run out of charge) and guard them with corrupted Void and Volt creatures. Anyone can assault a Hollow Rift; clearing one pays 50% more XP and counts toward the **Purifier** medal, and some days' missions ask for it.
+
+**Agent → Teams** (or **Menu → Teams**) shows who holds the Rifts within 1.5 km of you and what each team stands for. You can switch team once every 30 days, like in Ingress: your Rifts stay with your old team and your links and fields are lost, but you keep your creatures, items and XP.
 
 ### Accounts
 
@@ -48,7 +63,7 @@ The Web API key only identifies the project and is meant to sit in apps; the Fir
 You earn XP for nearly everything: catching and darting creatures, hacking, claiming, upgrading, recharging and linking Rifts, control fields, battles, fusing and levelling creatures, missions, medals and walking. XP pops up by your level bar as you earn it.
 
 - **40 agent levels.** Each level up gives supplies. Even levels up to 14 let you upgrade Rifts one level higher. Every five levels you get a new title: Recruit, Scout, Tracker, Hunter, Ranger, Riftwalker, Vanguard, Legend, and Riftborn at level 40. **Agent → 📈 Levels** lists every level's XP and reward.
-- **Medals**, like Ingress badges: Trekker (km walked), Collector, Hacker, Sharpshooter (dart hits), Builder, Connector, Mind Controller (fields), Brawler, Geneticist, Breeder (eggs hatched) and Apex Hunter (raids won). Each has Bronze, Silver, Gold, Platinum and Onyx tiers, worth 500 to 40,000 XP. They're shown in **Agent**.
+- **Medals**, like Ingress badges: Trekker (km walked), Collector, Hacker, Sharpshooter (dart hits), Builder, Connector, Mind Controller (fields), Brawler, Geneticist, Breeder (eggs hatched), Apex Hunter (raids won) and Purifier (Hollow Rifts cleared). Each has Bronze, Silver, Gold, Platinum and Onyx tiers, worth 500 to 40,000 XP. They're shown in **Agent**.
 - **🏆 Leaderboard** in **Agent**: top agents by XP.
 
 ### Moving
@@ -71,7 +86,7 @@ The camera hovers behind your agent, looking out across the streets to the horiz
 
 | Thing | What it is |
 | --- | --- |
-| Floating crystal with a beam of light | A **Rift**. Teal = Wardens, magenta = Breachers, grey = unclaimed. The badge is its level (★ means it's yours), and a shard orbits it for every level. A spinning white ring means you can hack it right now. |
+| Floating crystal with a beam of light | A **Rift**. Teal = Wardens, magenta = Breachers, orange = Primals, red = the Hollow, grey = unclaimed. The badge is its level (★ means it's yours), and a shard orbits it for every level. A spinning white ring means you can hack it right now. |
 | Crate with a blinking light | A **supply cache**. Open it for darts, orbs and shards. Refills every 10 minutes (the lid stays open until then). |
 | Creature on a coloured ring | A wild creature, walking around its spot. The ring colour is its rarity: grey Common, blue Rare, purple Epic, gold Legendary. Creatures move on every 10 minutes. |
 | Glowing circle around you | Your reach (100 m). You have to be this close to interact with anything. |

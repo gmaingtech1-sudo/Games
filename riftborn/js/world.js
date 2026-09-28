@@ -97,8 +97,14 @@ window.RB = window.RB || {};
     r();   // the Rift roll (see hasRift)
     if (hasRift(j, i)) {
       const p = at();
-      const faction = r() < 0.42 ? 'W' : r() < 0.72 ? 'B' : null;
-      const level = faction ? weighted([1, 2, 3, 4, 5, 6, 7, 8], (l) => 9 - l, r) : 0;
+      // Who holds it: Wardens, Primals or Breachers, the Hollow (machines
+      // nobody plays), or nobody. (The rolls keep the same pattern as
+      // before there were four teams, so Rifts keep their names.)
+      const a = r(), b = a < 0.42 ? 0 : r();
+      const faction = a < 0.27 ? 'W' : a < 0.42 ? 'P' : b < 0.45 ? 'B' : b < 0.62 ? 'P' : b < 0.78 ? 'H' : null;
+      const held = a < 0.42 || b < 0.72;
+      let level = held ? weighted([1, 2, 3, 4, 5, 6, 7, 8], (l) => 9 - l, r) : 0;
+      if (faction && !level) level = 1 + (hash(`hl:${key}`) % 5);
       cell.rift = {
         kind: 'rift',
         id: `r${key}`,
@@ -185,11 +191,13 @@ window.RB = window.RB || {};
   /* ------------------ Rift guardians ------------------ */
 
   // The creatures defending an enemy Rift, seeded by the Rift and its level.
-  function guardians(rift, level, seedExtra) {
+  // hollow: the Hollow's machines corrupt Void and Volt creatures.
+  function guardians(rift, level, seedExtra, hollow) {
     const r = rng(`guard:${rift.id}:${level}:${seedExtra || 0}`);
     const n = level <= 2 ? 1 : level <= 5 ? 2 : 3;
     const maxRar = level >= 8 ? 3 : level >= 5 ? 2 : level >= 2 ? 1 : 0;
-    const pool = C.WILD.filter((s) => s.rar <= maxRar);
+    let pool = C.WILD.filter((s) => s.rar <= maxRar);
+    if (hollow) pool = C.WILD.filter((s) => (s.el === 'void' || s.el === 'volt') && s.rar <= Math.max(1, maxRar));
     const team = [];
     for (let k = 0; k < n; k++) {
       const sp = weighted(pool, (s) => 4 - s.rar, r);

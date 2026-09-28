@@ -341,6 +341,20 @@ window.RB = window.RB || {};
 
   function setPlayer(p) { Object.assign(player, p); }
 
+  // You switched team: your agent's jacket, reach circle and links change colour.
+  function recolor() {
+    const col = S.faction().color;
+    const old = agent.root;
+    agent = P.avatar(col);
+    agent.root.scale.setScalar(AGENT_SCALE);
+    agent.root.position.copy(old.position);
+    agent.root.rotation.copy(old.rotation);
+    scene.remove(old);
+    scene.add(agent.root);
+    for (const m of [rangeRing, rangeFill, pulseRing]) m.material.color.set(col);
+    linkKey = '';
+  }
+
   // The world origin moved: rebuild everything placed in local meters.
   function reset() {
     const none = new Set();
@@ -759,7 +773,7 @@ window.RB = window.RB || {};
 
   RB.map = {
     SIGHT, player, cam,
-    init, show, resize, render, setPlayer, setEntities, recenter, reset, sourceChanged, setWeather,
+    init, show, resize, render, setPlayer, setEntities, recenter, reset, sourceChanged, setWeather, recolor,
     get sourceName() { return FREE[freeProvider()].name; },
     zoom(f) { cam.dist = clamp(cam.dist * f, MIN_D, MAX_D); },
     get view() { const c = toLL(cam.target); return { lat: c.lat, lng: c.lng, far: cam.dist > 240 }; },

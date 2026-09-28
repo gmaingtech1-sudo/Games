@@ -216,6 +216,7 @@ window.RB = window.RB || {};
         ${guards ? `<h3>${friendly ? 'Guardians' : 'Guardians to beat'}</h3>${guards}` : ''}
         <p class="muted small">${keys ? `You hold ${keys} key${keys > 1 ? 's' : ''} to this Rift. ` : ''}${
           !st.faction ? 'Nobody holds this Rift. Claim it for your faction with Rift Shards.'
+          : st.faction === 'H' ? 'Taken by the Hollow: Rift-eating machines guarding it with corrupted Void and Volt creatures. Beat them for 50% more XP, then claim it.'
           : enemy ? `Beat its guardians in battle to knock it back to unclaimed, then claim it.`
           : st.mine ? 'Your Rift loses charge every day. Recharge it, or it falls to the other side.'
           : 'A Rift held by your faction. Hack it for supplies and keys, and link it up.'}</p>
@@ -540,6 +541,46 @@ window.RB = window.RB || {};
     });
   }
 
+  // The teams, who holds the Rifts around you, and switching team.
+  function teams(confirm) {
+    const me = S.save.agent.faction;
+    const here = hooks.player ? hooks.player() : null;
+    const rifts = here ? W.around(here.lat, here.lng, 1500, Date.now()).rifts.filter((r) => W.distM(here, r) <= 1500) : [];
+    const n = S.control(rifts), total = Math.max(1, rifts.length);
+    const order = ['W', 'B', 'P', 'H'];
+    const wait = S.switchWait();
+    const bar = order.map((f) => `<span style="width:${(n[f] / total) * 100}%;background:${S.FACTIONS[f].color}"></span>`).join('') + `<span style="width:${(n.none / total) * 100}%;background:${S.NEUTRAL}"></span>`;
+    open('teams', `
+      <h2>Teams</h2>
+      ${rifts.length ? `<h3>Who holds your area</h3>
+      <div class="control">${bar}</div>
+      <div class="control-key">${order.map((f) => `<span style="color:${S.FACTIONS[f].color}">${S.FACTIONS[f].glyph} ${S.FACTIONS[f].name} ${Math.round(n[f] / total * 100)}%</span>`).join('')}<span>Unclaimed ${Math.round(n.none / total * 100)}%</span></div>
+      <p class="muted small">${rifts.length} Rifts within 1.5 km of you.</p>` : '<p class="muted small">Once the GPS finds you, this shows who holds the Rifts around you.</p>'}
+      <div class="list">${order.map((f) => {
+        const F = S.FACTIONS[f];
+        const btn = F.npc || f === me ? ''
+          : confirm === f ? `<button class="btn btn-danger btn-small" data-switch="${f}">Tap again to join the ${F.name}</button>`
+          : `<button class="btn btn-small" data-ask="${f}" ${wait ? 'disabled' : ''}>Join the ${F.name}</button>`;
+        return `<div class="team ${f === me ? 'mine' : ''}" style="--c:${F.color}"><span class="team-glyph">${F.glyph}</span><div>
+          <b>${F.npc ? 'The ' : ''}${F.name}</b>${f === me ? ' <i>· your team</i>' : F.npc ? ' <i>· machines, not a team you can join</i>' : ''}
+          <small>“${esc(F.motto)}”</small><small>${esc(F.about)}</small>${btn}</div></div>`;
+      }).join('')}</div>
+      <p class="muted small">${wait ? `You can switch team again in ${wait} day${wait > 1 ? 's' : ''}.` : `You can switch team once every ${S.SWITCH_DAYS} days. Your Rifts stay with your old team and your links and fields are lost; you keep your creatures, items and XP.`}</p>
+    `, (el) => {
+      on(el, '[data-ask]', (b) => teams(b.dataset.ask));
+      on(el, '[data-switch]', (b) => {
+        const r = S.switchTeam(b.dataset.switch);
+        if (!r.ok) { if (r.why) toast(r.why, 'bad'); return; }
+        const F = S.FACTIONS[r.to];
+        document.body.dataset.faction = r.to;
+        sfx.claim();
+        toast(`${F.glyph} Welcome to the ${F.name}, Agent ${esc(S.save.agent.name)}!${r.left ? ` Your ${r.left} Rift${r.left > 1 ? 's' : ''} stay with the ${S.FACTIONS[r.from].name}.` : ''}`, 'good');
+        hooks.teamChanged();
+        teams();
+      });
+    });
+  }
+
   // The real weather and what it draws out.
   function weatherSheet() {
     const w = RB.weather.now;
@@ -596,6 +637,7 @@ window.RB = window.RB || {};
         <div class="agent-glyph">${F.glyph}</div>
         <div><h2>${esc(a.name)}</h2><p>${F.one} · Level ${L.level} ${S.title(L.level)}</p></div>
       </div>
+      <button class="btn" data-teams style="width:100%;margin-top:8px">${F.glyph} Teams and who holds your area</button>
       <div class="bar-row"><span>XP</span><span class="bar"><i style="width:${pct(L.frac)};background:${F.color}"></i></span><span>${L.into.toLocaleString()}/${L.need.toLocaleString()}</span></div>
       <p class="muted small">${a.xp.toLocaleString()} XP in total.${L.level < S.MAX_LEVEL ? ` ${(L.need - L.into).toLocaleString()} more to level ${L.level + 1}.` : ' Top level!'}</p>
       <div class="actions" style="flex-direction:row">
@@ -629,6 +671,7 @@ window.RB = window.RB || {};
       <p class="muted small center">“${esc(F.motto)}”</p>
     `, (el) => {
       on(el, '[data-levels]', () => levels());
+      on(el, '[data-teams]', () => teams());
       on(el, '[data-board]', () => board());
     });
   }
@@ -927,6 +970,7 @@ window.RB = window.RB || {};
         <button class="btn" data-set="ar">AR camera: ${st.ar === false ? 'off' : 'on'}</button>
         <button class="btn" data-set="tiles">Map source: ${RB.gmaps.active() ? 'Google Maps' : ({ esri: 'Esri', osm: 'OpenStreetMap' })[st.tiles] || `automatic (${RB.map.sourceName})`}</button>
         <button class="btn" data-gmaps>Google Maps: ${RB.gmaps.key() ? (RB.gmaps.status.state === 'error' ? 'key problem' : 'on') : 'off (add a key)'}</button>
+        <button class="btn" data-teams>Teams: ${S.faction().glyph} ${S.faction().name}</button>
         <button class="btn" data-account>Account: ${esc(RB.auth.user ? RB.auth.user.name : '')}</button>
         <button class="btn" data-guide>How to play</button>
         <button class="btn btn-danger" data-reset>Start this agent over</button>
@@ -944,6 +988,7 @@ window.RB = window.RB || {};
       });
       on(el, '[data-guide]', () => guide());
       on(el, '[data-account]', () => account());
+      on(el, '[data-teams]', () => teams());
       on(el, '[data-gmaps]', () => googleSheet());
       on(el, '[data-reset]', async (b) => {
         if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Tap again: this deletes this agent’s progress'; return; }
@@ -995,6 +1040,8 @@ window.RB = window.RB || {};
       <div class="guide">
         <h3>🌀 Rifts</h3>
         <p>Tears between worlds, pinned to real places. Walk within ${S.RANGE} m and <b>hack</b> them for orbs, darts, shards and keys. <b>Claim</b> unclaimed Rifts for your faction, and <b>assault</b> enemy Rifts by beating their guardians in battle.</p>
+        <h3>⬡ ✶ ❖ Teams</h3>
+        <p>Three teams fight over the Rifts: the <b>Wardens</b> (teal), the <b>Breachers</b> (magenta) and the <b>Primals</b> (orange). Watch out for the <b>Hollow</b> (red): Rift-eating machines that grab Rifts from everyone and guard them with corrupted Void and Volt creatures. Anyone can assault a Hollow Rift, and clearing one pays 50% more XP. Agent → Teams shows who holds your area; you can switch team once a month.</p>
         <h3>🔗 Links &amp; fields</h3>
         <p>Link two of your faction's Rifts with a key. Close a triangle of links to raise a <b>control field</b>: bigger fields give more <b>Aether</b>. Links can't cross. Your Rifts lose charge every day, so recharge them or they fall.</p>
         <h3>🦖 Creatures</h3>
@@ -1027,6 +1074,6 @@ window.RB = window.RB || {};
     setHooks(h) { hooks = h; },
     toast, open, close, isOpen, refresh, tick, levelUp,
     spawnSheet, dropSheet, riftSheet, lab, creatureSheet, bag, profile, scan, menu, guide, missionsSheet,
-    account, onlineSheet, hatched, daily, weatherSheet, arenaSheet,
+    account, onlineSheet, hatched, daily, weatherSheet, arenaSheet, teams,
   };
 })(window.RB);
