@@ -141,6 +141,8 @@ namespace Riftborn
         public int lvl;
         public int[] iv = { 5, 5, 5 };
         public long t;
+        [NonSerialized] public float hpx = 1;     // Apex bosses have several times the health
+        public bool Boss => hpx > 1;
         public Species Species => Species.ById(sp);
 
         public int Hp => Mathf.RoundToInt((Species.hp + iv[0] * 2) * (1 + (lvl - 1) * 0.08f));

@@ -103,7 +103,8 @@ namespace Riftborn
             foreach (var r in rifts.Values) Destroy(r.root);
             foreach (var c in caches.Values) Destroy(c.root);
             foreach (var w in wild.Values) w.b.Destroy();
-            rifts.Clear(); caches.Clear(); wild.Clear();
+            foreach (var b in apexes.Values) b.Destroy();
+            rifts.Clear(); caches.Clear(); wild.Clear(); apexes.Clear();
             ChangedStyle();
         }
 
@@ -150,6 +151,39 @@ namespace Riftborn
             }
             Prune(caches, seen, (o) => Destroy(o.root));
             SyncWild();
+            SyncApex();
+        }
+
+        // Apex creatures stand beside the Rift they've taken over, huge, on a
+        // red ring. Tapping one opens its Rift.
+        readonly Dictionary<string, BeastInstance> apexes = new Dictionary<string, BeastInstance>();
+        static readonly Color ApexRed = new Color(1, 0.23f, 0.36f);
+
+        void SyncApex()
+        {
+            var seen = new HashSet<string>();
+            foreach (var r in ents.rifts)
+            {
+                var a = GameState.ApexAt(r);
+                if (a == null || a.beaten || World.Dist(lat, lng, r.lat, r.lng) > SIGHT * 1.5) continue;
+                seen.Add(r.id);
+                if (apexes.ContainsKey(r.id)) continue;
+                var b = new BeastInstance(a.boss.sp);
+                float scale = Mathf.Clamp(b.sp.size * 5.5f, 14, 34);
+                b.root.transform.SetParent(world, false);
+                b.root.transform.localScale = Vector3.one * scale;
+                b.root.transform.localPosition = ToV(r.lat, r.lng) + new Vector3(14, 0, -6);
+                b.root.transform.localRotation = Quaternion.Euler(0, -0.6f * Mathf.Rad2Deg, 0);
+                var ring = Props.Ring(ApexRed, 0.6f, b.root.transform);
+                ring.transform.localPosition = new Vector3(0, 0.3f / scale, 0);
+                var aura = Props.Glow(new Color(1, 0.23f, 0.36f, 0.45f), 2.2f, b.root.transform);
+                aura.transform.localPosition = new Vector3(0, 0.5f, 0);
+                var col = b.root.AddComponent<SphereCollider>();
+                col.radius = 0.6f; col.center = new Vector3(0, 0.5f, 0);
+                b.root.AddComponent<Pickable>().target = r;
+                apexes[r.id] = b;
+            }
+            Prune(apexes, seen, (b) => b.Destroy());
         }
 
         static void Prune<T>(Dictionary<string, T> map, HashSet<string> seen, System.Action<T> kill)
@@ -323,6 +357,9 @@ namespace Riftborn
             foreach (var r in rifts.Values) r.Update(dt);
             foreach (var c in caches.Values) c.Update(dt);
             foreach (var w in wild.Values) UpdateWild(w, dt);
+            // Apex creatures stand their ground and roar now and then.
+            float t = Time.time;
+            foreach (var b in apexes.Values) b.Update(dt, 0, Mathf.Max(0, Mathf.Sin(t * 0.8f) - 0.8f) * 5, null);
             tileTimer -= dt;
             if (tileTimer <= 0) { tileTimer = 0.5f; UpdateTiles(); }
             HandleInput();

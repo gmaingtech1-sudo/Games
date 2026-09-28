@@ -79,6 +79,21 @@ with the Wardens, Breachers or Primals (and against the Hollow).
   - **Claim** an unclaimed Rift for 6 shards.
   - **Recharge** your team's Rifts, because they lose charge every day.
   - **Battle** the guardians of an enemy Rift to make it unclaimed again.
+- **Apex raids:** each day about one Rift in twelve is taken over by a huge Apex
+  creature with a red ring, standing next to it on the map.
+  - Tap it and choose **Battle the Apex**. Your team fights one boss with three
+    times the health.
+  - Win for lots of its DNA, supplies and big XP, with a 35% chance of a 10 km
+    egg.
+  - Each Apex can be beaten once a day. They're the same Apexes on the same
+    Rifts as in the web game.
+- **Eggs:** you find them in supply caches, sometimes when hacking Rifts, and
+  from Apex raids.
+  - You have two incubators. Eggs in them hatch after you walk 2, 5 or 10 km,
+    and longer eggs hold rarer creatures.
+  - The egg card under your supplies shows how far the next one has to go. Tap
+    it (or go to **Creatures → Eggs**) to see the bag and move eggs into free
+    incubators.
 - **Creatures menu:** level creatures up with their DNA and pick your battle
   team of three.
 - **Teams menu:** see who holds the Rifts nearby. You can switch teams once
@@ -97,8 +112,8 @@ with the Wardens, Breachers or Primals (and against the Hollow).
 - The scene is empty on purpose, because the game builds everything when it
   starts.
 - Saves are kept on the device with PlayerPrefs.
-- This version doesn't have online play, eggs, Apex raids or weather. Those are
-  only in the web version for now.
+- This version doesn't have online play, weather or the arena. Those are only in
+  the web version for now.
 
 ## If something goes wrong
 

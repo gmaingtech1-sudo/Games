@@ -176,7 +176,11 @@ namespace Riftborn
             else if (!walkMode && Input.compass.enabled && movingT <= 0) map.heading = Input.compass.trueHeading;
             movingT -= dt;
             map.moving = movingT > 0 ? 1 : 0;
-            if (GameState.save != null && moved < 50) GameState.save.stats.meters += moved;
+            if (GameState.save != null && moved < 50)
+            {
+                GameState.save.stats.meters += moved;
+                foreach (var h in GameState.Walked(moved)) ui.Hatched(h);
+            }
 
             // Travelled far from where the map started: move its origin.
             if (World.Dist(World.OriginLat, World.OriginLng, map.lat, map.lng) > 3000)
@@ -280,6 +284,35 @@ namespace Riftborn
             {
                 mode = Mode.Map;
                 map.Show(true);
+                Refresh();
+            });
+        }
+
+        // An Apex raid: your team against one huge creature with triple health.
+        public void StartRaid(Rift r)
+        {
+            if (mode != Mode.Map) return;
+            var a = GameState.ApexAt(r);
+            if (a == null || a.beaten) return;
+            var team = GameState.Team();
+            if (team.Count == 0) { ui.Toast("You need creatures to battle."); return; }
+            var sp = a.boss.Species;
+            mode = Mode.Battle;
+            map.Show(false);
+            battle.Begin(team, new System.Collections.Generic.List<Creature> { a.boss }, $"The Apex {sp.name} roars! It has three times the health.",
+                $"The Apex {sp.name} flees back through the Rift, leaving {a.dna} DNA behind.", (won) =>
+            {
+                mode = Mode.Map;
+                map.Show(true);
+                if (won)
+                {
+                    var res = GameState.BeatApex(r);
+                    if (res.ok)
+                    {
+                        string egg = res.egg != null ? "\nYou also found a 10 km egg!" : "";
+                        ui.Show(res, "Apex defeated!", $"+{res.dnaN} {sp.name} DNA\n+{res.loot}{egg}\n\nA new Apex rises somewhere tomorrow.");
+                    }
+                }
                 Refresh();
             });
         }

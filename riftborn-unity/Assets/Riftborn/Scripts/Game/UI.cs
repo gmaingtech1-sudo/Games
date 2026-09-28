@@ -126,7 +126,7 @@ namespace Riftborn
         object back;                     // where "Back" goes from a creature
         Vector2 scroll;
         bool dragged; float dragTotal;
-        class Popup { public string title, body; public Color color; public List<(string label, Action act)> buttons = new List<(string, Action)>(); }
+        class Popup { public string title, body, portrait; public Color color; public List<(string label, Action act)> buttons = new List<(string, Action)>(); }
         readonly List<Popup> popups = new List<Popup>();
         readonly List<(string text, Color color, float t)> toasts = new List<(string, Color, float)>();
 
@@ -178,6 +178,82 @@ namespace Riftborn
         {
             Sfx.Play("win");
             Message($"Level {L}!", $"You're now a {GameState.Title(L)}.\nBonus: {5 + L} orbs, {10 + L * 2} darts and {3 + L / 2} shards.", new Color(1, 0.85f, 0.3f));
+        }
+
+        /* ------------------ Eggs ------------------ */
+
+        public static readonly Color ApexRed = new Color(1, 0.23f, 0.36f);
+        static Texture2D eggTex;
+
+        // A speckled egg shape, tinted with GUI.color when drawn.
+        static Texture2D EggTex => eggTex ? eggTex : eggTex = Tex.Make(64, 80, (x, y) =>
+        {
+            float u = (x + 0.5f - 32) / 29f, v = (y + 0.5f - 36) / 38f;
+            float wv = 1 - (v > 0 ? v * 0.28f : 0);                    // narrower at the top
+            float d = Mathf.Sqrt(u * u / (wv * wv) + v * v);
+            float a = Mathf.Clamp01((1 - d) * 30);
+            float shade = 0.72f + 0.28f * Mathf.Clamp01(0.7f - u * 0.6f + v * 0.3f);
+            bool speck = Tex.Noise(x / 5f, y / 5f, 77) > 0.72f;
+            float c = speck ? shade * 0.55f : shade;
+            return new Color(c, c, c, a);
+        }, false, TextureWrapMode.Clamp);
+
+        public static void EggIcon(Rect r, int km)
+        {
+            var old = GUI.color; GUI.color = GameState.Eggs[km].color;
+            GUI.DrawTexture(P(r), EggTex, ScaleMode.ScaleToFit, true);
+            GUI.color = old;
+        }
+
+        void FoundEgg(Egg e)
+        {
+            if (e == null) return;
+            Toast($"You found a {GameState.Eggs[e.km].name}!{(e.inc ? " It's incubating — walk to hatch it." : "")}", GameState.Eggs[e.km].color);
+        }
+
+        public void Hatched(Result h)
+        {
+            var sp = h.creature.Species; var rar = Species.Rarities[sp.rar];
+            Sfx.Play("caught");
+            var p = new Popup
+            {
+                title = $"{sp.name} hatched!",
+                body = $"Your {h.egg.km} km egg hatched.\n{Col(rar.name, rar.color)} · Level {h.creature.lvl} · Power {h.creature.Power}\n+{h.dnaN} {sp.name} DNA · +{GameState.Eggs[h.egg.km].xp} XP",
+                color = GameState.Eggs[h.egg.km].color,
+                portrait = sp.id,
+            };
+            p.buttons.Add(("Nice!", null));
+            popups.Add(p);
+            if (h.levelUp > 0) LevelUp(h.levelUp);
+        }
+
+        void EggsSheet()
+        {
+            var eggs = GameState.save.eggs;
+            Line($"Eggs ({eggs.Count} / {GameState.MAX_EGGS})", Big, 2);
+            Line($"{GameState.INCUBATORS} incubators. Eggs in them hatch as you walk. Longer eggs hold rarer creatures.", Small, 10);
+            if (eggs.Count == 0) { Line("No eggs yet. You find them in supply caches, sometimes when hacking Rifts, and from Apex raids.", Body); return; }
+            foreach (var e in eggs.OrderByDescending((x) => x.inc).ToList())
+            {
+                var k = GameState.Eggs[e.km];
+                var row = new Rect(0, sy, sw, 64);
+                Panel(row, new Color(1, 1, 1, 0.06f));
+                EggIcon(new Rect(10, sy + 8, 38, 48), e.km);
+                Label(new Rect(58, sy + 8, sw - 170, 20), Col(k.name, k.color), H2);
+                if (e.inc)
+                {
+                    Label(new Rect(58, sy + 28, sw - 70, 16), $"Incubating · {Dist(e.walked)} of {e.km} km", Small);
+                    Bar(new Rect(58, sy + 48, sw - 72, 6), (float)(e.walked / (e.km * 1000.0)), k.color);
+                }
+                else
+                {
+                    Label(new Rect(58, sy + 30, sw - 170, 16), "Waiting for an incubator", Small);
+                    if (Button(new Rect(sw - 104, sy + 14, 94, 36), "Incubate", k.color * 0.6f, eggs.Count((x) => x.inc) < GameState.INCUBATORS))
+                        Show(GameState.Incubate(e));
+                }
+                sy += 72;
+            }
+            Line("Odds: 2 km — mostly Common. 5 km — Common to Epic. 10 km — Rare, Epic and Legendary.", Small);
         }
 
         public void ResetOnboarding() { step = 0; draftName = ""; draftTeam = null; draftStarter = "cindertail"; sheet = null; popups.Clear(); }
@@ -243,6 +319,21 @@ namespace Riftborn
             Label(new Rect(inv.x + 12, inv.y + 24, 100, 16), $"{Col("●", new Color(1, 0.88f, 0.3f))} Darts  <b>{s.items.darts}</b>", Small);
             Label(new Rect(inv.x + 12, inv.y + 41, 100, 16), $"{Col("●", new Color(0.7f, 0.5f, 1f))} Shards  <b>{s.items.shards}</b>", Small);
 
+            // Eggs: the one closest to hatching; tap for the egg bag.
+            if (s.eggs.Count > 0)
+            {
+                var er = new Rect(inv.x, inv.yMax + 6, inv.width, 44);
+                if (Button(er, "", Ink)) Open("eggs");
+                var next = s.eggs.Where((e) => e.inc).OrderBy((e) => e.km * 1000 - e.walked).FirstOrDefault();
+                EggIcon(new Rect(er.x + 8, er.y + 6, 26, 32), next != null ? next.km : s.eggs[0].km);
+                Label(new Rect(er.x + 40, er.y + 6, er.width - 46, 16), $"Eggs  <b>{s.eggs.Count}</b>", Small);
+                if (next != null)
+                {
+                    Label(new Rect(er.x + 40, er.y + 20, er.width - 46, 14), $"{Math.Max(0, next.km - next.walked / 1000):0.0} km to hatch", Tiny);
+                    Bar(new Rect(er.x + 40, er.y + 35, er.width - 50, 4), (float)(next.walked / (next.km * 1000.0)), GameState.Eggs[next.km].color);
+                }
+            }
+
             string gps = Game.I.GpsNote;
             if (!string.IsNullOrEmpty(gps))
             {
@@ -304,6 +395,7 @@ namespace Riftborn
                 case "beasts": BeastsSheet(); break;
                 case "teams": TeamsSheet(); break;
                 case "settings": SettingsSheet(); break;
+                case "eggs": EggsSheet(); break;
             }
             lastContentH = sy + 12;
             GUI.EndScrollView();
@@ -363,12 +455,35 @@ namespace Riftborn
                 if (st.faction == "H") Line(Col("The Hollow hold this Rift. Beat their guardians to purge it (1.5× XP).", f.color), Small, 10);
             }
             else Line($"Claim it for the {GameState.Me.name} with {GameState.CLAIM_COST} Rift Shards. Your lead creature will guard it.", Small, 10);
+
+            // An Apex has taken this Rift over today.
+            var apex = GameState.ApexAt(r);
+            if (apex != null)
+            {
+                var asp = apex.boss.Species; var ael = Species.Elements[asp.el];
+                float top = sy;
+                sy += 10;
+                Line(Col($"<b>APEX {asp.name}</b>", ApexRed), H2, 2);
+                Line($"Level {apex.boss.lvl} · {Col(ael.name, ael.color)} · 3× health", Small, 4);
+                Portrait(asp.id, 150);
+                Line(apex.beaten ? "You beat it today. A new Apex rises tomorrow."
+                    : $"Beat it with your team for {apex.dna} {asp.name} DNA, supplies, big XP and maybe a 10 km egg. Today only.", Small, 8);
+                Fill(new Rect(0, top, 3, sy - top), ApexRed);
+                sy += 6;
+            }
+
             if (!reach) { OutOfRange(d); return; }
+            if (apex != null && !apex.beaten && SheetButton("Battle the Apex", ApexRed * 0.75f))
+            {
+                Close();
+                Game.I.StartRaid(r);
+                return;
+            }
             long wait = GameState.HackWait(r);
             if (SheetButton(wait > 0 ? $"Hack again in {Clock(wait)}" : "Hack", null, wait == 0))
             {
                 var res = GameState.Hack(r);
-                if (res.ok) { Sfx.Play("hack"); Toast($"Hacked: {res.loot}", Teal); }
+                if (res.ok) { Sfx.Play("hack"); Toast($"Hacked: {res.loot}", Teal); FoundEgg(res.egg); }
                 Show(res);
                 GameState.Save();
             }
@@ -404,14 +519,14 @@ namespace Riftborn
         void CacheSheet(Cache c)
         {
             Line(c.name, Big, 2);
-            Line("A supply cache left by field agents: orbs, darts and shards.", Body, 10);
+            Line("A supply cache left by field agents: orbs, darts, shards, and sometimes an egg.", Body, 10);
             double d = DistTo(c.lat, c.lng);
             if (d > GameState.RANGE) { OutOfRange(d); return; }
             long wait = GameState.CacheWait(c);
             if (SheetButton(wait > 0 ? $"Refills in {Clock(wait)}" : "Open", null, wait == 0))
             {
                 var res = GameState.OpenCache(c);
-                if (res.ok) { Sfx.Play("loot"); Toast($"Got {res.loot}", Teal); }
+                if (res.ok) { Sfx.Play("loot"); Toast($"Got {res.loot}", Teal); FoundEgg(res.egg); }
                 Show(res);
                 Game.I.Refresh();
             }
@@ -439,6 +554,7 @@ namespace Riftborn
             int dex = Species.All.Count((sp) => GameState.CaughtCount(sp.id) > 0);
             Line($"Creatures ({list.Count})", Big, 2);
             Line($"Dex: {dex} / {Species.All.Length} species caught · Team: tap a creature to add it", Small, 10);
+            if (SheetButton($"Eggs ({GameState.save.eggs.Count})", new Color(1, 1, 1, 0.1f), true, 40)) { sheet = "eggs"; scroll = Vector2.zero; }
             var team = GameState.Team();
             foreach (var c in list)
             {
@@ -529,7 +645,7 @@ namespace Riftborn
             sy += 6;
             var st = s.stats;
             Line("Your record", H2, 4);
-            Line($"Caught {st.caught} · Hacks {st.hacks} · Rifts claimed {st.claimed}\nBattles won {st.wins} · Hollow purged {st.purged} · Caches {st.drops}\nWalked {Dist(st.meters)}", Small, 12);
+            Line($"Caught {st.caught} · Hacks {st.hacks} · Rifts claimed {st.claimed}\nBattles won {st.wins} · Hollow purged {st.purged} · Caches {st.drops}\nApex raids won {st.apex} · Eggs hatched {st.hatched}\nWalked {Dist(st.meters)}", Small, 12);
             if (SheetButton("Start over", new Color(0.6f, 0.15f, 0.2f)))
                 Confirm("Start over?", "This deletes your agent, creatures and Rifts on this device.", "Delete", () => Game.I.Restart());
             Line("Riftborn for Unity. Map tiles © Esri. Creatures are generated in code.", Tiny);
@@ -608,13 +724,15 @@ namespace Riftborn
             building.Add(new Rect(0, 0, W, H));
             float w = Mathf.Min(W - 32, 380);
             float bh = HeightOf(p.body ?? "", Body, w - 40);
-            float h = 70 + bh + p.buttons.Count * 56 + 10;
+            float ph = p.portrait != null ? 180 : 0;
+            float h = 70 + ph + bh + p.buttons.Count * 56 + 10;
             var r = new Rect((W - w) / 2, (H - h) / 2, w, h);
             Panel(r, Ink);
             Fill(new Rect(r.x + 20, r.y + 14, 40, 4), p.color);
             Label(new Rect(r.x + 20, r.y + 24, w - 40, 30), p.title, Big);
-            Label(new Rect(r.x + 20, r.y + 60, w - 40, bh + 4), p.body ?? "", Body);
-            float y = r.y + 70 + bh;
+            if (p.portrait != null) GUI.DrawTexture(P(new Rect(r.x + (w - 170) / 2, r.y + 60, 170, 170)), Preview.Show(p.portrait), ScaleMode.ScaleToFit, true);
+            Label(new Rect(r.x + 20, r.y + 60 + ph, w - 40, bh + 4), p.body ?? "", Body);
+            float y = r.y + 70 + ph + bh;
             foreach (var (label, act) in p.buttons)
             {
                 if (Button(new Rect(r.x + 20, y, w - 40, 48), label, label == "Cancel" ? new Color(1, 1, 1, 0.12f) : (Color?)null))

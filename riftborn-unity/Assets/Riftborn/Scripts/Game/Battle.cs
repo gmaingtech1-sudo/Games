@@ -35,7 +35,11 @@ namespace Riftborn
 
         F Cur(int side) => side == 0 ? me[mi] : foe[fi];
 
-        static F Fighter(Creature c, int side) => new F { c = c, sp = c.Species, side = side, hp = c.Hp, max = c.Hp, atk = c.Atk, spd = c.Spd };
+        static F Fighter(Creature c, int side)
+        {
+            int hp = Mathf.RoundToInt(c.Hp * (c.hpx > 1 ? c.hpx : 1));
+            return new F { c = c, sp = c.Species, side = side, hp = hp, max = hp, atk = c.Atk, spd = c.Spd };
+        }
 
         public void Begin(List<Creature> mine, List<Creature> theirs, string introText, string win, Action<bool> onDone)
         {
@@ -114,9 +118,16 @@ namespace Riftborn
             f.b = new BeastInstance(f.sp.id);
             f.b.root.transform.SetParent(stage, false);
             var bb = f.b.asset.bounds;
-            float targetH = Mathf.Lerp(1.3f, 2.5f, Mathf.InverseLerp(0.5f, 6f, f.sp.size));
+            float targetH = Mathf.Lerp(1.3f, 2.5f, Mathf.InverseLerp(0.5f, 6f, f.sp.size)) * (f.c.Boss ? 1.7f : 1);
             f.k = targetH / Mathf.Max(bb.size.y, bb.size.z * 0.55f);
             f.b.root.transform.localScale = Vector3.one * f.k;
+            if (f.c.Boss)
+            {
+                var ring = Props.Ring(new Color(1, 0.23f, 0.36f), bb.size.z * 0.6f, f.b.root.transform);
+                ring.transform.localPosition = new Vector3(0, 0.02f / f.k, 0);
+                var aura = Props.Glow(new Color(1, 0.23f, 0.36f, 0.5f), bb.size.y * 2.2f, f.b.root.transform);
+                aura.transform.localPosition = bb.center;
+            }
             float half = bb.size.z * f.k * 0.5f;
             f.home = new Vector3(f.side == 0 ? -(0.9f + half) : 0.9f + half, 0, f.side == 0 ? -0.6f : 0.6f);
             f.b.root.transform.position = f.home;
@@ -350,7 +361,7 @@ namespace Riftborn
         {
             var el = Species.Elements[f.sp.el];
             UI.Panel(r, UI.Ink);
-            UI.Label(new Rect(r.x + 12, r.y + 8, r.width - 24, 20), $"{UI.Col(f.sp.name, Species.Rarities[f.sp.rar].color)}  <size={Mathf.RoundToInt(12 * UI.Scale)}>Lv {f.c.lvl} · {UI.Col(el.name, el.color)}</size>", UI.H2);
+            UI.Label(new Rect(r.x + 12, r.y + 8, r.width - 24, 20), $"{(f.c.Boss ? UI.Col("APEX ", new Color(1, 0.23f, 0.36f)) : "")}{UI.Col(f.sp.name, Species.Rarities[f.sp.rar].color)}  <size={Mathf.RoundToInt(12 * UI.Scale)}>Lv {f.c.lvl} · {UI.Col(el.name, el.color)}</size>", UI.H2);
             float frac = f.hp / (float)f.max;
             UI.Bar(new Rect(r.x + 12, r.y + 34, r.width - 24, 8), frac, frac > 0.5f ? new Color(0.3f, 1, 0.5f) : frac > 0.2f ? new Color(1, 0.8f, 0.2f) : new Color(1, 0.3f, 0.3f));
             string dots = string.Join(" ", side.Select((x) => x.hp > 0 ? "●" : "○"));

@@ -21,7 +21,8 @@ namespace Riftborn
     [Serializable] public class Count { public string id; public int n; }
     [Serializable] public class Stamp { public string id; public long t; }
     [Serializable] public class RiftOverride { public string id, faction; public int level, health; public long t, gseed; public bool mine; public List<string> guard = new List<string>(); }
-    [Serializable] public class Stats { public int caught, hits, hacks, claimed, wins, purged, drops; public double meters; }
+    [Serializable] public class Stats { public int caught, hits, hacks, claimed, wins, purged, drops, hatched, apex; public double meters; }
+    [Serializable] public class Egg { public string id; public int km; public double walked; public bool inc; }
 
     [Serializable]
     public class SaveData
@@ -37,13 +38,20 @@ namespace Riftborn
         public List<RiftOverride> rifts = new List<RiftOverride>();
         public List<Stamp> hacks = new List<Stamp>(), drops = new List<Stamp>(), gone = new List<Stamp>();
         public Stats stats = new Stats();
+        public List<Egg> eggs = new List<Egg>();
+        public List<string> raids = new List<string>();   // "riftId:day" → that day's Apex is beaten
         public double lastLat, lastLng;
         public bool sound = true, satellite;
     }
 
     public class Loot { public int orbs, darts, shards; public override string ToString() => string.Join(" · ", new[] { orbs > 0 ? orbs + " orbs" : null, darts > 0 ? darts + " darts" : null, shards > 0 ? shards + " shards" : null }.Where((x) => x != null)); }
 
-    public class Result { public bool ok; public string why; public int levelUp; public Loot loot; public Creature creature; public bool key, hollow; public List<Count> dna; public static Result No(string why) => new Result { ok = false, why = why }; }
+    public class Result { public bool ok; public string why; public int levelUp; public Loot loot; public Creature creature; public bool key, hollow; public List<Count> dna; public Egg egg; public int dnaN; public static Result No(string why) => new Result { ok = false, why = why }; }
+
+    public class EggKind { public string name; public Color color; public double[] odds; public int xp; public EggKind(string n, string hex, double[] o, int x) { name = n; color = Species.Hex(hex); odds = o; xp = x; } }
+
+    // A huge Apex creature holding a Rift for the day.
+    public class Apex { public Creature boss; public bool beaten; public int dna; }
 
     public class RiftState { public string faction; public int level, health; public bool mine; public List<Creature> guard = new List<Creature>(); }
 
@@ -76,6 +84,7 @@ namespace Riftborn
             var json = PlayerPrefs.GetString(KEY, "");
             if (string.IsNullOrEmpty(json)) return false;
             try { save = JsonUtility.FromJson<SaveData>(json); } catch (Exception) { save = null; }
+            if (save != null) { save.eggs ??= new List<Egg>(); save.raids ??= new List<string>(); save.stats ??= new Stats(); }
             return save != null && save.agent != null && !string.IsNullOrEmpty(save.agent.faction);
         }
 
@@ -218,9 +227,10 @@ namespace Riftborn
             int lvl = Math.Max(1, st.level);
             var loot = new Loot { orbs = Rng.RandInt(enemy ? 0 : 1, 2 + (int)Math.Ceiling(lvl / 3.0)), darts = Rng.RandInt(2, 4 + lvl), shards = Rng.RandInt(1, 2 + lvl / 3) };
             Give(loot);
+            var egg = Rng.Next() < 0.08 ? AddEgg(Rng.Next() < 0.3 ? 5 : 2) : null;
             SetT(save.hacks, rift.id, Rng.NowMs());
             save.stats.hacks++;
-            return new Result { ok = true, loot = loot, levelUp = AddXP(enemy ? 100 : 50) };
+            return new Result { ok = true, loot = loot, egg = egg, levelUp = AddXP(enemy ? 100 : 50) };
         }
 
         static RiftOverride Override(Rift rift)
@@ -301,9 +311,115 @@ namespace Riftborn
             if (CacheWait(c) > 0) return Result.No("Already looted. It refills soon.");
             var loot = new Loot { darts = Rng.RandInt(4, 9), orbs = Rng.RandInt(2, 4), shards = Rng.RandInt(0, 2) };
             Give(loot);
+            double x = Rng.Next();
+            var egg = x < 0.12 ? AddEgg(2) : x < 0.17 ? AddEgg(5) : null;
             SetT(save.drops, c.id, Rng.NowMs());
             save.stats.drops++;
-            return new Result { ok = true, loot = loot, levelUp = AddXP(30) };
+            return new Result { ok = true, loot = loot, egg = egg, levelUp = AddXP(30) };
+        }
+
+        /* ------------------ Eggs ------------------ */
+
+        // Like Pokémon GO: eggs come from caches, Rift hacks and Apex raids,
+        // and hatch after you walk 2, 5 or 10 km with them in an incubator.
+        // Longer eggs hold rarer creatures.
+        public const int MAX_EGGS = 9, INCUBATORS = 2;
+        public static readonly Dictionary<int, EggKind> Eggs = new Dictionary<int, EggKind>
+        {
+            { 2, new EggKind("2 km egg", "#7CE08A", new double[] { 80, 20, 0, 0 }, 200) },
+            { 5, new EggKind("5 km egg", "#FFB347", new double[] { 35, 50, 15, 0 }, 500) },
+            { 10, new EggKind("10 km egg", "#C86BFF", new double[] { 0, 40, 47, 13 }, 1000) },
+        };
+
+        // A new egg, straight into a free incubator. Null when the bag is full.
+        public static Egg AddEgg(int km)
+        {
+            if (!Eggs.ContainsKey(km) || save.eggs.Count >= MAX_EGGS) return null;
+            var e = new Egg { id = Rng.NowMs().ToString("x") + Rng.RandInt(0, 99999).ToString("x"), km = km, inc = save.eggs.Count((x) => x.inc) < INCUBATORS };
+            save.eggs.Add(e);
+            return e;
+        }
+
+        public static Result Incubate(Egg e)
+        {
+            if (e.inc) return Result.No("");
+            if (save.eggs.Count((x) => x.inc) >= INCUBATORS) return Result.No("Both incubators are in use. Hatch an egg first.");
+            e.inc = true;
+            Save();
+            return new Result { ok = true };
+        }
+
+        static Result Hatch(Egg e)
+        {
+            var E = Eggs[e.km];
+            int rar = Rng.Weighted(new[] { 0, 1, 2, 3 }.Where((k) => E.odds[k] > 0).ToList(), (k) => E.odds[k]);
+            var sp = Rng.Weighted(Species.Wild.Where((x) => x.rar == rar).ToList(), (x) => 1);
+            int lvl = Math.Min(Species.MaxLevel, 3 + (int)Math.Floor(Level * 0.8) + rar * 2);
+            var c = AddCreature(sp.id, lvl, new[] { Rng.RandInt(5, 10), Rng.RandInt(5, 10), Rng.RandInt(5, 10) });
+            int dna = 30 + e.km * 5;
+            AddDna(sp.id, dna);
+            save.eggs.Remove(e);
+            // The incubator takes the next egg waiting.
+            var next = save.eggs.Find((x) => !x.inc);
+            if (next != null) next.inc = true;
+            save.stats.hatched++;
+            var res = new Result { ok = true, creature = c, egg = e, dnaN = dna, levelUp = AddXP(E.xp) };
+            Save();
+            return res;
+        }
+
+        // You walked m meters: eggs in incubators get closer to hatching.
+        public static List<Result> Walked(double m)
+        {
+            var hatched = new List<Result>();
+            if (save == null || m <= 0) return hatched;
+            foreach (var e in save.eggs.Where((x) => x.inc).ToList())
+            {
+                e.walked += m;
+                if (e.walked >= e.km * 1000) hatched.Add(Hatch(e));
+            }
+            return hatched;
+        }
+
+        /* ------------------ Apex raids ------------------ */
+
+        // Like Jurassic World Alive's apex creatures and Pokémon GO raids: each
+        // day about one Rift in twelve is taken over by a huge Apex creature
+        // (the same ones as in the web game). Beat it once that day for lots of
+        // its DNA.
+        public static Apex ApexAt(Rift rift, long now = 0)
+        {
+            if (now == 0) now = Rng.NowMs();
+            long d = Day(now);
+            Func<double> r = new Seeded(Rng.Key("apex", rift.id, d)).Next;
+            if (r() >= 0.08) return null;
+            var sp = Rng.Weighted(Species.Wild.Where((x) => x.rar >= 1).ToList(), (x) => new double[] { 0, 6, 3, 1 }[x.rar], r);
+            int lvl = Math.Max(8, Math.Min(Species.MaxLevel, 6 + (int)Math.Floor(Level * 0.9 + 0.5) + Rng.RandInt(0, 3, r) + sp.rar * 2));
+            return new Apex
+            {
+                boss = new Creature { id = "apex", sp = sp.id, lvl = lvl, iv = new[] { 10, 10, 10 }, hpx = 3 },
+                beaten = save.raids.Contains($"{rift.id}:{d}"),
+                dna = 40 + sp.rar * 20,
+            };
+        }
+
+        public static Result BeatApex(Rift rift)
+        {
+            var a = ApexAt(rift);
+            if (a == null || a.beaten) return Result.No("");
+            long d = Day(Rng.NowMs());
+            save.raids.Add($"{rift.id}:{d}");
+            // Forget old raids.
+            save.raids.RemoveAll((k) => long.TryParse(k.Substring(k.LastIndexOf(':') + 1), out long kd) && kd < d - 1);
+            var loot = new Loot { orbs = 8, darts = 15, shards = 6 };
+            Give(loot);
+            AddDna(a.boss.sp, a.dna);
+            var egg = Rng.Next() < 0.35 ? AddEgg(10) : null;
+            save.stats.apex++;
+            save.stats.wins++;
+            var res = new Result { ok = true, loot = loot, egg = egg, dnaN = a.dna, levelUp = AddXP(1500 + a.boss.lvl * 20) };
+            Save();
+            return res;
         }
 
         public static int SpawnLevel(Spawn s) => 1 + (int)Math.Floor(s.lvlRoll * Math.Min(Species.MaxLevel, 3 + Math.Floor(Level * 1.5)));
