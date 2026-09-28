@@ -1,28 +1,59 @@
 # Riftborn for Unity (AR)
 
-This is Riftborn rebuilt as a Unity project. It's a real-world AR creature game:
-you walk around, catch creatures in AR on your real floor, and fight for Rifts
-with the Wardens, Breachers or Primals (and against the Hollow).
+This is Riftborn rebuilt as a Unity project, with everything the web game has.
+It's a real-world AR creature game: you walk around, catch creatures in AR on
+your real floor, and fight for Rifts with the Wardens, Breachers or Primals (and
+against the Hollow).
 
+**Plays with the web game.** The Unity version uses the same world generator,
+rules and save format as the web game. With online accounts on the same
+Firebase project, one account plays in both and your progress follows you.
+
+- **Accounts:** sign up and log in.
+  - Without a Firebase project, accounts are kept on the phone and several
+    agents can share it.
+  - With a Firebase project, accounts work online (set it up in the game or in
+    `Assets/Riftborn/Scripts/Config.cs`). Your save is kept in the cloud, and
+    there's a shared leaderboard.
 - **AR catching** uses AR Foundation, with ARCore on Android and ARKit on iPhone.
-  The creature appears on your floor, lit to match the room, and casts a shadow.
-  Dart it to collect DNA and calm it down, then swipe up to throw an orb while
-  the ring is small.
-- **Map:** the real streets around you from Esri tiles. Pick the dark "scanner"
-  look or satellite photos in Settings. Rifts, supply caches and wandering
-  creatures are placed there.
-  - The map uses the same world generator as the web version, so you'll find
-    the same Rifts in the same places.
-  - Your reach is 100 m.
-- **Teams:** the Wardens, Breachers and Primals. You can hack Rifts, claim them,
-  recharge them, and beat the guardians of enemy Rifts in turn-based battles.
-  The Hollow take over Rifts whose charge runs out.
+  - The creature appears on your floor, lit to match the room, and casts a
+    shadow.
+  - Dart it to collect DNA and calm it down, then swipe up to throw an orb while
+    the ring is small.
+  - AR can be turned off in the Menu.
+- **Map:** the real streets around you.
+  - Styles: scanner (like Ingress), satellite, day, night, day-and-night
+    following your clock, or no street map.
+  - Sources: free Esri or OpenStreetMap tiles, or Google Maps with your own key.
+  - Links and control fields glow on the ground.
+  - The real weather shows as rain, snow, fog and lightning.
+- **Rifts:** hack them for supplies and keys, then claim, upgrade and recharge
+  them.
+  - Choose which creatures guard them.
+  - Link your team's Rifts, and close triangles of links to raise control
+    fields for Aether.
+  - Assault enemy Rifts. The Hollow take over Rifts whose charge runs out.
+- **Apex raids:** huge boss creatures take over some Rifts each day.
+- **Eggs:** two incubators hatch eggs as you walk 2, 5 or 10 km.
+- **Lab:** level creatures up, browse the Riftdex, fuse hybrids and release
+  creatures.
+- **Missions:** three field missions a day, the Rift Surge bonus, and a 7-day
+  daily login bonus.
+- **Walking rewards:** your buddy finds DNA every 250 m, and there's a supply
+  stash every kilometre.
+- **Arena:** battle rival agents' teams from anywhere.
+  - Climb from Bronze to Legend for rank rewards.
+  - Win three battles a day for the daily chest.
+- **Weather:** the real weather where you are (from Open-Meteo) boosts one
+  element's creatures.
+- **Profile:** 12 medals with five tiers each, agent levels 1 to 40, and the
+  leaderboard.
 - **42 creatures:** dinosaurs, flyers and hybrids, all built in code with
   animated skeletons.
-  - Each has a level, a power rating, DNA and a signature move.
-  - Your battle team holds up to three.
 - **No AR?** On a PC, or on a phone that can't do AR, encounters happen on a 3D
-  patch of wild ground instead. On a PC you walk with WASD.
+  patch of wild ground instead.
+  - On a PC you walk with WASD.
+  - On a phone without GPS there's a joystick.
 
 ## Put it on your F: drive and open it
 
@@ -47,7 +78,7 @@ with the Wardens, Breachers or Primals (and against the Hollow).
 
    You can run it again any time from **Riftborn → Set up project** in the menu
    bar.
-5. **Try it on your PC:** press **Play** ▶.
+5. **Try it on your PC:** press **Play** ▶, then **Sign up** to make an agent.
    - Walk with WASD or the arrow keys, and hold Shift to run.
    - Drag to turn the camera and scroll to zoom.
    - Click creatures, Rifts and caches to use them.
@@ -68,36 +99,69 @@ with the Wardens, Breachers or Primals (and against the Hollow).
 
 ## How to play
 
-- **Creatures:** go within 100 m and tap one, then choose **Encounter in AR**.
+The bottom bar has **Lab**, **Bag**, **Scan**, **Missions**, **Arena** and
+**Menu**. Tap your agent card for your profile, and your supplies for the bag.
+A gold dot means something is ready to claim.
+
+- **Creatures:** go within 100 m and tap one (or its picture bottom left), then
+  choose **Engage in AR**.
   1. Point the camera at the floor, then tap to open the Rift.
   2. **Darts:** line up the gold target and press **Fire**. Each hit gives DNA
      and makes the creature easier to catch.
   3. **Orbs:** swipe up to throw an orb. Throw it when the ring is small to get
      Nice, Great or Excellent bonuses.
 - **Rifts:**
-  - **Hack** a Rift for orbs, darts and shards.
+  - **Hack** a Rift for orbs, darts, shards and often its key.
   - **Claim** an unclaimed Rift for 6 shards.
+  - **Upgrade** your Rifts for more guardians and a longer link range, and
+    **Choose guardians** for them.
   - **Recharge** your team's Rifts, because they lose charge every day.
-  - **Battle** the guardians of an enemy Rift to make it unclaimed again.
-- **Apex raids:** each day about one Rift in twelve is taken over by a huge Apex
-  creature with a red ring, standing next to it on the map.
-  - Tap it and choose **Battle the Apex**. Your team fights one boss with three
-    times the health.
-  - Win for lots of its DNA, supplies and big XP, with a 35% chance of a 10 km
-    egg.
-  - Each Apex can be beaten once a day. They're the same Apexes on the same
-    Rifts as in the web game.
-- **Eggs:** you find them in supply caches, sometimes when hacking Rifts, and
-  from Apex raids.
-  - You have two incubators. Eggs in them hatch after you walk 2, 5 or 10 km,
-    and longer eggs hold rarer creatures.
-  - The egg card under your supplies shows how far the next one has to go. Tap
-    it (or go to **Creatures → Eggs**) to see the bag and move eggs into free
-    incubators.
-- **Creatures menu:** level creatures up with their DNA and pick your battle
-  team of three.
-- **Teams menu:** see who holds the Rifts nearby. You can switch teams once
-  every 30 days.
+  - **Assault** enemy Rifts by beating their guardians.
+- **Links and fields:** on one of your team's Rifts, choose **Link to another
+  Rift** and spend a key.
+  - Links can't cross.
+  - Three linked Rifts raise a control field, and bigger fields give more
+    Aether.
+- **Apex raids:** a huge Apex creature on a red ring stands next to some Rifts
+  each day.
+  - Choose **Battle the Apex**. It has three times the health.
+  - You can beat each Apex once a day.
+- **Eggs:** find them in caches, hacks, the daily bonus, the arena and Apex
+  raids.
+  - Walk 2, 5 or 10 km with them in your two incubators to hatch them.
+  - The **Bag** shows them.
+- **Lab:** has three tabs.
+  - **Creatures:** level up with DNA, set your team (★), or release a creature
+    for DNA.
+  - **Riftdex:** every species you've found.
+  - **Fusion:** mix two species' DNA into hybrids.
+- **Missions:** three new missions a day, plus the Rift Surge when all three
+  are done, and the **Daily bonus** (day 7 is a 10 km egg).
+- **Arena:** pick an Easy, Even or Hard rival and battle their team for
+  trophies. Running away counts as a loss.
+- **Weather:** the badge under your supplies shows the real weather and which
+  element it boosts.
+- **Profile:** your XP, stats, walking buddy and medals, the level table and
+  the leaderboard.
+- **Menu:**
+  - Sound, map style, AR camera, map source and your Google Maps key.
+  - GPS or joystick movement.
+  - Teams, your account and online accounts.
+  - How to play, and starting over.
+
+### Online accounts (optional)
+
+To play on any phone, and to share one account with the web game, you need a
+free Firebase project. The game's title screen and Menu → Account → Online
+accounts walk you through it:
+
+1. Create the project at console.firebase.google.com.
+2. Turn on Email/Password sign-in.
+3. Create a Firestore database.
+4. Paste the Riftborn rules. The game copies them for you.
+5. Paste the Project ID and Web API key into the game, which checks everything.
+
+If the web game uses the same project, the same account works in both.
 
 ## What's inside
 
@@ -112,8 +176,10 @@ with the Wardens, Breachers or Primals (and against the Hollow).
 - The scene is empty on purpose, because the game builds everything when it
   starts.
 - Saves are kept on the device with PlayerPrefs.
-- This version doesn't have online play, weather or the arena. Those are only in
-  the web version for now.
+- Saves are the web game's JSON format. A save from the first Unity version
+  converts itself, and the first account you make on the phone takes it over.
+- `Assets/Riftborn/Scripts/Config.cs` can hold a built-in Firebase project and
+  Google Maps key. Leave them empty to let players set them up in the game.
 
 ## If something goes wrong
 

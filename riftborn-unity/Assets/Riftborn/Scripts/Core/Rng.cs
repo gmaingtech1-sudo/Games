@@ -65,6 +65,25 @@ namespace Riftborn
         }
 
         public static long NowMs() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        // Unique ids like the web game's: time and randomness in base 36.
+        public static string Uid() => Base36(NowMs()) + Base36((long)(Next() * 60466176)).PadLeft(5, '0');
+
+        public static string Base36(long n)
+        {
+            const string D = "0123456789abcdefghijklmnopqrstuvwxyz";
+            if (n == 0) return "0";
+            var sb = new System.Text.StringBuilder();
+            bool neg = n < 0; n = Math.Abs(n);
+            while (n > 0) { sb.Insert(0, D[(int)(n % 36)]); n /= 36; }
+            return (neg ? "-" : "") + sb;
+        }
+
+        // The local calendar day as the web game writes it: "2026-9-28".
+        public static string Today() { var d = DateTime.Now; return $"{d.Year}-{d.Month}-{d.Day}"; }
+
+        // Days since 1970 in local time (the daily bonus).
+        public static long LocalDay(long t) => (long)Math.Floor((t + TimeZoneInfo.Local.GetUtcOffset(DateTimeOffset.FromUnixTimeMilliseconds(t).UtcDateTime).TotalMilliseconds) / 86400000.0);
     }
 
     // Seeded generator (mulberry32) giving numbers in [0, 1).

@@ -20,7 +20,7 @@ namespace Riftborn
     {
         enum Phase { Starting, Placing, Appear, Free, Absorb, Fall, Wobble, Caught, Flee, Result }
         Phase phase; float phaseT;
-        Spawn spawn; Species sp; int lvl; Action done;
+        Spawn spawn; Species sp; int lvl; Action<Result> done; bool wantAR;
         bool dartMode;
         int dna, hits, bonusXP; float sed;   // sed: how calm it is (0..0.6)
         float timeLeft;
@@ -62,9 +62,9 @@ namespace Riftborn
 
         /* ------------------ Start & end ------------------ */
 
-        public void Begin(Spawn s, Action onDone)
+        public void Begin(Spawn s, bool useAR, Action<Result> onDone)
         {
-            spawn = s; done = onDone;
+            spawn = s; done = onDone; wantAR = useAR;
             sp = Species.ById(s.sp);
             lvl = GameState.SpawnLevel(s);
             dna = hits = bonusXP = 0; sed = 0; hurt = 0; speedK = 1; mouth = 0;
@@ -105,7 +105,7 @@ namespace Riftborn
                 }
                 arOk = ARSession.state >= ARSessionState.Ready;
             }
-            ar = arOk == true;
+            ar = arOk == true && wantAR;
             if (ar)
             {
                 if (arSession == null) BuildAR();
@@ -304,7 +304,7 @@ namespace Riftborn
             RenderSettings.ambientMode = ambWas;
             RenderSettings.ambientSkyColor = ambSky; RenderSettings.ambientEquatorColor = ambEq; RenderSettings.ambientGroundColor = ambGround;
             var res = finished;
-            done?.Invoke();
+            done?.Invoke(res);
             if (res != null && res.levelUp > 0) UI.I.LevelUp(res.levelUp);
         }
 
@@ -343,6 +343,7 @@ namespace Riftborn
             var items = GameState.save.items;
             if (items.darts <= 0) { UI.I.Toast("Out of darts. Hack Rifts or open caches for more."); Sfx.Play("error"); return; }
             items.darts--;
+            GameState.save.stats.darts++;
             var ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
             var d = new Dart { from = cam.transform.position + cam.transform.right * 0.05f - cam.transform.up * 0.08f, t = 0 };
             var tp = targets[tgt].position;
@@ -474,12 +475,12 @@ namespace Riftborn
         {
             phase = Phase.Result;
             var rc = Species.Rarities[sp.rar];
-            finished = GameState.FinishEncounter(spawn, caughtIt, fledIt, dna, bonusXP);
+            finished = GameState.FinishEncounter(spawn, caughtIt, fledIt, dna, hits, bonusXP);
             if (caughtIt)
             {
                 var c = finished.creature;
                 resultTitle = $"{sp.name} caught!";
-                resultBody = $"{UI.Col(rc.name, rc.color)} · Level {c.lvl} · Power {c.Power}\n+{dna + 25} {sp.name} DNA · +{rc.xp + bonusXP} XP";
+                resultBody = $"{UI.Col(rc.name, rc.color)} · Level {c.lvl} · Power {c.Power}\n+{dna + 25} {sp.name} DNA · +{rc.xp + bonusXP + finished.weatherXP} XP{(finished.weatherXP > 0 ? " (weather boost)" : "")}";
             }
             else
             {
@@ -743,7 +744,7 @@ namespace Riftborn
             var card = new Rect(UI.Safe.x + 8, top, Mathf.Min(260, W - 110), 58);
             UI.Panel(card, UI.Ink);
             UI.Label(new Rect(card.x + 12, card.y + 8, card.width - 20, 22), UI.Col(sp.name, rc.color) + $"  <size={Mathf.RoundToInt(12 * UI.Scale)}>Lv {lvl}</size>", UI.H2);
-            UI.Label(new Rect(card.x + 12, card.y + 32, card.width - 20, 18), $"{UI.Col(el.name, el.color)} · {rc.name} · DNA +{dna}", UI.Small);
+            UI.Label(new Rect(card.x + 12, card.y + 32, card.width - 20, 18), $"{UI.Col(el.name, el.color)} · {rc.name} · DNA +{dna}{(spawn.boost ? UI.Col(" · weather boost", new Color(0.5f, 0.83f, 1f)) : "")}", UI.Small);
             var timer = new Rect(UI.Safe.xMax - 92, top, 84, 58);
             UI.Panel(timer, UI.Ink);
             UI.Label(new Rect(timer.x, timer.y + 8, timer.width, 22), phase == Phase.Free ? UI.Clock((long)(timeLeft * 1000)) : "–", new GUIStyle(UI.H2) { alignment = TextAnchor.UpperCenter });

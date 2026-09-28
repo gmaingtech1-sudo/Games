@@ -24,7 +24,7 @@ namespace Riftborn
         int mi, fi;
         bool busy; bool? outcome; bool swapOpen;
         string log = "", intro, winText;
-        Action<bool> done;
+        Action<bool, bool> done;
 
         GameObject arena; Camera cam; Transform stage; Light sun;
         class Shot { public GameObject go; public Vector3 from, to; public float t; }
@@ -41,7 +41,7 @@ namespace Riftborn
             return new F { c = c, sp = c.Species, side = side, hp = hp, max = hp, atk = c.Atk, spd = c.Spd };
         }
 
-        public void Begin(List<Creature> mine, List<Creature> theirs, string introText, string win, Action<bool> onDone)
+        public void Begin(List<Creature> mine, List<Creature> theirs, string introText, string win, Action<bool, bool> onDone)
         {
             me = mine.Select((c) => Fighter(c, 0)).ToList();
             foe = theirs.Select((c) => Fighter(c, 1)).ToList();
@@ -283,7 +283,7 @@ namespace Riftborn
             log = win ? (winText ?? "The guardians are down.") : "Your team was beaten. They'll be back to full strength next time.";
         }
 
-        void Finish(bool won)
+        void Finish(bool won, bool fled = false)
         {
             StopAllCoroutines();
             foreach (var f in me.Concat(foe)) Hide(f);
@@ -293,7 +293,7 @@ namespace Riftborn
             arena.SetActive(false);
             RenderSettings.fog = fogWas; RenderSettings.fogColor = fogCol; RenderSettings.fogStartDistance = fogStart; RenderSettings.fogEndDistance = fogEnd;
             QualitySettings.shadowDistance = shadowWas;
-            done?.Invoke(won);
+            done?.Invoke(won, fled);
         }
 
         /* ------------------ Frame ------------------ */
@@ -408,7 +408,7 @@ namespace Riftborn
             if (UI.Button(new Rect(bx + (bw + 6) * 2, by - 82, bw, 62), $"Guard\n<size={Mathf.RoundToInt(11 * UI.Scale)}>{(m.cdGuard > 0 ? $"ready in {m.cdGuard}" : "block + heal")}</size>", new Color(0.2f, 0.45f, 0.7f), ok && m.cdGuard == 0)) Choose("guard");
             bool canSwap = ok && me.Count(x => x.hp > 0) > 1;
             if (UI.Button(new Rect(bx, by - 12, (gw - 6) / 2, 48), "Swap", UI.Ink, canSwap)) swapOpen = true;
-            if (UI.Button(new Rect(bx + (gw + 6) / 2, by - 12, (gw - 6) / 2, 48), "Run", UI.Ink, ok)) { outcome = false; Finish(false); return; }
+            if (UI.Button(new Rect(bx + (gw + 6) / 2, by - 12, (gw - 6) / 2, 48), "Run", UI.Ink, ok)) { outcome = false; Finish(false, true); return; }
 
             if (swapOpen)
             {

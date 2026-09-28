@@ -33,6 +33,8 @@ namespace Riftborn
         readonly Dictionary<string, Wild> wild = new Dictionary<string, Wild>();
         Around ents = new Around();
 
+        GameObject grid;
+
         public static MapView Create()
         {
             var go = new GameObject("Map");
@@ -74,6 +76,7 @@ namespace Riftborn
             // Ground under the tiles (and instead of them offline): a faint grid.
             var grid = Tex.Make(128, 128, (x, y) => (x % 64 < 2 || y % 64 < 2) ? new Color(0.12f, 0.35f, 0.33f) : new Color(0.02f, 0.05f, 0.05f));
             var ground = Props.Mesh("ground", Props.Quad, Mats.Unlit(grid, Color.white), world, false);
+            this.grid = ground;
             ground.transform.localRotation = Quaternion.Euler(90, 0, 0);
             ground.transform.localScale = Vector3.one * 4000;
             ground.transform.localPosition = new Vector3(0, -0.2f, 0);
@@ -105,6 +108,8 @@ namespace Riftborn
             foreach (var w in wild.Values) w.b.Destroy();
             foreach (var b in apexes.Values) b.Destroy();
             rifts.Clear(); caches.Clear(); wild.Clear(); apexes.Clear();
+            if (linkRoot) Destroy(linkRoot);
+            linkKey = "";
             ChangedStyle();
         }
 
@@ -212,6 +217,11 @@ namespace Riftborn
                 var col = b.root.AddComponent<SphereCollider>();
                 col.radius = 0.8f; col.center = new Vector3(0, 0.5f, 0);
                 b.root.AddComponent<Pickable>().target = s;
+                if (s.boost)
+                {
+                    var tag = Props.Glow(new Color(0.5f, 0.83f, 1f, 0.8f), 0.5f, b.root.transform);
+                    tag.transform.localPosition = new Vector3(0, b.asset.bounds.max.y + 0.35f, 0);
+                }
                 wild[s.id] = new Wild { b = b, s = s, home = home, pos = home, scale = scale, fly = b.sp.plan == Plan.Flyer, wait = Random.value * 3, dir = Random.value * 6 };
             }
             Prune(wild, seen, (w) => w.b.Destroy());
@@ -248,12 +258,44 @@ namespace Riftborn
 
         /* ------------------ Map tiles ------------------ */
 
+        // Street tiles laid on the ground: Google Maps (with a key), or the
+        // free Esri and OpenStreetMap tiles. The style is the Ingress-like
+        // scanner, satellite photos, day or night (or both, following your
+        // clock), or no street map at all.
         const string ESRI = "https://services.arcgisonline.com/ArcGIS/rest/services";
         class Tile { public GameObject go; public bool done; }
         readonly Dictionary<string, Tile> tiles = new Dictionary<string, Tile>();
         float tileTimer;
-        public bool satellite;
-        int tileFails;
+        int tileFails, freeIndex;
+        string style = "scanner";
+        public string Style => style;
+
+        public static string StyleFor(string setting)
+        {
+            if (setting == "grid" || setting == "scanner" || setting == "satellite" || setting == "day" || setting == "night") return setting;
+            float h = System.DateTime.Now.Hour + System.DateTime.Now.Minute / 60f;
+            return h >= 6.5f && h < 19.5f ? "day" : "night";
+        }
+
+        // Settings changed (or a new agent): pick the style and source again.
+        public void ApplySettings()
+        {
+            var st = GameState.save?.settings;
+            string want = StyleFor(st != null ? st.map : "scanner");
+            if (want != style) { style = want; ChangedStyle(); }
+            ApplyLook();
+        }
+
+        string FreeProvider()
+        {
+            string pick = GameState.save?.settings.tiles ?? "auto";
+            if (pick == "esri" || pick == "osm") return pick;
+            return freeIndex == 0 ? "esri" : "osm";
+        }
+        public string SourceName => GMaps.Active ? "Google Maps" : FreeProvider() == "esri" ? "Esri" : "OpenStreetMap";
+        public string Attribution => style == "grid" ? "" : GMaps.Active ? "Map data ©Google" + (GMaps.Copyright != "" ? " · " + GMaps.Copyright : "")
+            : FreeProvider() == "osm" ? "© OpenStreetMap contributors"
+            : style == "satellite" ? "Powered by Esri · Esri, Maxar, Earthstar Geographics" : "Powered by Esri · Esri, HERE, Garmin, © OpenStreetMap contributors";
 
         static (int x, int y) TileOf(double la, double ln, int z)
         {
@@ -271,11 +313,31 @@ namespace Riftborn
             return (la, ln);
         }
 
+        string TileUrl(int z, int x, int y)
+        {
+            if (GMaps.Active) return GMaps.TileUrl(style, z, x, y);   // null while connecting
+            if (FreeProvider() == "osm") return $"https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+            return style == "satellite" ? $"{ESRI}/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                : style == "day" ? $"{ESRI}/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+                : $"{ESRI}/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}";
+        }
+
+        Color TileTint()
+        {
+            if (GMaps.Active || style == "satellite") return Color.white;
+            bool osm = FreeProvider() == "osm";
+            if (style == "day") return new Color(0.96f, 1f, 0.94f);
+            if (style == "scanner") return osm ? new Color(0.18f, 0.42f, 0.39f) : new Color(0.55f, 1.2f, 1.1f);
+            return osm ? new Color(0.29f, 0.27f, 0.44f) : new Color(0.85f, 0.8f, 1.15f);   // night
+        }
+
         void UpdateTiles()
         {
-            if (tileFails > 12) return;   // offline: the grid does
+            if (style == "grid") return;
+            if (!GMaps.Active && tileFails > 10 && GameState.save?.settings.tiles == "auto" && freeIndex == 0) { freeIndex = 1; tileFails = 0; ChangedStyle(); return; }
+            if (tileFails > 14) return;   // offline: the grid does
             int z = dist < 150 ? 17 : 16;
-            string style = satellite ? "sat" : "dark";
+            string key0 = (GMaps.Active ? "g" : FreeProvider()) + style;
             var (cx, cy) = TileOf(lat, lng, z);
             int R = z == 17 ? 3 : 2;
             var want = new HashSet<string>();
@@ -283,37 +345,38 @@ namespace Riftborn
                 for (int dx = -R; dx <= R; dx++)
                 {
                     int x = cx + dx, y = cy + dy;
-                    string key = $"{style}/{z}/{x}/{y}";
+                    string key = $"{key0}/{z}/{x}/{y}";
                     want.Add(key);
                     if (tiles.ContainsKey(key)) continue;
+                    string url = TileUrl(z, x, y);
+                    if (url == null) continue;   // Google session still connecting
                     var t = new Tile();
                     tiles[key] = t;
-                    StartCoroutine(LoadTile(t, x, y, z));
+                    StartCoroutine(LoadTile(t, url, x, y, z));
                 }
             bool covered = want.All((k) => tiles.TryGetValue(k, out var t) && t.done);
-            foreach (var k in tiles.Keys.Where((k) => !want.Contains(k) && (covered || !k.StartsWith(style))).ToList())
+            foreach (var k in tiles.Keys.Where((k) => !want.Contains(k) && (covered || !k.StartsWith(key0))).ToList())
             {
                 if (tiles[k].go) { Destroy(tiles[k].go.GetComponent<Renderer>().sharedMaterial.mainTexture); Destroy(tiles[k].go); }
                 tiles.Remove(k);
             }
         }
 
-        IEnumerator LoadTile(Tile t, int x, int y, int z)
+        IEnumerator LoadTile(Tile t, string url, int x, int y, int z)
         {
-            string url = satellite ? $"{ESRI}/World_Imagery/MapServer/tile/{z}/{y}/{x}" : $"{ESRI}/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}";
             using (var req = UnityWebRequestTexture.GetTexture(url))
             {
                 yield return req.SendWebRequest();
-                if (req.result != UnityWebRequest.Result.Success) { tileFails++; yield break; }
+                if (req.result != UnityWebRequest.Result.Success) { tileFails++; if (GMaps.Active) GMaps.TileFailed(); yield break; }
                 tileFails = 0;
+                if (GMaps.Active) GMaps.TileLoaded();
                 var tex = DownloadHandlerTexture.GetContent(req);
                 tex.wrapMode = TextureWrapMode.Clamp;
                 tex.anisoLevel = 8;
                 var (la0, ln0) = TileCorner(x, y, z);
                 var (la1, ln1) = TileCorner(x + 1, y + 1, z);
                 Vector3 a = ToV(la0, ln0), b = ToV(la1, ln1);
-                // The scanner look: the dark map tinted teal, like Ingress.
-                var go = Props.Mesh("tile", Props.Quad, Mats.Unlit(tex, satellite ? Color.white : new Color(0.55f, 1.2f, 1.1f)), world, false);
+                var go = Props.Mesh("tile", Props.Quad, Mats.Unlit(tex, TileTint()), world, false);
                 go.transform.localRotation = Quaternion.Euler(90, 0, 0);
                 go.transform.localPosition = new Vector3((a.x + b.x) / 2, 0, (a.z + b.z) / 2);
                 go.transform.localScale = new Vector3(b.x - a.x, a.z - b.z, 1);
@@ -324,18 +387,156 @@ namespace Riftborn
 
         public void ChangedStyle()
         {
-            foreach (var t in tiles.Values) if (t.go) Destroy(t.go);
+            foreach (var t in tiles.Values) if (t.go) { Destroy(t.go.GetComponent<Renderer>().sharedMaterial.mainTexture); Destroy(t.go); }
             tiles.Clear();
             tileFails = 0;
             ApplyLook();
         }
 
+        // A new Google key, or the map source changed.
+        public void SourceChanged() { freeIndex = 0; ChangedStyle(); }
+
+        float sunBase = 1.1f; Color ambBase;
         void ApplyLook()
         {
-            RenderSettings.fogColor = satellite ? new Color(0.62f, 0.72f, 0.8f) : new Color(0.02f, 0.08f, 0.09f);
-            cam.backgroundColor = satellite ? new Color(0.55f, 0.7f, 0.9f) : new Color(0.01f, 0.03f, 0.035f);
-            sun.intensity = satellite ? 1.35f : 1.1f;
-            RenderSettings.ambientSkyColor = satellite ? new Color(0.7f, 0.78f, 0.9f) : new Color(0.35f, 0.55f, 0.55f);
+            bool light = style == "day" || style == "satellite";
+            Color horizon = style == "scanner" || style == "grid" ? new Color(0.02f, 0.08f, 0.09f) : style == "night" ? new Color(0.14f, 0.09f, 0.22f) : new Color(0.72f, 0.82f, 0.9f);
+            RenderSettings.fogColor = horizon;
+            cam.backgroundColor = style == "scanner" || style == "grid" ? new Color(0.01f, 0.03f, 0.035f) : horizon;
+            sunBase = light ? 1.35f : style == "night" ? 0.75f : 1.1f;
+            sun.color = style == "night" ? new Color(0.7f, 0.72f, 1f) : light ? new Color(1f, 0.97f, 0.9f) : new Color(0.85f, 0.93f, 1f);
+            ambBase = light ? new Color(0.7f, 0.78f, 0.9f) : style == "night" ? new Color(0.3f, 0.26f, 0.5f) : new Color(0.35f, 0.55f, 0.55f);
+            RenderSettings.ambientSkyColor = ambBase;
+            if (grid) grid.SetActive(true);
+        }
+
+        /* ------------------ Links & control fields ------------------ */
+
+        GameObject linkRoot;
+        string linkKey = "";
+        static Mesh BoxMesh()
+        {
+            var v = new List<Vector3>(); var t = new List<int>(); var uv = new List<Vector2>();
+            for (int f = 0; f < 6; f++)
+            {
+                var n = new[] { Vector3.right, Vector3.left, Vector3.up, Vector3.down, Vector3.forward, Vector3.back }[f];
+                var u = Mathf.Abs(n.y) > 0.5f ? Vector3.right : Vector3.up;
+                var w = Vector3.Cross(n, u);
+                int b0 = v.Count;
+                v.Add((n - u - w) * 0.5f); v.Add((n + u - w) * 0.5f); v.Add((n + u + w) * 0.5f); v.Add((n - u + w) * 0.5f);
+                uv.Add(Vector2.zero); uv.Add(Vector2.up); uv.Add(Vector2.one); uv.Add(Vector2.right);
+                t.AddRange(new[] { b0, b0 + 1, b0 + 2, b0, b0 + 2, b0 + 3 });
+            }
+            return Shapes.Build(v, uv, t, "box", true);
+        }
+        static Mesh box;
+
+        void SyncLinks()
+        {
+            var s = GameState.save;
+            if (s == null) return;
+            string key = string.Join(",", s.links.Select((l) => l.a + l.b)) + "|" + s.fields.Count + "|" + s.agent.faction;
+            if (key == linkKey) return;
+            linkKey = key;
+            if (linkRoot) Destroy(linkRoot);
+            linkRoot = new GameObject("Links");
+            linkRoot.transform.SetParent(world, false);
+            box ??= BoxMesh();
+            var col = GameState.MyColor;
+            var lm = Mats.Glow(col * 0.85f, Texture2D.whiteTexture);
+            var gm = Mats.Glow(col * 0.25f, Texture2D.whiteTexture);
+            foreach (var l in s.links)
+            {
+                Vector3 a = ToV(l.al[0], l.al[1]) + Vector3.up * 3, b = ToV(l.bl[0], l.bl[1]) + Vector3.up * 3;
+                float len = Vector3.Distance(a, b);
+                if (len < 0.01f) continue;
+                var m = Props.Mesh("link", box, lm, linkRoot.transform, false);
+                m.transform.localPosition = (a + b) / 2;
+                m.transform.localRotation = Quaternion.LookRotation(b - a);
+                m.transform.localScale = new Vector3(1.2f, 1.2f, len);
+                var g = Props.Mesh("linkglow", box, gm, linkRoot.transform, false);
+                g.transform.localPosition = (a + b) / 2 + Vector3.down * 2.4f;
+                g.transform.localRotation = m.transform.localRotation;
+                g.transform.localScale = new Vector3(5, 0.2f, len);
+            }
+            var fm = Mats.Glow(col * 0.2f, Texture2D.whiteTexture);
+            foreach (var f in s.fields)
+            {
+                var pts = f.ll.Select((ll) => ToV(ll[0], ll[1]) + Vector3.up * 0.6f).ToList();
+                var mesh = Shapes.Build(pts, new List<Vector2> { Vector2.zero, Vector2.up, Vector2.one }, new List<int> { 0, 1, 2 }, "field", true);
+                Props.Mesh("field", mesh, fm, linkRoot.transform, false);
+            }
+        }
+
+        /* ------------------ Weather ------------------ */
+
+        // The real weather over the map: rain streaks, drifting snow, fog
+        // rolling in, darker skies under cloud, and lightning in a storm.
+        const float BOX = 360, TOP = 170;
+        GameObject rain, snow;
+        string wx;
+        float flash, nextFlash = 4;
+
+        static GameObject Precip(string name, int n, Vector2 size, Color c, string seed)
+        {
+            var r = new Seeded(seed);
+            var v = new List<Vector3>(); var uv = new List<Vector2>(); var t = new List<int>();
+            for (int i = 0; i < n; i++)
+            {
+                var p = new Vector3(((float)r.Next() - 0.5f) * BOX, (float)r.Next() * TOP, ((float)r.Next() - 0.5f) * BOX);
+                float yaw = (float)r.Next() * Mathf.PI;
+                var side = new Vector3(Mathf.Cos(yaw), 0, Mathf.Sin(yaw)) * size.x / 2;
+                int b = v.Count;
+                v.Add(p - side); v.Add(p + side); v.Add(p + side + Vector3.up * size.y); v.Add(p - side + Vector3.up * size.y);
+                uv.Add(new Vector2(0, 0)); uv.Add(new Vector2(1, 0)); uv.Add(new Vector2(1, 1)); uv.Add(new Vector2(0, 1));
+                t.AddRange(new[] { b, b + 1, b + 2, b, b + 2, b + 3 });
+            }
+            var mesh = Shapes.Build(v, uv, t, name, true);
+            mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 2000);
+            var root = new GameObject(name);
+            var tex = name == "snow" ? Tex.Glow : Texture2D.whiteTexture;
+            for (int k = 0; k < 2; k++)
+            {
+                var go = Props.Mesh(name, mesh, Mats.Glow(c, tex), root.transform, false);
+                go.transform.localPosition = new Vector3(0, k * TOP, 0);
+            }
+            return root;
+        }
+
+        public void SetWeather(WeatherNow w)
+        {
+            wx = w?.kind;
+            bool rainy = wx == "rain" || wx == "storm";
+            if (rainy && rain == null) { rain = Precip("rain", 1600, new Vector2(0.25f, 7), new Color(0.72f, 0.82f, 1f, 0.35f), "rain"); rain.transform.SetParent(transform, false); }
+            if (wx == "snow" && snow == null) { snow = Precip("snow", 1800, new Vector2(2.2f, 2.2f), new Color(1, 1, 1, 0.8f), "snow"); snow.transform.SetParent(transform, false); }
+            if (rain) rain.SetActive(rainy);
+            if (snow) snow.SetActive(wx == "snow");
+        }
+
+        void UpdateWeather(float dt, Vector3 me)
+        {
+            void Fall(GameObject layer, float speed)
+            {
+                float y = -Mathf.Repeat(Time.time * speed, TOP);
+                layer.transform.position = new Vector3(Mathf.Round(me.x / 40) * 40, y, Mathf.Round(me.z / 40) * 40);
+            }
+            if (rain && rain.activeSelf) Fall(rain, wx == "storm" ? 150 : 110);
+            if (snow && snow.activeSelf) Fall(snow, 9);
+            float dim = wx == "cloudy" ? 0.6f : wx == "rain" ? 0.5f : wx == "storm" ? 0.35f : wx == "snow" ? 0.7f : wx == "fog" ? 0.55f : wx == "partly" ? 0.85f : 1;
+            sun.intensity = sunBase * dim;
+            float near = wx == "fog" ? 60 : wx == "rain" || wx == "storm" || wx == "snow" ? 180 : 300;
+            float far = wx == "fog" ? 330 : wx == "rain" || wx == "storm" || wx == "snow" ? 620 : 1000;
+            RenderSettings.fogStartDistance += (near - RenderSettings.fogStartDistance) * Mathf.Min(1, dt);
+            RenderSettings.fogEndDistance += (far - RenderSettings.fogEndDistance) * Mathf.Min(1, dt);
+            float f = 0;
+            if (wx == "storm")
+            {
+                nextFlash -= dt;
+                if (nextFlash <= 0) { flash = 0.35f; nextFlash = 5 + Random.value * 9; Sfx.Play("strike", 0.3f); }
+                flash = Mathf.Max(0, flash - dt);
+                f = flash > 0 ? (Mathf.Sin(flash * 60) > 0 ? 3 : 0.5f) : 0;
+            }
+            RenderSettings.ambientSkyColor = ambBase * (0.75f + 0.25f * dim) + Color.white * f * 0.3f;
         }
 
         /* ------------------ Frame ------------------ */
@@ -361,7 +562,8 @@ namespace Riftborn
             float t = Time.time;
             foreach (var b in apexes.Values) b.Update(dt, 0, Mathf.Max(0, Mathf.Sin(t * 0.8f) - 0.8f) * 5, null);
             tileTimer -= dt;
-            if (tileTimer <= 0) { tileTimer = 0.5f; UpdateTiles(); }
+            if (tileTimer <= 0) { tileTimer = 0.5f; if (StyleFor(GameState.save?.settings.map ?? "scanner") != style) ApplySettings(); UpdateTiles(); SyncLinks(); if (GMaps.Active) GMaps.UpdateCopyright(style, lat, lng); }
+            UpdateWeather(dt, me);
             HandleInput();
             var look = me + new Vector3(0, 4, 0);
             var off = Quaternion.Euler(PITCH, yaw, 0) * new Vector3(0, 0, -dist);

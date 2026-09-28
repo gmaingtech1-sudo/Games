@@ -19,6 +19,7 @@ namespace Riftborn
     public class Spawn
     {
         public string id, sp; public double lat, lng, lvlRoll; public int[] ivs; public long expires;
+        public bool boost;   // drawn out by the weather: stronger, more XP
     }
 
     public class Guardian { public string sp; public int lvl; public int[] iv; }
@@ -127,9 +128,10 @@ namespace Riftborn
             return cell;
         }
 
-        static double SpeciesWeight(Species sp, El biome, bool night)
+        static double SpeciesWeight(Species sp, El biome, bool night, El? boost)
         {
             double w = Species.Rarities[sp.rar].weight / Species.Wild.Count((s) => s.rar == sp.rar);
+            if (sp.el == boost) w *= 2.5;
             if (sp.el == biome) w *= 3;
             if (night && sp.el == El.Void) w *= 3;
             if (!night && sp.el == El.Void) w *= 0.6;
@@ -146,9 +148,10 @@ namespace Riftborn
             int hour = DateTimeOffset.FromUnixTimeMilliseconds(now).ToLocalTime().Hour;
             bool night = hour >= 20 || hour < 5;
             var list = new List<Spawn>();
+            El? boost = Weather.Boost;
             for (int k = 0; k < n; k++)
             {
-                var sp = Rng.Weighted(Species.Wild, (s) => SpeciesWeight(s, cell.biome, night), r);
+                var sp = Rng.Weighted(Species.Wild, (s) => SpeciesWeight(s, cell.biome, night, boost), r);
                 list.Add(new Spawn
                 {
                     id = "s" + cell.key + ":" + win + ":" + k, sp = sp.id,
@@ -157,6 +160,7 @@ namespace Riftborn
                     lvlRoll = r(),
                     ivs = new[] { Rng.RandInt(0, 10, r), Rng.RandInt(0, 10, r), Rng.RandInt(0, 10, r) },
                     expires = (win + 1) * SPAWN_MS - cell.offset,
+                    boost = sp.el == boost,
                 });
                 r();   // seed (used by the web game's animation)
             }
@@ -195,9 +199,11 @@ namespace Riftborn
         /* ------------------ Rift guardians ------------------ */
 
         // hollow: the Hollow's machines corrupt Void and Volt creatures.
-        public static List<Guardian> Guardians(Rift rift, int level, long seedExtra, bool hollow)
+        // seedExtra is a day number or a Rift's stored seed (none counts as 0,
+        // like the web game).
+        public static List<Guardian> Guardians(Rift rift, int level, object seedExtra, bool hollow)
         {
-            Func<double> r = new Seeded(Rng.Key("guard", rift.id, level, seedExtra)).Next;
+            Func<double> r = new Seeded(Rng.Key("guard", rift.id, level, seedExtra ?? 0)).Next;
             int n = level <= 2 ? 1 : level <= 5 ? 2 : 3;
             int maxRar = level >= 8 ? 3 : level >= 5 ? 2 : level >= 2 ? 1 : 0;
             var pool = Species.Wild.Where((s) => s.rar <= maxRar).ToList();
@@ -210,5 +216,19 @@ namespace Riftborn
             }
             return team;
         }
+
+        /* ------------------ Geometry for links and fields ------------------ */
+
+        // Do segments ab and cd cross (sharing an endpoint doesn't count)?
+        public static bool Crosses((double x, double y) a, (double x, double y) b, (double x, double y) c, (double x, double y) d)
+        {
+            bool Same((double x, double y) p, (double x, double y) q) => Math.Abs(p.x - q.x) < 1e-6 && Math.Abs(p.y - q.y) < 1e-6;
+            if (Same(a, c) || Same(a, d) || Same(b, c) || Same(b, d)) return false;
+            int O((double x, double y) p, (double x, double y) q, (double x, double y) r) => Math.Sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
+            return O(a, b, c) != O(a, b, d) && O(c, d, a) != O(c, d, b);
+        }
+
+        public static double TriArea((double x, double y) a, (double x, double y) b, (double x, double y) c) =>
+            Math.Abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) / 2;
     }
 }

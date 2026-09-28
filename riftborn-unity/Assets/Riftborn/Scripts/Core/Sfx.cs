@@ -59,7 +59,7 @@ namespace Riftborn
 
         public static void Play(string name, float volume = 1)
         {
-            if (GameState.save != null && !GameState.save.sound) return;
+            if (GameState.save != null && !GameState.save.settings.sound) return;
             if (src == null)
             {
                 var go = new GameObject("Sfx");

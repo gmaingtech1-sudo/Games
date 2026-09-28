@@ -129,6 +129,13 @@ namespace Riftborn
 
         static readonly Dictionary<string, Species> byId = All.ToDictionary((s) => s.id);
         public static Species ById(string id) => byId[id];
+        public static bool Exists(string id) => id != null && byId.ContainsKey(id);
+
+        // DNA of each parent used per fusion.
+        public static int FuseCost(string parentId) => new[] { 60, 100, 160, 240 }[ById(parentId).rar];
+
+        // The web game's element ids ("ember", "tide"…).
+        public static string ElId(El e) => e.ToString().ToLowerInvariant();
         public static readonly Species[] Wild = All.Where((s) => !s.Hybrid).ToArray();
         public static readonly Species[] Hybrids = All.Where((s) => s.Hybrid).ToArray();
         public const int MaxLevel = 30;
@@ -145,11 +152,14 @@ namespace Riftborn
         public bool Boss => hpx > 1;
         public Species Species => Species.ById(sp);
 
-        public int Hp => Mathf.RoundToInt((Species.hp + iv[0] * 2) * (1 + (lvl - 1) * 0.08f));
-        public int Atk => Mathf.RoundToInt((Species.atk + iv[1] * 0.6f) * (1 + (lvl - 1) * 0.07f));
-        public int Spd => Mathf.RoundToInt(Species.spd + iv[2] * 0.3f + lvl / 4f);
-        public int Power => Mathf.RoundToInt(Hp * 0.8f + Atk * 10 + Spd * 5);
+        // Rounded like JavaScript's Math.round, so stats match the web game.
+        static int R(double x) => (int)Math.Floor(x + 0.5);
+        int[] Iv => iv != null && iv.Length >= 3 ? iv : new[] { 5, 5, 5 };
+        public int Hp => R((Species.hp + Iv[0] * 2) * (1 + (lvl - 1) * 0.08));
+        public int Atk => R((Species.atk + Iv[1] * 0.6) * (1 + (lvl - 1) * 0.07));
+        public int Spd => R(Species.spd + Iv[2] * 0.3 + lvl / 4.0);
+        public int Power => R(Hp * 0.8 + Atk * 10 + Spd * 5);
         // DNA needed to go from this level to the next.
-        public int LevelCost => Mathf.RoundToInt((20 + lvl * 12) * new[] { 1f, 1.4f, 1.9f, 2.6f }[Species.rar]);
+        public int LevelCost => R((20 + lvl * 12) * new[] { 1, 1.4, 1.9, 2.6 }[Species.rar]);
     }
 }
