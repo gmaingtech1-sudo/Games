@@ -3,7 +3,7 @@
 (function (PM) {
   'use strict';
 
-  const { TAU, outline, starPath, heartPath } = PM.art;
+  const { TAU, outline, roundRect, starPath, heartPath } = PM.art;
 
   class StarCatch {
     constructor() {
@@ -623,6 +623,260 @@
     }
   }
 
+  /* ---------------- Memory Match ---------------- */
+
+  // A card-flip matching game: find the six pairs before the clock runs out.
+  // Quick matches build a x2/x3 combo; a miss resets it.
+  class MemoryMatch {
+    constructor() {
+      this.pet = new PM.PetView();
+      this.fx = new PM.Particles();
+      this.running = false;
+      this.W = 1;
+      this.H = 1;
+      this.cols = 3;
+      this.rows = 4;
+      this.cards = [];
+      this.texts = [];
+    }
+
+    start(W, H) {
+      this.W = W;
+      this.H = H;
+      this.score = 0;
+      this.coins = 0;
+      this.matches = 0;
+      this.moves = 0;
+      this.combo = 1;
+      this.won = false;
+      this.t = 0;
+      this.time = 45;
+      this.state = 'play'; // play | checking | done
+      this.checkT = 0;
+      this.open = [];
+      this.texts = [];
+      this.fx.list = [];
+      this.pet.x = 0;
+      this.pet.scale = 1;
+      this.layoutGrid();
+      this.deal();
+      this.running = true;
+    }
+
+    petSize() { return Math.min(this.W * 0.5, this.H * 0.22, 130); }
+
+    // Where the grid sits: cards are square, sized to fit the space above the pet's corner.
+    layoutGrid() {
+      const pad = Math.min(this.W, this.H) * 0.03;
+      const top = this.H * 0.06;
+      const gridW = this.W * 0.95;
+      const gridH = this.H * 0.78;
+      const cw = (gridW - pad * (this.cols - 1)) / this.cols;
+      const ch = (gridH - pad * (this.rows - 1)) / this.rows;
+      this.cardSize = Math.min(cw, ch);
+      const totalW = this.cardSize * this.cols + pad * (this.cols - 1);
+      const totalH = this.cardSize * this.rows + pad * (this.rows - 1);
+      this.gridX = (this.W - totalW) / 2;
+      this.gridY = top + (gridH - totalH) / 2;
+      this.pad = pad;
+    }
+
+    cardPos(i) {
+      const col = i % this.cols;
+      const row = Math.floor(i / this.cols);
+      return {
+        x: this.gridX + col * (this.cardSize + this.pad) + this.cardSize / 2,
+        y: this.gridY + row * (this.cardSize + this.pad) + this.cardSize / 2,
+      };
+    }
+
+    resize(W, H) {
+      this.W = W;
+      this.H = H;
+      this.layoutGrid();
+      this.cards.forEach((c, i) => Object.assign(c, this.cardPos(i)));
+    }
+
+    deal() {
+      const kinds = Object.keys(PM.FOODS).filter((k) => !PM.FOODS[k].special);
+      for (let i = kinds.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [kinds[i], kinds[j]] = [kinds[j], kinds[i]];
+      }
+      const pairs = (this.cols * this.rows) / 2;
+      let deck = kinds.slice(0, pairs).concat(kinds.slice(0, pairs));
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      this.cards = deck.map((kind, i) => Object.assign({ kind, matched: false, open: false, flip: 0 }, this.cardPos(i)));
+      this.open = [];
+    }
+
+    pointer(x, y, type) {
+      if (!this.running || type !== 'down' || this.state !== 'play') return;
+      const half = this.cardSize / 2;
+      const c = this.cards.find((k) => !k.matched && !k.open && Math.abs(x - k.x) < half && Math.abs(y - k.y) < half);
+      if (c) this.flip(c);
+    }
+
+    flip(c) {
+      c.open = true;
+      PM.audio.play('click');
+      this.open.push(c);
+      if (this.open.length < 2) return;
+      this.moves += 1;
+      this.state = 'checking';
+      this.matched = this.open[0].kind === this.open[1].kind;
+      this.checkT = this.matched ? 0.4 : 0.75;
+    }
+
+    settle() {
+      const [a, b] = this.open;
+      if (this.matched) {
+        a.matched = true;
+        b.matched = true;
+        this.matches += 1;
+        this.combo = Math.min(3, this.combo + 1);
+        const pts = 10 * this.combo;
+        this.score += pts;
+        if (this.combo >= 2) this.coins += 1;
+        PM.audio.play('sparkle');
+        PM.audio.buzz(10);
+        this.fx.sparkles(a.x, a.y, 6, this.cardSize);
+        this.fx.sparkles(b.x, b.y, 6, this.cardSize);
+        this.texts.push({ x: (a.x + b.x) / 2, y: this.gridY - 6, text: this.combo > 1 ? `+${pts} x${this.combo}` : `+${pts}`, color: '#FF5DA2', t: 0 });
+        this.pet.setExpr('giggle', 0.6);
+        this.pet.hop(220);
+      } else {
+        a.open = false;
+        b.open = false;
+        this.combo = 1;
+        PM.audio.play('no');
+        this.pet.setExpr('sad', 0.6);
+        this.pet.shakeHead(0.35);
+      }
+      this.open = [];
+      this.state = 'play';
+    }
+
+    finish(won) {
+      this.running = false;
+      this.won = won;
+      this.state = 'done';
+      this.pet.lookAt = null;
+      if (won) {
+        this.score += Math.floor(this.time) * 2;
+        this.pet.setExpr('yum', 4);
+        this.pet.hop(300);
+      } else {
+        this.pet.setExpr('sad', 3);
+      }
+      return 'over';
+    }
+
+    // Returns 'over' on the frame the round ends.
+    update(dt) {
+      this.pet.x = Math.min(Math.max(this.pet.x, this.petSize() * 0.5), this.W - this.petSize() * 0.5);
+      this.pet.update(dt, { W: this.W, size: this.petSize(), canWander: false, stageScale: 1 });
+      this.fx.update(dt);
+      this.texts.forEach((t) => { t.t += dt; t.y -= 34 * dt; });
+      this.texts = this.texts.filter((t) => t.t < 0.9);
+      this.cards.forEach((c) => {
+        const target = c.open || c.matched ? 1 : 0;
+        c.flip += (target - c.flip) * Math.min(1, dt * 11);
+      });
+      if (!this.running) return null;
+      this.t += dt;
+      if (this.state === 'play') {
+        if (this.matches >= (this.cols * this.rows) / 2) return this.finish(true);
+        this.time -= dt;
+        if (this.time <= 0) { this.time = 0; return this.finish(false); }
+      } else if (this.state === 'checking') {
+        this.checkT -= dt;
+        if (this.checkT <= 0) {
+          this.settle();
+          if (this.matches >= (this.cols * this.rows) / 2) return this.finish(true);
+        }
+      }
+      return null;
+    }
+
+    drawBackground(ctx) {
+      const { W, H } = this;
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#FFE1B8');
+      g.addColorStop(1, '#FFF3DE');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      [[0.12, 0.14, 0.1], [0.88, 0.3, 0.08], [0.75, 0.08, 0.06]].forEach(([fx, fy, fr]) => {
+        ctx.beginPath();
+        ctx.arc(W * fx, H * fy, W * fr, 0, TAU);
+        ctx.fill();
+      });
+    }
+
+    drawCard(ctx, c) {
+      const s = this.cardSize;
+      const k = Math.cos(c.flip * Math.PI); // 1 (face down) -> -1 (face up), pinches at 0.5
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.scale(Math.max(0.06, Math.abs(k)), 1);
+      const faceUp = k < 0;
+      roundRect(ctx, -s / 2, -s / 2, s, s, s * 0.14);
+      if (faceUp) {
+        ctx.fillStyle = c.matched ? '#EAFBF3' : '#FFFDF8';
+        ctx.fill();
+        outline(ctx, Math.max(2, s * 0.045));
+        ctx.save();
+        // undo the horizontal squash so the food art isn't stretched
+        ctx.scale(1 / Math.max(0.06, Math.abs(k)), 1);
+        PM.art.drawFood(ctx, c.kind, 0, 0, s * 0.62);
+        ctx.restore();
+        if (c.matched) {
+          ctx.strokeStyle = 'rgba(54,194,162,0.6)';
+          ctx.lineWidth = Math.max(2, s * 0.05);
+          ctx.stroke();
+        }
+      } else {
+        ctx.fillStyle = '#FF8FBF';
+        ctx.fill();
+        outline(ctx, Math.max(2, s * 0.045));
+        roundRect(ctx, -s * 0.36, -s * 0.36, s * 0.72, s * 0.72, s * 0.1);
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+        ctx.lineWidth = Math.max(1.5, s * 0.035);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    draw(ctx, s) {
+      ctx.save();
+      this.drawBackground(ctx);
+      this.cards.forEach((c) => this.drawCard(ctx, c));
+      this.pet.draw(ctx, {
+        species: s.species, color: s.color, hat: s.hat, outfit: s.outfit, size: this.petSize(),
+        groundY: this.H - 6, clean: 100, sick: false, mood: this.won ? 'happy' : 'ok',
+      });
+      this.fx.draw(ctx);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const t of this.texts) {
+        ctx.globalAlpha = t.t < 0.5 ? 1 : Math.max(0, 1 - (t.t - 0.5) / 0.4);
+        ctx.font = `${t.text.length > 4 ? 16 : 18}px ${PM.FONT_DISPLAY}`;
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.strokeText(t.text, t.x, t.y);
+        ctx.fillStyle = t.color;
+        ctx.fillText(t.text, t.x, t.y);
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+  }
+
   PM.StarCatch = StarCatch;
   PM.BubblePop = BubblePop;
+  PM.MemoryMatch = MemoryMatch;
 })(window.PM = window.PM || {});

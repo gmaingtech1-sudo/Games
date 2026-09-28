@@ -37,14 +37,15 @@
   const ctx = els.canvas.getContext('2d');
   const pet = new PM.PetView();
   const fx = new PM.Particles();
-  const games = { stars: new PM.StarCatch(), bubbles: new PM.BubblePop() };
-  // stars and bubbles are solo; duo is two players on this phone; online is a duel with a friend
-  const GAME_OF = { stars: 'stars', bubbles: 'bubbles', duo: 'bubbles', online: 'bubbles' };
+  const games = { stars: new PM.StarCatch(), bubbles: new PM.BubblePop(), match: new PM.MemoryMatch() };
+  // stars, bubbles and match are solo; duo is two players on this phone; online is a duel with a friend
+  const GAME_OF = { stars: 'stars', bubbles: 'bubbles', match: 'match', duo: 'bubbles', online: 'bubbles' };
   let gameKind = 'stars';   // which arcade game is being played
   let game = games[GAME_OF[gameKind]];
   const GAME_INFO = {
     stars: { label: 'Stars', tip: 'Slide your finger to move.<br>Catch stars and coins, dodge storm clouds!' },
     bubbles: { label: 'Score', tip: 'Tap bubbles to pop them. Pop fast for combos!<br>Rainbows are worth more; storm bubbles cost time.' },
+    match: { label: 'Score', tip: 'Flip two cards to find a matching pair.<br>Quick matches build a bigger combo; a miss resets it.' },
     duo: { label: 'P1', tip: 'Player 1 taps the left half, player 2 the right.<br>Same bubbles on both sides. Storm bubbles cost 5 points!' },
     online: { label: 'You', tip: 'Duel! Pop more bubbles than your friend in 30 seconds.' },
   };
@@ -78,7 +79,7 @@
   let resetArmed = 0;
   let shopTab = 'food';
   const timers = { save: 0, ui: 0, stink: 0, z: 0, purr: 0, bubble: 0, night: 0, idle: 0 };
-  const icons = { food: {}, hat: {}, wall: {}, sticker: {}, stickerLocked: '' };
+  const icons = { food: {}, hat: {}, outfit: {}, wall: {}, sticker: {}, stickerLocked: '' };
   const toastQueue = [];
   let goalsTab = 'goals';
   let settingsDirty = false; // the birthday changed: check for a party once settings close
@@ -332,7 +333,7 @@
     els.xpArc.style.opacity = li.frac >= 0.01 ? '' : '0'; // no stray dot at 0 XP
     els.lvRing.setAttribute('aria-valuenow', String(Math.round(li.frac * 100)));
     els.lvRing.setAttribute('aria-label', `Level ${li.level}. ${li.toNext} XP to the next level.`);
-    els.goalsBadge.hidden = !(M.goalsReady(s) || s.stickerBadge);
+    els.goalsBadge.hidden = !(M.goalsReady(s) || s.stickerBadge || M.weeklyReady(s));
     els.friendsDot.hidden = !friend;
     els.friendsBtn.setAttribute('aria-label', friend ? `Playdate with ${friend.name}` : 'Play with friends');
     for (const m of meters) {
@@ -1152,6 +1153,7 @@
     closeTray();
     $('best-stars').textContent = `Best ${s.best}`;
     $('best-bubbles').textContent = `Best ${s.bestBubbles}`;
+    $('best-match').textContent = `Best ${s.bestMatch}`;
     els.arcade.hidden = false;
     updateUI();
   }
@@ -1209,6 +1211,7 @@
     $('go-again').textContent = 'Play again';
     if (gameKind === 'duo') { endDuo(); return; }
     if (gameKind === 'online') { endOnline(); return; }
+    if (gameKind === 'match') { endMatch(); return; }
     const stars = gameKind === 'stars';
     const score = game.score;
     const coins = game.coins * 2 + Math.floor(score / (stars ? 3 : 6));
@@ -1259,6 +1262,38 @@
     track('bubbles', game.popped);
     track('arcade');
     gainXP(6 + Math.min(20, (a + b) * 0.15));
+    save();
+    updateUI();
+  }
+
+  // Memory Match: won means every pair was found before time ran out.
+  function endMatch() {
+    const score = game.score;
+    const coins = game.coins * 2 + Math.floor(score / 10);
+    const newBest = score > s.bestMatch && score >= 20;
+    s.bestMatch = Math.max(s.bestMatch, score);
+    s.coins += coins;
+    s.stats.fun = M.clamp(s.stats.fun + Math.min(28, 8 + score * 0.4));
+    s.stats.energy = M.clamp(s.stats.energy - 5);
+    s.stats.hunger = M.clamp(s.stats.hunger - 4);
+    $('go-title').textContent = newBest ? 'New best!' : game.won ? 'All matched!' : 'Time’s up!';
+    $('go-score-label').textContent = 'Score';
+    $('go-score').textContent = score;
+    $('go-best-label').textContent = 'Best';
+    $('go-best').textContent = s.bestMatch;
+    $('go-coins').textContent = `+${coins}`;
+    $('go-note').textContent = game.won
+      ? `Found all ${game.matches} pairs in ${game.moves} moves. ${coins > 0 ? `+${coins} coins.` : ''}`
+      : `Found ${game.matches} pairs before time ran out. Quick matches build a bigger combo.`;
+    els.over.hidden = false;
+    A.play(newBest ? 'levelup' : game.won ? 'sparkle' : 'gameover');
+    if (coins > 0) bumpCoins();
+    if (game.won) {
+      s.counts.matchWins += 1;
+      track('match');
+    }
+    track('arcade');
+    gainXP(4 + Math.min(24, score * 0.25));
     save();
     updateUI();
   }
@@ -1327,7 +1362,7 @@
 
   function renderShop() {
     els.shopCoins.textContent = s.coins;
-    ['food', 'hats', 'decor'].forEach((t) => $(`tab-${t}`).setAttribute('aria-selected', String(t === shopTab)));
+    ['food', 'hats', 'outfits', 'decor'].forEach((t) => $(`tab-${t}`).setAttribute('aria-selected', String(t === shopTab)));
     els.shopGrid.innerHTML = '';
     const coinDot = '<span class="coin-dot" aria-hidden="true"></span>';
     const priceBtn = (item) => `<button type="button" class="buy${s.coins < item.price ? ' poor' : ''}" ` +
@@ -1359,6 +1394,15 @@
         if (wearing) btn = '<button type="button" class="buy wearing">Take off</button>';
         else if (owned) btn = '<button type="button" class="buy alt">Wear</button>';
         add(icons.hat[k], h, wearing ? 'Wearing now' : owned ? (h.special ? 'A birthday present' : 'Yours') : '', btn, (el) => hatAction(k, el));
+      }
+    } else if (shopTab === 'outfits') {
+      for (const [k, o] of Object.entries(PM.OUTFITS)) {
+        const owned = s.outfits.includes(k);
+        const wearing = s.outfit === k;
+        let btn = priceBtn(o);
+        if (wearing) btn = '<button type="button" class="buy wearing">Take off</button>';
+        else if (owned) btn = '<button type="button" class="buy alt">Wear</button>';
+        add(icons.outfit[k], o, wearing ? 'Wearing now' : owned ? 'Yours' : '', btn, (el) => outfitAction(k, el));
       }
     } else {
       const here = M.wallOf(s, s.room);
@@ -1418,6 +1462,27 @@
     updateUI();
   }
 
+  function outfitAction(k, item) {
+    const o = PM.OUTFITS[k];
+    if (!s.outfits.includes(k)) {
+      if (!M.buyOutfit(s, k)) { notEnough(item, o.price); return; }
+      A.play('coin');
+      A.buzz(10);
+      track('shop');
+    } else {
+      s.outfit = s.outfit === k ? null : k;
+      A.play('click');
+    }
+    if (s.outfit) {
+      fx.sparkles(pet.geo.x, pet.geo.cy, 10, pet.geo.w * 0.5);
+      pet.setExpr('yum', 1);
+    }
+    sendHello();
+    save();
+    renderShop();
+    updateUI();
+  }
+
   // Buying a wallpaper puts it up in the room you're in; owned ones can go anywhere.
   function wallAction(k, item) {
     const w = PM.WALLS[k];
@@ -1444,23 +1509,66 @@
     A.play('click');
     if (!s) return;
     M.ensureGoals(s);
-    goalsTab = s.stickerBadge && !M.goalsReady(s) ? 'stickers' : 'goals';
+    M.ensureWeekly(s);
+    goalsTab = M.weeklyReady(s) ? 'weekly' : (s.stickerBadge && !M.goalsReady(s) ? 'stickers' : 'goals');
     renderGoalsSheet();
     openSheet(els.goalsSheet);
   }
 
+  const GOALS_TITLE = { goals: 'Today\u2019s goals', weekly: 'This week\u2019s quest', stickers: 'Sticker album' };
+
   function renderGoalsSheet() {
-    ['goals', 'stickers'].forEach((k) => $(`gtab-${k}`).setAttribute('aria-selected', String(k === goalsTab)));
+    ['goals', 'weekly', 'stickers'].forEach((k) => $(`gtab-${k}`).setAttribute('aria-selected', String(k === goalsTab)));
     $('goals-pane').hidden = goalsTab !== 'goals';
+    $('weekly-pane').hidden = goalsTab !== 'weekly';
     $('stickers-pane').hidden = goalsTab !== 'stickers';
-    $('goals-title').textContent = goalsTab === 'goals' ? 'Today\u2019s goals' : 'Sticker album';
-    if (goalsTab === 'goals') {
-      renderGoals();
-    } else {
+    $('goals-title').textContent = GOALS_TITLE[goalsTab];
+    if (goalsTab === 'goals') renderGoals();
+    else if (goalsTab === 'weekly') renderWeekly();
+    else {
       renderStickers();
       s.stickerBadge = false;
     }
     els.stickersBadge.hidden = !s.stickerBadge;
+    $('weekly-badge').hidden = !M.weeklyReady(s);
+    updateUI();
+  }
+
+  // Days left until the weekly quest resets (it always turns over Monday).
+  function daysLeftInWeek() {
+    const day = new Date().getDay(); // 0 = Sunday
+    return day === 0 ? 1 : 8 - day;
+  }
+
+  function renderWeekly() {
+    const g = s.weekly;
+    const el = $('weekly-goal');
+    if (!g) { el.innerHTML = '<p class="sheet-foot">Come back tomorrow for this week\u2019s quest.</p>'; return; }
+    const ready = g.have >= g.n && !g.claimed;
+    const R = M.WEEKLY_REWARD;
+    const days = daysLeftInWeek();
+    const action = g.claimed ? '<span class="done-tag">Claimed</span>'
+      : ready ? '<button type="button" class="btn primary">Claim</button>' : '<span></span>';
+    el.className = `goal weekly${g.claimed ? ' claimed' : ''}`;
+    el.innerHTML = `<div><div class="goal-text"></div><div class="goal-meta">${Math.floor(g.have)} / ${g.n} · +${R.coins} coins, +${R.xp} XP · ${days} day${days === 1 ? '' : 's'} left</div></div>` +
+      `${action}<div class="goal-bar"><div style="width:${Math.round((Math.min(g.have, g.n) / g.n) * 100)}%"></div></div>`;
+    el.querySelector('.goal-text').textContent = M.weeklyText(s);
+    const b = el.querySelector('button');
+    if (b) b.addEventListener('click', claimWeeklyQuest);
+  }
+
+  function claimWeeklyQuest() {
+    const r = M.claimWeekly(s);
+    if (!r) return;
+    A.play('levelup');
+    A.buzz([20, 40, 20, 40, 20]);
+    bumpCoins();
+    fx.confetti(W / 2, H * 0.3, 40);
+    s.counts.weeklyDone += 1;
+    gainXP(r.xp);
+    toast(`Weekly quest done! +${r.coins} coins, +${r.xp} XP.`, 3400);
+    save();
+    renderWeekly();
     updateUI();
   }
 
@@ -1607,6 +1715,12 @@
       setTimeout(() => {
         if (s) hint('goals', 'New: daily goals! Tap the checklist at the top to see them.', 3600);
       }, 1800);
+      updateUI();
+    }
+    if (M.ensureWeekly(s) && s.hatched) {
+      setTimeout(() => {
+        if (s) hint('weekly', 'New this week: a bigger quest for a bigger prize. See it under the Week tab.', 3800);
+      }, 2600);
       updateUI();
     }
     if (!s.hatched) return;
@@ -2088,7 +2202,7 @@
 
   function myProfile() {
     return {
-      name: s.name, species: s.species, color: s.color, hat: s.hat,
+      name: s.name, species: s.species, color: s.color, hat: s.hat, outfit: s.outfit,
       level: M.levelOf(s.xp), stage: M.stageIndex(s), owner: s.owner.name || '',
     };
   }
@@ -2106,6 +2220,7 @@
       species: own(PM.SPECIES, m.species) ? m.species : 'mochi',
       color: own(PM.PET_COLORS, m.color) ? m.color : 'pink',
       hat: own(PM.HATS, m.hat) ? m.hat : null,
+      outfit: own(PM.OUTFITS, m.outfit) ? m.outfit : null,
       level: Math.max(1, Math.min(999, Math.floor(Number(m.level)) || 1)),
       stage: Math.max(0, Math.min(M.STAGES.length - 1, Math.floor(Number(m.stage)) || 0)),
     };
@@ -2120,7 +2235,7 @@
     const v = new PM.PetView();
     v.x = 32;
     v.update(0, { W: 64, size: 42, stageScale: 1, canWander: false });
-    v.draw(g, { species: p.species, color: p.color, hat: p.hat, size: 42, groundY: 58, clean: 100, sick: false, mood: 'happy' });
+    v.draw(g, { species: p.species, color: p.color, hat: p.hat, outfit: p.outfit, size: 42, groundY: 58, clean: 100, sick: false, mood: 'happy' });
     return c.toDataURL();
   }
 
@@ -2208,7 +2323,7 @@
   function drawFriend() {
     const v = friend.view;
     v.draw(ctx, {
-      species: friend.species, color: friend.color, hat: friend.hat, size: petSize() * 0.88,
+      species: friend.species, color: friend.color, hat: friend.hat, outfit: friend.outfit, size: petSize() * 0.88,
       groundY: layout.groundY, clean: 100, sick: false, mood: 'happy',
     });
     const label = friend.name;
@@ -2726,6 +2841,7 @@
     $('go-again').addEventListener('click', playAgain);
     $('play-stars').addEventListener('click', () => startGame('stars'));
     $('play-bubbles').addEventListener('click', () => startGame('bubbles'));
+    $('play-match').addEventListener('click', () => startGame('match'));
     $('play-duo').addEventListener('click', () => startGame('duo'));
     $('arcade-close').addEventListener('click', () => { A.play('click'); closeArcade(); });
     els.goalsBtn.addEventListener('click', openGoals);
@@ -2861,6 +2977,7 @@
   function boot() {
     for (const k of Object.keys(PM.FOODS)) icons.food[k] = PM.art.foodIcon(k, 56);
     for (const k of Object.keys(PM.HATS)) icons.hat[k] = PM.art.hatIcon(k, 60);
+    for (const k of Object.keys(PM.OUTFITS)) icons.outfit[k] = PM.art.outfitIcon(k, 60);
     for (const k of Object.keys(PM.WALLS)) icons.wall[k] = PM.rooms.wallIcon(k, 60);
     icons.stickerLocked = PM.art.stickerIcon('egg', 64, true);
     wire();

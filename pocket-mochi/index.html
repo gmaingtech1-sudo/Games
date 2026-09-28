@@ -158,6 +158,12 @@
           <span class="gp-desc">Tap bubbles fast for combos</span>
           <span id="best-bubbles" class="gp-best">Best 0</span>
         </button>
+        <button id="play-match" class="game-pick" type="button">
+          <svg class="gp-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="10" rx="1.5" transform="rotate(-8 6.5 9)"/><rect x="14" y="4" width="7" height="10" rx="1.5" transform="rotate(8 17.5 9)"/></svg>
+          <span class="gp-name">Memory Match</span>
+          <span class="gp-desc">Flip cards, find the pairs fast</span>
+          <span id="best-match" class="gp-best">Best 0</span>
+        </button>
         <button id="play-duo" class="game-pick" type="button">
           <svg class="gp-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="12" r="4.5"/><circle cx="16.5" cy="12" r="4.5"/><path d="M12 3v18"/></svg>
           <span class="gp-name">Bubble Pop for 2</span>
@@ -220,6 +226,7 @@
   <div class="tabs" role="tablist">
     <button id="tab-food" class="tab" role="tab" type="button" aria-selected="true" data-tab="food">Snacks</button>
     <button id="tab-hats" class="tab" role="tab" type="button" aria-selected="false" data-tab="hats">Hats</button>
+    <button id="tab-outfits" class="tab" role="tab" type="button" aria-selected="false" data-tab="outfits">Outfits</button>
     <button id="tab-decor" class="tab" role="tab" type="button" aria-selected="false" data-tab="decor">Decor</button>
   </div>
   <div id="shop-grid" class="shop-grid"></div>
@@ -235,12 +242,17 @@
   </div>
   <div class="tabs" role="tablist">
     <button id="gtab-goals" class="tab gtab" role="tab" type="button" aria-selected="true" data-gtab="goals">Today</button>
+    <button id="gtab-weekly" class="tab gtab" role="tab" type="button" aria-selected="false" data-gtab="weekly">Week<span id="weekly-badge" class="tab-dot" hidden></span></button>
     <button id="gtab-stickers" class="tab gtab" role="tab" type="button" aria-selected="false" data-gtab="stickers">Stickers<span id="stickers-badge" class="tab-dot" hidden></span></button>
   </div>
   <div id="goals-pane">
     <div id="goals-list" class="goals"></div>
     <p id="goals-bonus" class="goal-bonus"></p>
     <p class="sheet-foot">New goals every day.</p>
+  </div>
+  <div id="weekly-pane" hidden>
+    <div id="weekly-goal" class="goal weekly"></div>
+    <p class="sheet-foot">One bigger quest every week (Monday to Sunday) for a bigger prize.</p>
   </div>
   <div id="stickers-pane" hidden>
     <p id="stickers-count" class="stickers-count"></p>
@@ -284,12 +296,12 @@
     <li><b>Kitchen:</b> drag a snack onto its mouth, or just tap the snack. The fridge opens the snacks again.</li>
     <li><b>Bathroom:</b> scrub your pet with your finger, then tap Rinse or the shower.</li>
     <li><b>Bedroom:</b> tap the lamp to turn the lights off so energy refills. It wakes up by itself when rested.</li>
-    <li><b>Playroom:</b> flick the ball for your pet to chase. The arcade has Star Catch and Bubble Pop, which earn coins for the Shop.</li>
-    <li><b>Levels:</b> everything you do earns XP. Each new level pays coins and unlocks snacks, hats and wallpapers.</li>
-    <li><b>Daily goals:</b> three new ones every day. Finish them for coins and XP, and all three for a bonus.</li>
+    <li><b>Playroom:</b> flick the ball for your pet to chase. The arcade has Star Catch, Bubble Pop and Memory Match, which earn coins for the Shop.</li>
+    <li><b>Levels:</b> everything you do earns XP. Each new level pays coins and unlocks snacks, hats, outfits and wallpapers.</li>
+    <li><b>Daily goals:</b> three new ones every day. Finish them for coins and XP, and all three for a bonus. The <b>Week</b> tab has one bigger quest for a bigger prize.</li>
     <li><b>Daily rewards:</b> open the game every day for a bigger gift. Day 7 is the best one.</li>
     <li><b>Birthdays:</b> your pet has a party every month on the day it hatched, and on your birthday too. Blow out the candles and open the present in the living room.</li>
-    <li><b>Stickers:</b> collect all 16 in the sticker album (the checklist button).</li>
+    <li><b>Stickers:</b> collect all 19 in the sticker album (the checklist button).</li>
     <li><b>Friends:</b> tap the friends button to host a playdate or join one with a code. Your pets visit, wave, swap snacks and duel at Bubble Pop. <b>Bubble Pop for 2</b> in the arcade is for two players on one phone.</li>
     <li><b>Tap the thought bubble</b> (or a need meter) to go straight to the room that helps.</li>
     <li><b>Tap poop</b> to clean it up. A dot on a room button means there's a mess in that room.</li>

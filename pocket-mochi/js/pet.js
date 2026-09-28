@@ -45,6 +45,7 @@
       hat: null,
       best: 0,
       bestBubbles: 0,
+      bestMatch: 0,
       gift: '',
       hints: {},
       room: 'living',
@@ -54,8 +55,11 @@
       login: { last: '', streak: 0, total: 0 },
       owner: { name: '', bday: '', party: 0 },
       party: null,
-      counts: { fed: 0, baths: 0, hearts: 0, poops: 0, duelsWon: 0, playdates: 0, parties: 0 },
+      counts: { fed: 0, baths: 0, hearts: 0, poops: 0, duelsWon: 0, playdates: 0, parties: 0, weeklyDone: 0, matchWins: 0 },
       stickers: [],
+      weekly: null,
+      outfit: null,
+      outfits: [],
       settings: { sound: true, vibe: true },
     };
   }
@@ -87,6 +91,7 @@
     const goalsOk = s.goals && Array.isArray(s.goals.list) && s.goals.list.every((g) => GOALS[g.id]);
     if (!goalsOk) s.goals = null;
     s.bestBubbles = Number(raw.bestBubbles) || 0;
+    s.bestMatch = Number(raw.bestMatch) || 0;
     // Added in 1.3: login streak, owner profile, birthdays, stickers.
     s.login = Object.assign({ last: '', streak: 0, total: 0 }, raw.login || {});
     s.owner = Object.assign({ name: '', bday: '', party: 0 }, raw.owner || {});
@@ -94,6 +99,11 @@
     s.stickers = Array.isArray(raw.stickers) ? raw.stickers.filter((id) => STICKERS.some((k) => k.id === id)) : [];
     if (!s.party || typeof s.party !== 'object' || s.party.day !== new Date().toDateString()) s.party = null;
     if (s.party && !Array.isArray(s.party.blown)) s.party.blown = new Array(s.party.candles || 1).fill(false);
+    // Added in 1.4: a weekly quest and outfits.
+    const weeklyOk = s.weekly && typeof s.weekly === 'object' && WEEKLY_GOALS[s.weekly.id];
+    s.weekly = weeklyOk ? s.weekly : null;
+    s.outfits = Array.isArray(raw.outfits) ? raw.outfits.filter((k) => PM.OUTFITS && PM.OUTFITS[k]) : [];
+    if (s.outfit && !(PM.OUTFITS && PM.OUTFITS[s.outfit])) s.outfit = null;
     s.hats = s.hats.filter((h) => PM.HATS[h]);
     if (s.hat && !PM.HATS[s.hat]) s.hat = null;
     return s;
@@ -212,7 +222,7 @@
   // Names of shop items that unlock above level `from`, up to level `to`.
   function unlocksBetween(from, to) {
     const out = [];
-    [PM.FOODS, PM.HATS, PM.WALLS].forEach((table) => {
+    [PM.FOODS, PM.HATS, PM.WALLS, PM.OUTFITS].forEach((table) => {
       Object.values(table).forEach((item) => {
         const lv = item.level || 1;
         if (lv > from && lv <= to) out.push(item.name);
@@ -287,6 +297,9 @@
     { id: 'decor', name: 'Home designer', desc: 'Buy 3 wallpapers', icon: 'wall', test: (s) => s.walls.length >= PM.rooms.defaultWalls.length + 3 },
     { id: 'friend', name: 'Playdate', desc: 'Play with a friend online', icon: 'friends', test: (s) => s.counts.playdates >= 1 },
     { id: 'duel', name: 'Champion', desc: 'Win a Bubble Pop duel', icon: 'crown', test: (s) => s.counts.duelsWon >= 1 },
+    { id: 'fashion', name: 'Fashionista', desc: 'Own 3 outfits', icon: 'bowtie', test: (s) => s.outfits.length >= 3 },
+    { id: 'weekly', name: 'Quest complete', desc: 'Finish a weekly quest', icon: 'trophy', test: (s) => s.counts.weeklyDone >= 1 },
+    { id: 'cards', name: 'Card shark', desc: 'Win 5 rounds of Memory Match', icon: 'cards', test: (s) => s.counts.matchWins >= 5 },
   ];
   const STICKER_COINS = 10;
 
@@ -379,8 +392,12 @@
     return true;
   }
 
-  // Counts progress toward today's goals; returns the goals this just finished.
+  // Counts progress toward today's goals (and the weekly quest); returns
+  // the daily goals this just finished.
   function track(s, id, amount) {
+    if (s.weekly && s.weekly.id === id && s.weekly.have < s.weekly.n) {
+      s.weekly.have = Math.min(s.weekly.n, s.weekly.have + (amount || 1));
+    }
     if (!s.goals) return [];
     const done = [];
     s.goals.list.forEach((g) => {
@@ -397,6 +414,59 @@
 
   function goalsReady(s) {
     return !!s.goals && s.goals.list.some((g) => g.have >= g.n && !g.claimed);
+  }
+
+  /* ---------- weekly quest ---------- */
+
+  // Bigger goals, worth a bigger prize; one is picked for the whole week.
+  const WEEKLY_GOALS = {
+    feed:    { amounts: [20, 25], text: (n, name) => `Feed ${name} ${n} snacks this week` },
+    pet:     { amounts: [120, 160], text: (n, name) => `Pet ${name} until ${n} hearts float up this week` },
+    bath:    { amounts: [4, 5], text: (n, name) => `Give ${name} ${n} bubble baths this week` },
+    ball:    { amounts: [40, 60], text: (n, name) => `Bop the ball ${n} times this week` },
+    arcade:  { amounts: [8, 12], text: (n) => `Play ${n} arcade games this week` },
+    bubbles: { amounts: [150, 200], text: (n) => `Pop ${n} bubbles in Bubble Pop this week` },
+    stars:   { amounts: [80, 120], text: (n) => `Catch ${n} stars in Star Catch this week` },
+    match:   { amounts: [10, 16], text: (n) => `Win ${n} rounds of Memory Match this week` },
+  };
+  const WEEKLY_REWARD = { coins: 100, xp: 40 };
+
+  // The Monday that starts this week, as a stable key (so everyone doing the
+  // quest on the same week gets the same goal, and it doesn't shift at night).
+  function weekKey(now) {
+    const d = new Date(now || Date.now());
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d.toDateString();
+  }
+
+  function ensureWeekly(s) {
+    const week = weekKey();
+    if (s.weekly && s.weekly.week === week) return false;
+    const rnd = seeded(`week|${week}|${s.name}`);
+    const pool = Object.keys(WEEKLY_GOALS);
+    const id = pool[Math.floor(rnd() * pool.length)];
+    const amounts = WEEKLY_GOALS[id].amounts;
+    const n = amounts[Math.floor(rnd() * amounts.length)];
+    s.weekly = { week, id, n, have: 0, claimed: false };
+    return true;
+  }
+
+  function weeklyText(s) {
+    const g = s.weekly;
+    return g ? (WEEKLY_GOALS[g.id] || WEEKLY_GOALS.feed).text(g.n, s.name) : '';
+  }
+
+  function weeklyReady(s) {
+    return !!s.weekly && s.weekly.have >= s.weekly.n && !s.weekly.claimed;
+  }
+
+  function claimWeekly(s) {
+    const g = s.weekly;
+    if (!g || g.claimed || g.have < g.n) return null;
+    g.claimed = true;
+    s.coins += WEEKLY_REWARD.coins;
+    return { coins: WEEKLY_REWARD.coins, xp: WEEKLY_REWARD.xp };
   }
 
   // Pays out a finished goal (XP is added by the caller so it can celebrate).
@@ -443,6 +513,7 @@
     STAT_KEYS, STAGES, create, revive, stage, stageIndex, ageDays, simulate, addXP, mood, need, clamp,
     xpForLevel, levelOf, levelInfo, isUnlocked,
     GOAL_REWARD, GOAL_BONUS, ensureGoals, track, goalText, goalsReady, claimGoal,
+    WEEKLY_REWARD, ensureWeekly, weeklyText, weeklyReady, claimWeekly,
     LOGIN_REWARDS, loginDay, collectLogin,
     birthdayToday, startParty, STICKERS, STICKER_COINS, checkStickers,
 
@@ -486,6 +557,15 @@
       s.coins -= h.price;
       s.hats.push(type);
       s.hat = type;
+      return true;
+    },
+
+    buyOutfit(s, type) {
+      const o = PM.OUTFITS[type];
+      if (!o || s.outfits.includes(type) || s.coins < o.price || !isUnlocked(s, o)) return false;
+      s.coins -= o.price;
+      s.outfits.push(type);
+      s.outfit = type;
       return true;
     },
 
@@ -862,6 +942,7 @@
         ctx.restore();
       }
 
+      if (p.outfit) PM.art.drawOutfit(ctx, p.outfit, w, h);
       if (p.hat === 'shades') PM.art.drawShades(ctx, w, -h * 0.55);
       else if (p.hat) {
         ctx.save();

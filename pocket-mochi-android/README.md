@@ -2,7 +2,7 @@
 
 The Pocket Mochi virtual pet as a regular Android app: download the APK, install it, and it gets its own icon on your home screen. No Expo Go, no app store.
 
-**Download:** [`dist/pocket-mochi.apk`](dist/pocket-mochi.apk) (about 250 KB, version 1.3.0)
+**Download:** [`dist/pocket-mochi.apk`](dist/pocket-mochi.apk) (about 250 KB, version 1.4.0)
 
 ## Installing it
 

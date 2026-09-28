@@ -49,6 +49,15 @@
     balloon:    { name: 'Birthday balloon', price: 0, level: 1, special: true },
   };
 
+  // Outfits: a second clothing slot, worn alongside a hat.
+  const OUTFITS = {
+    bandana:  { name: 'Bandana',  price: 20, level: 2 },
+    bowtie:   { name: 'Bow tie',  price: 22, level: 2 },
+    sweater:  { name: 'Sweater',  price: 38, level: 5 },
+    scarf:    { name: 'Scarf',    price: 35, level: 7 },
+    backpack: { name: 'Backpack', price: 55, level: 10 },
+  };
+
   function outline(ctx, w) {
     ctx.lineWidth = w;
     ctx.strokeStyle = INK;
@@ -601,6 +610,144 @@
     ctx.fill();
   };
 
+  // Outfits sit lower than a hat, roughly at the neck/chest. Each function
+  // takes the pet's full width and height so it can find that spot itself.
+  const outfitDraw = {
+    bandana(ctx, w, h) {
+      const lw = w * 0.025;
+      ctx.save();
+      ctx.translate(0, -h * 0.32);
+      roundRect(ctx, -w * 0.42, -h * 0.055, w * 0.84, h * 0.11, h * 0.055);
+      ctx.fillStyle = '#F0433A';
+      ctx.fill();
+      outline(ctx, lw);
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.11, h * 0.05);
+      ctx.lineTo(w * 0.11, h * 0.05);
+      ctx.lineTo(0, h * 0.32);
+      ctx.closePath();
+      ctx.fillStyle = '#F0433A';
+      ctx.fill();
+      outline(ctx, lw);
+      ctx.fillStyle = '#FFFFFF';
+      [[-0.045, 0.12], [0.045, 0.17], [0, 0.24]].forEach(([dx, dy]) => {
+        ctx.beginPath();
+        ctx.arc(dx * w, dy * h, w * 0.018, 0, TAU);
+        ctx.fill();
+      });
+      ctx.restore();
+    },
+    bowtie(ctx, w, h) {
+      const lw = w * 0.025;
+      ctx.save();
+      ctx.translate(0, -h * 0.3);
+      [-1, 1].forEach((d) => {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(d * w * 0.05, -w * 0.09, d * w * 0.17, -w * 0.07, d * w * 0.14, 0);
+        ctx.bezierCurveTo(d * w * 0.17, w * 0.07, d * w * 0.05, w * 0.09, 0, 0);
+        ctx.fillStyle = '#6B4FC4';
+        ctx.fill();
+        outline(ctx, lw);
+      });
+      ctx.beginPath();
+      ctx.arc(0, 0, w * 0.035, 0, TAU);
+      ctx.fillStyle = '#8A6CE0';
+      ctx.fill();
+      outline(ctx, lw);
+      ctx.restore();
+    },
+    sweater(ctx, w, h) {
+      const lw = w * 0.025;
+      ctx.save();
+      const top = -h * 0.36;
+      roundRect(ctx, -w * 0.5, top, w, -top - h * 0.02, h * 0.1);
+      ctx.fillStyle = '#5DB4F0';
+      ctx.fill();
+      ctx.save();
+      ctx.clip();
+      ctx.strokeStyle = '#3F93D6';
+      ctx.lineWidth = h * 0.035;
+      for (let y = top + h * 0.06; y < -h * 0.05; y += h * 0.09) {
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.5, y);
+        ctx.lineTo(w * 0.5, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+      roundRect(ctx, -w * 0.5, top, w, -top - h * 0.02, h * 0.1);
+      outline(ctx, lw);
+      roundRect(ctx, -w * 0.32, top - h * 0.04, w * 0.64, h * 0.08, h * 0.04);
+      ctx.fillStyle = '#4FA8DC';
+      ctx.fill();
+      outline(ctx, lw * 0.8);
+      ctx.restore();
+    },
+    scarf(ctx, w, h) {
+      const lw = w * 0.025;
+      ctx.save();
+      ctx.translate(0, -h * 0.34);
+      const band = () => roundRect(ctx, -w * 0.44, -h * 0.07, w * 0.88, h * 0.14, h * 0.07);
+      band();
+      ctx.fillStyle = '#FFC53D';
+      ctx.fill();
+      ctx.save();
+      band();
+      ctx.clip();
+      ctx.fillStyle = '#F0433A';
+      for (let i = -2; i <= 2; i++) ctx.fillRect(i * w * 0.19 - w * 0.03, -h * 0.1, w * 0.06, h * 0.2);
+      ctx.restore();
+      band();
+      outline(ctx, lw);
+      ctx.save();
+      ctx.translate(w * 0.34, h * 0.03);
+      ctx.rotate(0.2);
+      roundRect(ctx, -w * 0.08, 0, w * 0.16, h * 0.36, w * 0.05);
+      ctx.fillStyle = '#FFC53D';
+      ctx.fill();
+      ctx.save();
+      ctx.beginPath();
+      roundRect(ctx, -w * 0.08, 0, w * 0.16, h * 0.36, w * 0.05);
+      ctx.clip();
+      ctx.fillStyle = '#F0433A';
+      ctx.fillRect(-w * 0.03, 0, w * 0.06, h * 0.36);
+      ctx.restore();
+      roundRect(ctx, -w * 0.08, 0, w * 0.16, h * 0.36, w * 0.05);
+      outline(ctx, lw);
+      ctx.restore();
+      ctx.restore();
+    },
+    backpack(ctx, w, h) {
+      const lw = w * 0.025;
+      ctx.save();
+      roundRect(ctx, w * 0.32, -h * 0.78, w * 0.24, h * 0.54, w * 0.07);
+      ctx.fillStyle = '#5DB4F0';
+      ctx.fill();
+      outline(ctx, lw);
+      roundRect(ctx, w * 0.38, -h * 0.66, w * 0.12, h * 0.16, w * 0.03);
+      ctx.fillStyle = '#3F93D6';
+      ctx.fill();
+      outline(ctx, lw * 0.7);
+      [-1, 1].forEach((d) => {
+        ctx.beginPath();
+        ctx.moveTo(d * w * 0.2, -h * 0.98);
+        ctx.quadraticCurveTo(d * w * 0.3, -h * 0.55, d * w * 0.12, -h * 0.06);
+        ctx.lineCap = 'round';
+        ctx.lineWidth = w * 0.09 + lw * 2;
+        ctx.strokeStyle = INK;
+        ctx.stroke();
+        ctx.lineWidth = w * 0.09;
+        ctx.strokeStyle = '#3F93D6';
+        ctx.stroke();
+      });
+      ctx.restore();
+    },
+  };
+
+  function drawOutfit(ctx, type, w, h) {
+    if (outfitDraw[type]) outfitDraw[type](ctx, w, h);
+  }
+
   function drawHat(ctx, type, w) {
     if (hatDraw[type]) hatDraw[type](ctx, w);
   }
@@ -951,12 +1098,58 @@
     return c.toDataURL();
   }
 
+  // Renders draw(ctx, s) at a generous scale, finds the ink, then redraws it
+  // centered and sized to fill the tile. Saves hand-tuning a frame for every
+  // new item (outfits are drawn body-relative, not built to be icons).
+  function autoFitIcon(draw, size) {
+    const big = 480;
+    const probe = document.createElement('canvas');
+    probe.width = probe.height = big;
+    const pg = probe.getContext('2d');
+    pg.translate(big / 2, big / 2);
+    draw(pg, big * 0.42);
+    const { data } = pg.getImageData(0, 0, big, big);
+    let minX = big;
+    let minY = big;
+    let maxX = 0;
+    let maxY = 0;
+    let found = false;
+    for (let y = 0; y < big; y++) {
+      for (let x = 0; x < big; x++) {
+        if (data[(y * big + x) * 4 + 3] > 10) {
+          found = true;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (!found) { minX = 0; minY = 0; maxX = big; maxY = big; }
+    const bw = Math.max(1, maxX - minX);
+    const bh = Math.max(1, maxY - minY);
+    // centers, converted back out of the probe's own center-of-canvas offset
+    const cx = minX + bw / 2 - big / 2;
+    const cy = minY + bh / 2 - big / 2;
+    const k = (size * 0.86) / Math.max(bw, bh);
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const c = document.createElement('canvas');
+    c.width = c.height = Math.round(size * dpr);
+    const g = c.getContext('2d');
+    g.scale(dpr, dpr);
+    g.translate(size / 2 - cx * k, size / 2 - cy * k);
+    g.scale(k, k);
+    draw(g, big * 0.42);
+    return c.toDataURL();
+  }
+
   /* ---------- Sticker badges ---------- */
 
   const STICKER_COLORS = {
     egg: '#9FE7CA', apple: '#FFB3CF', chef: '#A3D8FF', bubbles: '#A3D8FF', heart: '#FFD0E4',
     poop: '#FFE27A', star: '#CDB9FF', bubble: '#9FE7CA', lv5: '#FFB347', lv12: '#FF8FBF',
     calendar: '#9FE7CA', cake: '#FFE27A', party: '#CDB9FF', wall: '#FFB3CF', friends: '#FFE27A', crown: '#FF8FBF',
+    bowtie: '#CDB9FF', trophy: '#FFC53D', cards: '#A3D8FF',
   };
 
   function drawStickerSymbol(g, icon, c, s) {
@@ -1041,6 +1234,60 @@
         roundRect(g, -s * 0.2, -s * 0.2, s * 0.4, s * 0.4, 5);
         outline(g, 2.5);
         break;
+      case 'bowtie':
+        [-1, 1].forEach((d) => {
+          g.beginPath();
+          g.moveTo(0, 0);
+          g.bezierCurveTo(d * s * 0.08, -s * 0.14, d * s * 0.26, -s * 0.11, d * s * 0.21, 0);
+          g.bezierCurveTo(d * s * 0.26, s * 0.11, d * s * 0.08, s * 0.14, 0, 0);
+          g.fillStyle = '#6B4FC4';
+          g.fill();
+          outline(g, 2.5);
+        });
+        g.beginPath();
+        g.arc(0, 0, s * 0.055, 0, TAU);
+        g.fillStyle = '#8A6CE0';
+        g.fill();
+        outline(g, 2.5);
+        break;
+      case 'trophy':
+        roundRect(g, -s * 0.06, s * 0.14, s * 0.12, s * 0.1, 2);
+        g.fillStyle = '#E0A32A';
+        g.fill();
+        outline(g, 2.2);
+        g.fillRect(-s * 0.16, s * 0.22, s * 0.32, s * 0.05);
+        g.fillStyle = '#E0A32A';
+        g.fill();
+        outline(g, 2.2);
+        g.beginPath();
+        g.moveTo(-s * 0.15, -s * 0.14);
+        g.lineTo(s * 0.15, -s * 0.14);
+        g.lineTo(s * 0.11, s * 0.1);
+        g.lineTo(-s * 0.11, s * 0.1);
+        g.closePath();
+        g.fillStyle = '#FFC53D';
+        g.fill();
+        outline(g, 2.5);
+        [-1, 1].forEach((d) => {
+          g.beginPath();
+          g.ellipse(d * s * 0.19, -s * 0.03, s * 0.055, s * 0.08, 0, 0, TAU);
+          g.lineWidth = 2.2;
+          g.strokeStyle = INK;
+          g.stroke();
+        });
+        break;
+      case 'cards':
+        [-0.08, 0.08].forEach((dx, i) => {
+          g.save();
+          g.translate(dx * s, i * s * 0.02);
+          g.rotate(dx * 0.7);
+          roundRect(g, -s * 0.14, -s * 0.18, s * 0.28, s * 0.36, 4);
+          g.fillStyle = i ? '#FFFFFF' : '#9FE7CA';
+          g.fill();
+          outline(g, 2.2);
+          g.restore();
+        });
+        break;
       case 'friends':
         [[-0.1, '#FFB3CF'], [0.11, '#A3D8FF']].forEach(([x, col]) => {
           g.beginPath();
@@ -1096,10 +1343,11 @@
   PM.SPECIES = SPECIES;
   PM.FOODS = FOODS;
   PM.HATS = HATS;
+  PM.OUTFITS = OUTFITS;
   PM.Particles = Particles;
   PM.art = {
     TAU, outline, roundRect, heartPath, starPath, sparklePath,
-    drawFood, drawHat, drawShades, drawPoop, drawNeedIcon,
+    drawFood, drawHat, drawShades, drawPoop, drawNeedIcon, drawOutfit,
     foodIcon: (type, size) => iconURL((g, s) => drawFood(g, type, s / 2, s / 2, s * 0.86), size),
     stickerIcon,
     hatIcon: (type, size) => iconURL((g, s) => {
@@ -1114,5 +1362,6 @@
       if (type === 'shades') drawShades(g, s * frame[0], 0);
       else drawHat(g, type, s * frame[0]);
     }, size),
+    outfitIcon: (type, size) => autoFitIcon((g, s) => drawOutfit(g, type, s, s * 0.86), size),
   };
 })(window.PM = window.PM || {});
