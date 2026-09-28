@@ -11,3 +11,4 @@ Small games for phones. Each one lives in its own folder.
 | [Riftborn](riftborn/) | A 3D AR game on your real streets, mixing Ingress, Pokémon GO and Jurassic World Alive. Fight over Rifts for your faction, catch life-size 3D dinosaurs in your camera, collect their DNA, fuse hybrids and battle in a 3D arena. |
 | [Riftborn for Android](riftborn-android/) | The same game as an installable Android app. [Download the APK](riftborn-android/dist/riftborn.apk). |
 | [Riftborn trailer](riftborn-trailer/) | A 40-second trailer made from the game's own 3D. [Watch it](riftborn-trailer/riftborn-trailer.mp4). |
+| [Riftborn for Unity](riftborn-unity/) | The game as a Unity 6 project with real AR (ARCore / ARKit via AR Foundation). [Download the project zip](Riftborn-Unity.zip), unzip it (for example to `F:\Riftborn`) and open it in Unity Hub. |
