@@ -2169,7 +2169,7 @@
     if (s.asleep) {
       ctx.fillStyle = 'rgba(14, 16, 44, 0.62)';
       ctx.fillRect(0, 0, W, H);
-      PM.rooms.drawNight(s.room, ctx, L);
+      PM.rooms.drawNight(s.room, ctx, L, pet.t);
     }
     fx.draw(ctx);
     if (!s.asleep) pet.drawSpeech(ctx, W);

@@ -722,7 +722,8 @@
     baseboard(ctx, W, floorY);
 
     const ww = Math.min(W * 0.3, 130);
-    drawWindow(ctx, W * 0.93 - ww, H * 0.07, ww, Math.min(H * 0.19, 105), night);
+    const win = { x: W * 0.93 - ww, y: H * 0.07, w: ww, h: Math.min(H * 0.19, 105) };
+    drawWindow(ctx, win.x, win.y, win.w, win.h, night);
 
     // star garland over the bed
     const gx0 = W * 0.05;
@@ -735,6 +736,7 @@
     ctx.lineWidth = 2;
     ctx.strokeStyle = INK;
     ctx.stroke();
+    const garland = [];
     for (let i = 1; i <= 5; i++) {
       const f = i / 6;
       const x = (1 - f) * (1 - f) * gx0 + 2 * (1 - f) * f * ((gx0 + gx1) / 2) + f * f * gx1;
@@ -747,6 +749,7 @@
       ctx.fillStyle = i % 2 ? '#FFE27A' : '#FFB3CF';
       ctx.fill();
       outline(ctx, 2);
+      garland.push({ x, y: y + 20 });
     }
 
     // nightstand with the lamp
@@ -812,7 +815,7 @@
     rug(ctx, W * 0.55, groundY, W * 0.32, H * 0.05, '#B9A3F0', '#DCD0FF');
 
     const bed = { x: (quilt.x0 + quilt.x1) / 2, y: matTop, matX0, matX1, quilt };
-    return { floorY, groundY, poopY: groundY + 6, zone: [0.3, 0.72], bed, lamp };
+    return { floorY, groundY, poopY: groundY + 6, zone: [0.3, 0.72], bed, lamp, garland, window: win };
   }
 
   function drawLampShade(ctx, lamp, fill) {
@@ -871,14 +874,44 @@
     outline(ctx, 2.5);
   }
 
-  function bedroomNight(ctx, L) {
+  function bedroomNight(ctx, L, t) {
     const { lamp } = L;
-    const g = ctx.createRadialGradient(lamp.x, lamp.mid, 4, lamp.x, lamp.mid, L.W * 0.45);
-    g.addColorStop(0, 'rgba(255, 226, 122, 0.35)');
+    // The glow breathes gently rather than sitting perfectly still.
+    const breathe = Math.sin(t * 0.9);
+    const g = ctx.createRadialGradient(lamp.x, lamp.mid, 4, lamp.x, lamp.mid, L.W * (0.45 + breathe * 0.02));
+    g.addColorStop(0, `rgba(255, 226, 122, ${0.35 + breathe * 0.05})`);
     g.addColorStop(1, 'rgba(255, 226, 122, 0)');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, L.W, L.H);
     drawLampShade(ctx, lamp, '#FFF1A8');
+  }
+
+  // Twinkling garland stars and a few soft motes drifting past the bed,
+  // so the room feels a little alive even when the pet is asleep.
+  function bedroomLive(ctx, L, t) {
+    L.garland.forEach((p, i) => {
+      const glow = Math.max(0, Math.sin(t * 1.6 + i * 1.9));
+      if (glow < 0.05) return;
+      ctx.save();
+      ctx.globalAlpha = glow * 0.9;
+      sparklePath(ctx, p.x, p.y, 5 + glow * 2);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fill();
+      ctx.restore();
+    });
+
+    for (let i = 0; i < 3; i++) {
+      const speed = 0.045 + i * 0.012;
+      const u = (t * speed + i / 3) % 1;
+      const alpha = Math.sin(u * Math.PI);
+      if (alpha <= 0.02) continue;
+      const x = L.W * (0.15 + i * 0.22) + Math.sin(t * 0.5 + i * 2) * 10;
+      const y = L.H * (0.78 - u * 0.55);
+      ctx.beginPath();
+      ctx.arc(x, y, 2.6, 0, TAU);
+      ctx.fillStyle = `rgba(255, 241, 168, ${alpha * 0.8})`;
+      ctx.fill();
+    }
   }
 
   /* ---------- playroom ---------- */
@@ -1608,6 +1641,7 @@
       if (id === 'kitchen') kitchenLive(ctx, L, t);
       else if (id === 'playroom') playroomLive(ctx, L, t);
       else if (id === 'garden') gardenLive(ctx, L, t);
+      else if (id === 'bedroom') bedroomLive(ctx, L, t);
     },
 
     // Drawn over the pet. info: { asleep, petX, petGround, petW, petH, t, duckHop }
@@ -1617,8 +1651,8 @@
     },
 
     // Drawn after the lights-off overlay.
-    drawNight(id, ctx, L) {
-      if (id === 'bedroom') bedroomNight(ctx, L);
+    drawNight(id, ctx, L, t) {
+      if (id === 'bedroom') bedroomNight(ctx, L, t);
     },
 
     // Which tappable prop (if any) is at x, y.
