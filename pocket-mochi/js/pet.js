@@ -6,10 +6,12 @@
   const { TAU, outline } = PM.art;
   const INK = PM.INK;
 
-  const STAT_KEYS = ['hunger', 'fun', 'energy', 'clean'];
-  // Meter change per real hour. "hunger" is how full the pet is.
-  const AWAKE_RATE = { hunger: -12, fun: -14, energy: -8, clean: -6 };
-  const SLEEP_RATE = { hunger: -5, fun: -2, energy: 45, clean: -2 };
+  const STAT_KEYS = ['hunger', 'thirst', 'fun', 'energy', 'clean'];
+  // Meter change per real hour. "hunger" is how full the pet is; "thirst" how quenched.
+  const AWAKE_RATE = { hunger: -12, thirst: -15, fun: -14, energy: -8, clean: -6 };
+  const SLEEP_RATE = { hunger: -5, thirst: -6, fun: -2, energy: 45, clean: -2 };
+  // How long (real hours) health can sit at rock bottom before the neglect is fatal.
+  const DEATH_HOURS = 48;
   const STAGES = [
     { key: 'baby', label: 'Baby', xp: 0, scale: 0.64 },
     { key: 'kid', label: 'Kid', xp: 120, scale: 0.82 },
@@ -31,16 +33,19 @@
       last: now,
       hatched: false,
       eggTaps: 0,
-      stats: { hunger: 70, fun: 70, energy: 85, clean: 90 },
+      stats: { hunger: 70, thirst: 70, fun: 70, energy: 85, clean: 90 },
       health: 100,
       sick: false,
+      critical: false,
+      criticalHours: 0,
+      dead: false,
       asleep: false,
       xp: 0,
       coins: 30,
       poops: [],
       digest: 0,
       digestT: 0,
-      inv: { apple: 3, onigiri: 2, dango: 1 },
+      inv: { apple: 3, onigiri: 2, dango: 1, water: 2 },
       hats: [],
       hat: null,
       best: 0,
@@ -55,7 +60,8 @@
       login: { last: '', streak: 0, total: 0 },
       owner: { name: '', bday: '', party: 0 },
       party: null,
-      counts: { fed: 0, baths: 0, hearts: 0, poops: 0, duelsWon: 0, playdates: 0, parties: 0, weeklyDone: 0, matchWins: 0 },
+      counts: { fed: 0, drank: 0, baths: 0, hearts: 0, poops: 0, duelsWon: 0, playdates: 0, parties: 0, weeklyDone: 0, matchWins: 0, walks: 0 },
+      lastPlaydate: 0,
       stickers: [],
       weekly: null,
       outfit: null,
@@ -106,6 +112,12 @@
     if (s.outfit && !(PM.OUTFITS && PM.OUTFITS[s.outfit])) s.outfit = null;
     s.hats = s.hats.filter((h) => PM.HATS[h]);
     if (s.hat && !PM.HATS[s.hat]) s.hat = null;
+    // Added in 1.6: thirst, neglect tracking, and drinks in the same inventory.
+    if (typeof s.stats.thirst !== 'number') s.stats.thirst = 70;
+    s.critical = !!raw.critical;
+    s.criticalHours = Number(raw.criticalHours) || 0;
+    s.dead = !!raw.dead;
+    s.lastPlaydate = Number(raw.lastPlaydate) || 0;
     return s;
   }
 
@@ -163,6 +175,12 @@
       s.sick = true;
       ev.push('sick');
     }
+    if (!s.critical && s.health <= 0) {
+      s.critical = true;
+      ev.push('critical');
+    } else if (s.critical && s.health > 0) {
+      s.critical = false;
+    }
 
     if (s.asleep && s.stats.energy >= 100) {
       s.asleep = false;
@@ -178,13 +196,27 @@
   // simulated in one-minute steps and capped at three days.
   function simulate(s, hours) {
     const ev = [];
-    if (!s.hatched || !(hours > 0)) return ev;
+    if (!s.hatched || s.dead || !(hours > 0)) return ev;
     let left = Math.min(hours, 72);
     const chunk = 1 / 60;
     while (left > 0) {
       const h = Math.min(chunk, left);
       step(s, h, ev);
       left -= h;
+    }
+    // Health can only sit at rock bottom this long through sustained neglect
+    // across the whole gap (stats bottom out within hours, so a 72-hour cap
+    // on the detailed simulation above doesn't make this any less real for a
+    // much longer absence). Any real care in the meantime raises health and
+    // resets the clock, well before this is ever close to firing.
+    if (s.health <= 0) {
+      s.criticalHours += hours;
+      if (s.criticalHours >= DEATH_HOURS) {
+        s.dead = true;
+        ev.push('died');
+      }
+    } else {
+      s.criticalHours = 0;
     }
     return ev;
   }
@@ -199,7 +231,9 @@
   // scheduled for while the app is closed. Uses the same rates as step(),
   // projected forward in closed form rather than simulated minute by minute.
   function timeToNeed(s) {
-    if (!s.hatched) return null;
+    if (!s.hatched || s.dead) return null;
+    // Rock-bottom health is more urgent than any single stat: say so right away.
+    if (s.critical) return { hours: 0, need: 'critical' };
     if (s.asleep) {
       const rate = SLEEP_RATE.energy;
       if (rate <= 0 || s.stats.energy >= 100) return null;
@@ -216,6 +250,8 @@
       const hours = (s.stats[k] - NOTIFY_AT) / -rate;
       if (best === null || hours < best.hours) best = { hours, need: k };
     }
+    // Sick from accumulated poop rather than a low stat: still worth a nudge.
+    if (!best && s.sick) return { hours: 0, need: 'sick' };
     return best;
   }
 
@@ -252,7 +288,7 @@
   // Names of shop items that unlock above level `from`, up to level `to`.
   function unlocksBetween(from, to) {
     const out = [];
-    [PM.FOODS, PM.HATS, PM.WALLS, PM.OUTFITS].forEach((table) => {
+    [PM.FOODS, PM.DRINKS, PM.HATS, PM.WALLS, PM.OUTFITS].forEach((table) => {
       Object.values(table).forEach((item) => {
         const lv = item.level || 1;
         if (lv > from && lv <= to) out.push(item.name);
@@ -330,6 +366,8 @@
     { id: 'fashion', name: 'Fashionista', desc: 'Own 3 outfits', icon: 'bowtie', test: (s) => s.outfits.length >= 3 },
     { id: 'weekly', name: 'Quest complete', desc: 'Finish a weekly quest', icon: 'trophy', test: (s) => s.counts.weeklyDone >= 1 },
     { id: 'cards', name: 'Card shark', desc: 'Win 5 rounds of Memory Match', icon: 'cards', test: (s) => s.counts.matchWins >= 5 },
+    { id: 'drink10', name: 'Well hydrated', desc: 'Give 10 drinks', icon: 'cup', test: (s) => s.counts.drank >= 10 },
+    { id: 'walk5', name: 'Regular walker', desc: 'Go for 5 walks', icon: 'paw', test: (s) => s.counts.walks >= 5 },
   ];
   const STICKER_COINS = 10;
 
@@ -379,6 +417,7 @@
 
   const GOALS = {
     feed:    { amounts: [3, 4, 5], text: (n, name) => `Feed ${name} ${n} snacks` },
+    drink:   { amounts: [2, 3], text: (n, name) => `Give ${name} ${n} drinks` },
     pet:     { amounts: [15, 25], text: (n, name) => `Pet ${name} until ${n} hearts float up` },
     bath:    { amounts: [1], text: (n, name) => `Scrub ${name} in the bath, then rinse` },
     sleep:   { amounts: [1], text: (n, name) => `Tuck ${name} into bed` },
@@ -451,6 +490,8 @@
   // Bigger goals, worth a bigger prize; one is picked for the whole week.
   const WEEKLY_GOALS = {
     feed:    { amounts: [20, 25], text: (n, name) => `Feed ${name} ${n} snacks this week` },
+    drink:   { amounts: [14, 18], text: (n, name) => `Give ${name} ${n} drinks this week` },
+    walk:    { amounts: [3, 5], text: (n, name) => `Take ${name} on ${n} walks this week` },
     pet:     { amounts: [120, 160], text: (n, name) => `Pet ${name} until ${n} hearts float up this week` },
     bath:    { amounts: [4, 5], text: (n, name) => `Give ${name} ${n} bubble baths this week` },
     ball:    { amounts: [40, 60], text: (n, name) => `Bop the ball ${n} times this week` },
@@ -519,7 +560,7 @@
     if (s.asleep) return 'sleep';
     if (s.sick) return 'sick';
     const st = s.stats;
-    const min = Math.min(st.hunger, st.fun, st.energy, st.clean);
+    const min = Math.min(st.hunger, st.thirst, st.fun, st.energy, st.clean);
     if (min < 20) return 'sad';
     if (st.energy < 30) return 'tired';
     if (min > 60) return 'happy';
@@ -531,7 +572,7 @@
     if (!s.hatched || s.asleep) return null;
     if (s.sick) return 'sick';
     const st = s.stats;
-    const order = [['hunger', st.hunger], ['energy', st.energy], ['clean', st.clean], ['fun', st.fun]]
+    const order = [['hunger', st.hunger], ['thirst', st.thirst], ['energy', st.energy], ['clean', st.clean], ['fun', st.fun]]
       .filter(([, v]) => v < 35)
       .sort((a, b) => a[1] - b[1]);
     if (order.length) return order[0][0];
@@ -544,7 +585,7 @@
     xpForLevel, levelOf, levelInfo, isUnlocked,
     GOAL_REWARD, GOAL_BONUS, ensureGoals, track, goalText, goalsReady, claimGoal,
     WEEKLY_REWARD, ensureWeekly, weeklyText, weeklyReady, claimWeekly,
-    timeToNeed,
+    timeToNeed, DEATH_HOURS,
     LOGIN_REWARDS, loginDay, collectLogin,
     birthdayToday, startParty, STICKERS, STICKER_COINS, checkStickers,
 
@@ -557,6 +598,18 @@
       s.stats.fun = clamp(s.stats.fun + f.fun);
       s.stats.clean = clamp(s.stats.clean + f.clean);
       s.digest += f.food;
+      return 'ok';
+    },
+
+    drink(s, type) {
+      const d = PM.DRINKS[type];
+      if (!d || !(s.inv[type] > 0)) return 'none';
+      if (s.stats.thirst >= 96) return 'full';
+      s.inv[type] -= 1;
+      s.stats.thirst = clamp(s.stats.thirst + d.drink);
+      s.stats.fun = clamp(s.stats.fun + d.fun);
+      s.stats.clean = clamp(s.stats.clean + d.clean);
+      s.digest += d.drink * 0.6;
       return 'ok';
     },
 
@@ -578,6 +631,14 @@
       const f = PM.FOODS[type];
       if (!f || s.coins < f.price || !isUnlocked(s, f)) return false;
       s.coins -= f.price;
+      s.inv[type] = (s.inv[type] || 0) + 1;
+      return true;
+    },
+
+    buyDrink(s, type) {
+      const d = PM.DRINKS[type];
+      if (!d || s.coins < d.price || !isUnlocked(s, d)) return false;
+      s.coins -= d.price;
       s.inv[type] = (s.inv[type] || 0) + 1;
       return true;
     },

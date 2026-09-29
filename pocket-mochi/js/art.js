@@ -36,6 +36,14 @@
     cake:     { name: 'Birthday cake', price: 0, food: 30, fun: 30, clean: -4, xp: 8, level: 1, special: true },
   };
 
+  // Drinks fill thirst the way FOODS fill hunger.
+  const DRINKS = {
+    water:     { name: 'Water',      price: 2,  drink: 22, fun: 0,  clean: 2,  xp: 2, level: 1 },
+    juice:     { name: 'Juice',      price: 5,  drink: 26, fun: 6,  clean: 0,  xp: 3, level: 1 },
+    soda:      { name: 'Soda',       price: 7,  drink: 18, fun: 14, clean: -2, xp: 4, level: 5 },
+    milkshake: { name: 'Milkshake',  price: 9,  drink: 20, fun: 18, clean: -3, xp: 5, level: 9 },
+  };
+
   const HATS = {
     party:      { name: 'Party hat',  price: 25, level: 1 },
     flower:     { name: 'Daisy',      price: 20, level: 1 },
@@ -362,6 +370,138 @@
 
   function drawFood(ctx, type, x, y, s, rot) {
     const fn = foodDraw[type];
+    if (!fn) return;
+    ctx.save();
+    ctx.translate(x, y);
+    if (rot) ctx.rotate(rot);
+    fn(ctx, s);
+    ctx.restore();
+  }
+
+  /* ---------- Drinks (drawn centered on x, y; s = overall size) ---------- */
+
+  const drinkDraw = {
+    water(ctx, s) {
+      const lw = s * 0.06;
+      roundRect(ctx, -s * 0.22, -s * 0.4, s * 0.44, s * 0.78, s * 0.05);
+      ctx.fillStyle = 'rgba(163,216,255,0.35)';
+      ctx.fill();
+      outline(ctx, lw);
+      ctx.save();
+      roundRect(ctx, -s * 0.22, -s * 0.4, s * 0.44, s * 0.78, s * 0.05);
+      ctx.clip();
+      ctx.fillStyle = '#7CC6F7';
+      ctx.fillRect(-s * 0.22, s * 0.02, s * 0.44, s * 0.36);
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.22, s * 0.02);
+      for (let i = 0; i <= 4; i++) ctx.lineTo(-s * 0.22 + (s * 0.44 * i) / 4, s * 0.02 + Math.sin(i) * s * 0.02);
+      ctx.lineTo(s * 0.22, s * 0.02);
+      ctx.closePath();
+      ctx.fillStyle = '#A3D8FF';
+      ctx.fill();
+      [[-0.06, 0.16, 0.03], [0.08, 0.28, 0.025]].forEach(([dx, dy, r]) => {
+        ctx.beginPath();
+        ctx.arc(dx * s, dy * s, r * s, 0, TAU);
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fill();
+      });
+      ctx.restore();
+      ctx.beginPath();
+      ctx.ellipse(-s * 0.11, -s * 0.32, s * 0.04, s * 0.13, 0.3, 0, TAU);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fill();
+    },
+    juice(ctx, s) {
+      const lw = s * 0.06;
+      roundRect(ctx, -s * 0.24, -s * 0.36, s * 0.48, s * 0.72, s * 0.05);
+      ctx.fillStyle = '#FFA94D';
+      ctx.fill();
+      outline(ctx, lw);
+      ctx.beginPath();
+      ctx.ellipse(0, -s * 0.36, s * 0.24, s * 0.05, 0, 0, TAU);
+      ctx.fillStyle = '#FFC978';
+      ctx.fill();
+      outline(ctx, lw * 0.7);
+      ctx.save();
+      ctx.translate(s * 0.12, -s * 0.36);
+      ctx.rotate(-0.25);
+      roundRect(ctx, -s * 0.045, -s * 0.32, s * 0.09, s * 0.4, s * 0.04);
+      ctx.fillStyle = '#FF5DA2';
+      ctx.fill();
+      outline(ctx, lw * 0.7);
+      ctx.restore();
+      ctx.beginPath();
+      ctx.ellipse(-s * 0.12, -s * 0.16, s * 0.045, s * 0.15, 0.3, 0, TAU);
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fill();
+    },
+    soda(ctx, s) {
+      const lw = s * 0.06;
+      roundRect(ctx, -s * 0.2, -s * 0.46, s * 0.4, s * 0.9, s * 0.1);
+      ctx.fillStyle = '#F0433A';
+      ctx.fill();
+      outline(ctx, lw);
+      roundRect(ctx, -s * 0.2, -s * 0.06, s * 0.4, s * 0.14, 0);
+      ctx.fillStyle = '#FFFDF8';
+      ctx.fill();
+      outline(ctx, lw * 0.7);
+      ctx.beginPath();
+      ctx.ellipse(0, -s * 0.46, s * 0.2, s * 0.05, 0, 0, TAU);
+      ctx.fillStyle = '#C7C9D6';
+      ctx.fill();
+      outline(ctx, lw * 0.6);
+      ctx.beginPath();
+      ctx.ellipse(-s * 0.03, -s * 0.48, s * 0.05, s * 0.02, 0, 0, TAU);
+      ctx.fillStyle = '#8B8DA0';
+      ctx.fill();
+      [[-0.08, 0.14], [0.08, 0.26], [-0.04, 0.34]].forEach(([dx, dy]) => {
+        ctx.beginPath();
+        ctx.arc(dx * s, dy * s, s * 0.025, 0, TAU);
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.fill();
+      });
+    },
+    milkshake(ctx, s) {
+      const lw = s * 0.06;
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.22, -s * 0.18);
+      ctx.lineTo(s * 0.22, -s * 0.18);
+      ctx.lineTo(s * 0.15, s * 0.42);
+      ctx.lineTo(-s * 0.15, s * 0.42);
+      ctx.closePath();
+      ctx.fillStyle = '#FFB3CF';
+      ctx.fill();
+      outline(ctx, lw);
+      ctx.beginPath();
+      ctx.ellipse(0, -s * 0.2, s * 0.24, s * 0.14, 0, 0, TAU);
+      ctx.fillStyle = '#FFFDF8';
+      ctx.fill();
+      outline(ctx, lw);
+      [[-0.08, -0.26, 0.06], [0.06, -0.3, 0.05], [0.16, -0.22, 0.045]].forEach(([dx, dy, r]) => {
+        ctx.beginPath();
+        ctx.arc(dx * s, dy * s, r * s, 0, TAU);
+        ctx.fillStyle = '#FFFDF8';
+        ctx.fill();
+        outline(ctx, lw * 0.6);
+      });
+      ctx.beginPath();
+      ctx.arc(0, -s * 0.36, s * 0.045, 0, TAU);
+      ctx.fillStyle = '#F0433A';
+      ctx.fill();
+      outline(ctx, lw * 0.6);
+      ctx.save();
+      ctx.translate(s * 0.03, -s * 0.34);
+      ctx.rotate(0.15);
+      roundRect(ctx, -s * 0.04, -s * 0.3, s * 0.08, s * 0.36, s * 0.03);
+      ctx.fillStyle = '#5DB4F0';
+      ctx.fill();
+      outline(ctx, lw * 0.6);
+      ctx.restore();
+    },
+  };
+
+  function drawDrink(ctx, type, x, y, s, rot) {
+    const fn = drinkDraw[type];
     if (!fn) return;
     ctx.save();
     ctx.translate(x, y);
@@ -836,6 +976,9 @@
           outline(ctx, lw * 0.8);
         });
         break;
+      case 'thirst':
+        drinkDraw.water(ctx, s * 1.1);
+        break;
       case 'sick':
         ctx.rotate(-0.6);
         roundRect(ctx, -s * 0.4, -s * 0.16, s * 0.8, s * 0.32, s * 0.16);
@@ -1150,6 +1293,7 @@
     poop: '#FFE27A', star: '#CDB9FF', bubble: '#9FE7CA', lv5: '#FFB347', lv12: '#FF8FBF',
     calendar: '#9FE7CA', cake: '#FFE27A', party: '#CDB9FF', wall: '#FFB3CF', friends: '#FFE27A', crown: '#FF8FBF',
     bowtie: '#CDB9FF', trophy: '#FFC53D', cards: '#A3D8FF',
+    cup: '#A3D8FF', paw: '#FFC978',
   };
 
   function drawStickerSymbol(g, icon, c, s) {
@@ -1288,6 +1432,19 @@
           g.restore();
         });
         break;
+      case 'cup':
+        g.translate(0, s * 0.04);
+        drinkDraw.juice(g, s * 0.7);
+        break;
+      case 'paw':
+        [[0, 0.1, 0.17], [-0.14, -0.08, 0.075], [0.14, -0.08, 0.075], [-0.07, -0.19, 0.06], [0.07, -0.19, 0.06]].forEach(([dx, dy, r]) => {
+          g.beginPath();
+          g.arc(dx * s, dy * s, r * s, 0, TAU);
+          g.fillStyle = '#B87A3D';
+          g.fill();
+          outline(g, 2.2);
+        });
+        break;
       case 'friends':
         [[-0.1, '#FFB3CF'], [0.11, '#A3D8FF']].forEach(([x, col]) => {
           g.beginPath();
@@ -1342,13 +1499,15 @@
   PM.PET_COLORS = PET_COLORS;
   PM.SPECIES = SPECIES;
   PM.FOODS = FOODS;
+  PM.DRINKS = DRINKS;
   PM.HATS = HATS;
   PM.OUTFITS = OUTFITS;
   PM.Particles = Particles;
   PM.art = {
     TAU, outline, roundRect, heartPath, starPath, sparklePath,
-    drawFood, drawHat, drawShades, drawPoop, drawNeedIcon, drawOutfit,
+    drawFood, drawDrink, drawHat, drawShades, drawPoop, drawNeedIcon, drawOutfit,
     foodIcon: (type, size) => iconURL((g, s) => drawFood(g, type, s / 2, s / 2, s * 0.86), size),
+    drinkIcon: (type, size) => iconURL((g, s) => drawDrink(g, type, s / 2, s / 2, s * 0.86), size),
     stickerIcon,
     hatIcon: (type, size) => iconURL((g, s) => {
       // [width, x, y] framing per hat so each one sits centered in its tile

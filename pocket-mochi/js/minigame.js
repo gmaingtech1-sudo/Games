@@ -876,7 +876,294 @@
     }
   }
 
+  /* ---------------- Walk ----------------
+     Your pet strolls down the garden path while you slide it side to side,
+     scooping up coins and treats. No lives to lose — just a leisurely lap,
+     and every so often a passing friend waves hello. */
+  class WalkGame {
+    constructor() {
+      this.pet = new PM.PetView();
+      this.fx = new PM.Particles();
+      this.running = false;
+      this.W = 1;
+      this.H = 1;
+    }
+
+    start(W, H) {
+      this.W = W;
+      this.H = H;
+      this.items = [];
+      this.score = 0;
+      this.coins = 0;
+      this.treats = 0;
+      this.friends = 0;
+      this.t = 0;
+      this.time = 20;
+      this.spawn = 0.5;
+      this.pet.x = W / 2;
+      this.pet.scale = 1;
+      this.pet.facing = 1;
+      this.targetX = W / 2;
+      this.fx.list = [];
+      this.running = true;
+    }
+
+    resize(W, H) {
+      const kx = W / this.W;
+      this.pet.x *= kx;
+      this.targetX *= kx;
+      if (this.items) this.items.forEach((it) => { it.x *= kx; it.y *= H / this.H; });
+      this.W = W;
+      this.H = H;
+    }
+
+    pointer(x) { this.targetX = x; }
+
+    groundY() { return this.H * 0.86; }
+
+    petSize() { return Math.min(this.W * 0.3, this.H * 0.22, 150); }
+
+    spawnItem() {
+      const r = Math.random();
+      const kind = r < 0.08 ? 'friend' : r < 0.34 ? 'coin' : 'treat';
+      const rad = kind === 'friend' ? 22 : 16;
+      this.items.push({
+        kind, r: rad,
+        x: rad + Math.random() * (this.W - rad * 2),
+        y: -rad,
+        vy: 130 + Math.random() * 50,
+        sway: Math.random() * TAU,
+        rot: Math.random() * TAU,
+      });
+    }
+
+    // Returns 'over' on the frame time runs out.
+    update(dt) {
+      this.pet.update(dt, { W: this.W, size: this.petSize(), canWander: false, stageScale: 1 });
+      this.fx.update(dt);
+      if (!this.running) return null;
+      this.t += dt;
+      this.time -= dt;
+      this.spawn -= dt;
+      if (this.spawn <= 0) {
+        this.spawnItem();
+        this.spawn = Math.max(0.28, 0.6 - this.t * 0.01) * (0.7 + Math.random() * 0.6);
+      }
+
+      const prevX = this.pet.x;
+      this.pet.x += (this.targetX - this.pet.x) * Math.min(1, dt * 14);
+      if (Math.abs(this.pet.x - prevX) > 0.5) this.pet.facing = Math.sign(this.pet.x - prevX);
+
+      const g = this.pet.geo;
+      for (let i = this.items.length - 1; i >= 0; i--) {
+        const it = this.items[i];
+        it.y += it.vy * dt;
+        it.sway += dt * 3;
+        it.x += Math.sin(it.sway) * 18 * dt;
+        it.rot += dt * 2.5;
+        const dx = (it.x - g.x) / (g.w * 0.5 + it.r * 0.6);
+        const dy = (it.y - g.cy) / (g.h * 0.5 + it.r * 0.6);
+        if (dx * dx + dy * dy < 1) {
+          this.items.splice(i, 1);
+          this.collect(it);
+          continue;
+        }
+        if (it.y - it.r > this.H) this.items.splice(i, 1);
+      }
+      const last = this.items[this.items.length - 1];
+      this.pet.lookAt = last ? { x: last.x, y: last.y } : null;
+      if (this.time <= 0) {
+        this.time = 0;
+        this.running = false;
+        this.pet.lookAt = null;
+        this.pet.setExpr('yum', 3);
+        return 'over';
+      }
+      return null;
+    }
+
+    collect(it) {
+      const A = PM.audio;
+      this.score += 1;
+      switch (it.kind) {
+        case 'coin':
+          this.coins += 1;
+          A.play('coin');
+          this.fx.sparkles(it.x, it.y, 6, 20);
+          this.pet.setExpr('yum', 0.35);
+          break;
+        case 'treat':
+          this.treats += 1;
+          A.play('yum');
+          this.fx.sparkles(it.x, it.y, 5, 18);
+          this.pet.setExpr('giggle', 0.35);
+          this.pet.squish(1.4);
+          break;
+        case 'friend':
+          this.friends += 1;
+          A.play('ding');
+          this.fx.hearts(it.x, it.y, 3);
+          this.pet.setExpr('love', 0.5);
+          break;
+        default:
+          break;
+      }
+    }
+
+    drawBackground(ctx) {
+      const { W, H } = this;
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, '#8FD4FF');
+      sky.addColorStop(1, '#E9F8FF');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      [[0.18, 0.16, 0.08], [0.78, 0.22, 0.07], [0.5, 0.1, 0.05]].forEach(([fx, fy, fr]) => {
+        ctx.beginPath();
+        ctx.arc(W * fx + Math.sin(this.t * 0.2 + fx * 9) * 8, H * fy, W * fr, 0, TAU);
+        ctx.fill();
+      });
+      const gy = this.groundY();
+      ctx.beginPath();
+      ctx.moveTo(0, gy - 20);
+      ctx.quadraticCurveTo(W * 0.3, gy - 60, W * 0.62, gy - 18);
+      ctx.quadraticCurveTo(W * 0.85, gy - 40, W, gy - 24);
+      ctx.lineTo(W, H);
+      ctx.lineTo(0, H);
+      ctx.closePath();
+      ctx.fillStyle = '#7BCB7E';
+      ctx.fill();
+      outline(ctx, 3);
+
+      // a dirt path scrolling by, to sell the forward walk
+      const pathW = W * 0.32;
+      const px = (W - pathW) / 2;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(px, H);
+      ctx.lineTo(px + pathW * 0.14, gy - 10);
+      ctx.lineTo(px + pathW * 0.86, gy - 10);
+      ctx.lineTo(px + pathW, H);
+      ctx.closePath();
+      ctx.clip();
+      ctx.fillStyle = '#E0B87B';
+      ctx.fillRect(px, gy - 10, pathW, H - gy + 10);
+      ctx.strokeStyle = '#C89A5E';
+      ctx.lineWidth = 3;
+      const scroll = (this.t * 160) % 40;
+      for (let y = gy - 10 - scroll; y < H + 40; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(px + pathW * 0.5 - 3, y);
+        ctx.lineTo(px + pathW * 0.5 - 3, y + 18);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.beginPath();
+      ctx.moveTo(px, H);
+      ctx.lineTo(px + pathW * 0.14, gy - 10);
+      ctx.moveTo(px + pathW, H);
+      ctx.lineTo(px + pathW * 0.86, gy - 10);
+      outline(ctx, 3);
+
+      // a few bushes drifting by along the edges
+      const bushScroll = (this.t * 90) % 220;
+      for (let i = -1; i < 4; i++) {
+        const bx = ((i * 220 - bushScroll) % (W + 220)) - 110;
+        [bx * 0.4 + W * 0.06, W - (bx * 0.4 + W * 0.06)].forEach((x) => {
+          ctx.beginPath();
+          [[-14, 0, 16], [10, 2, 14], [0, -8, 15]].forEach(([dx, dy, r]) => {
+            ctx.moveTo(x + dx + r, gy + dy);
+            ctx.arc(x + dx, gy + dy, r, 0, TAU);
+          });
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = PM.INK;
+          ctx.stroke();
+          ctx.fillStyle = '#5FAE68';
+          ctx.fill();
+        });
+      }
+    }
+
+    drawItem(ctx, it) {
+      ctx.save();
+      ctx.translate(it.x, it.y);
+      switch (it.kind) {
+        case 'coin': {
+          const sx = Math.max(0.2, Math.abs(Math.cos(it.rot)));
+          ctx.scale(sx, 1);
+          ctx.beginPath();
+          ctx.arc(0, 0, it.r * 0.9, 0, TAU);
+          ctx.fillStyle = '#FFC53D';
+          ctx.fill();
+          outline(ctx, 3);
+          ctx.beginPath();
+          ctx.arc(0, 0, it.r * 0.55, 0, TAU);
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = '#E09A10';
+          ctx.stroke();
+          break;
+        }
+        case 'treat':
+          ctx.rotate(Math.sin(it.rot) * 0.3);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, it.r * 0.9, it.r * 0.6, 0, 0, TAU);
+          ctx.fillStyle = '#C98B5A';
+          ctx.fill();
+          outline(ctx, 2.5);
+          [[-it.r * 0.55, -it.r * 0.4], [it.r * 0.55, -it.r * 0.4], [-it.r * 0.55, it.r * 0.4], [it.r * 0.55, it.r * 0.4]]
+            .forEach(([dx, dy]) => {
+              ctx.beginPath();
+              ctx.arc(dx, dy, it.r * 0.35, 0, TAU);
+              ctx.fillStyle = '#C98B5A';
+              ctx.fill();
+              outline(ctx, 2.5);
+            });
+          break;
+        case 'friend':
+          ctx.beginPath();
+          ctx.arc(0, 0, it.r, 0, TAU);
+          ctx.fillStyle = '#FFB3CF';
+          ctx.fill();
+          outline(ctx, 3);
+          ctx.fillStyle = PM.INK;
+          ctx.beginPath();
+          ctx.arc(-it.r * 0.32, -it.r * 0.05, it.r * 0.1, 0, TAU);
+          ctx.arc(it.r * 0.32, -it.r * 0.05, it.r * 0.1, 0, TAU);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(0, it.r * 0.28, it.r * 0.3, 0.15 * Math.PI, 0.85 * Math.PI);
+          ctx.lineWidth = 2.2;
+          ctx.strokeStyle = PM.INK;
+          ctx.stroke();
+          [[-it.r * 0.7, -it.r * 0.7], [it.r * 0.7, -it.r * 0.7]].forEach(([dx, dy]) => {
+            ctx.beginPath();
+            ctx.ellipse(dx, dy, it.r * 0.35, it.r * 0.5, dx < 0 ? -0.5 : 0.5, 0, TAU);
+            ctx.fillStyle = '#FFB3CF';
+            ctx.fill();
+            outline(ctx, 2);
+          });
+          break;
+        default:
+          break;
+      }
+      ctx.restore();
+    }
+
+    draw(ctx, s) {
+      ctx.save();
+      this.drawBackground(ctx);
+      for (const it of this.items) this.drawItem(ctx, it);
+      this.pet.draw(ctx, {
+        species: s.species, color: s.color, hat: s.hat, outfit: s.outfit, size: this.petSize(),
+        groundY: this.groundY(), clean: 100, sick: false, mood: 'happy',
+      });
+      this.fx.draw(ctx);
+      ctx.restore();
+    }
+  }
+
   PM.StarCatch = StarCatch;
   PM.BubblePop = BubblePop;
   PM.MemoryMatch = MemoryMatch;
+  PM.WalkGame = WalkGame;
 })(window.PM = window.PM || {});

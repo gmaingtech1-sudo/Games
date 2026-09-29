@@ -17,6 +17,7 @@
   --fun: #FF5DA2;
   --energy: #5DB4F0;
   --clean: #36C2A2;
+  --thirst: #4AC3E0;
   --danger: #F0433A;
   --press: #0F1026;
 
@@ -186,10 +187,12 @@ svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round
   gap: 8px;
   padding: 6px 14px 10px;
 }
-.needs { display: flex; gap: 6px; min-width: 0; }
+.needs { display: flex; gap: 4px; min-width: 0; flex: 1; }
 .meter {
   position: relative;
-  width: 46px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 46px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -200,24 +203,29 @@ svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round
 .meter[data-stat="fun"] { --c: var(--fun); }
 .meter[data-stat="energy"] { --c: var(--energy); }
 .meter[data-stat="clean"] { --c: var(--clean); }
-.meter .ring { width: 42px; height: 42px; transform: rotate(-90deg); }
+.meter[data-stat="thirst"] { --c: var(--thirst); }
+.meter .ring { width: 100%; height: auto; aspect-ratio: 1; transform: rotate(-90deg); }
 .meter .ring-fg { stroke: var(--c); }
 .meter .icon {
   position: absolute;
-  top: 11px;
+  top: 26%;
   left: 50%;
-  width: 20px;
-  height: 20px;
+  width: 44%;
+  height: 44%;
   color: var(--c);
   stroke-width: 2.6;
   transform: translateX(-50%);
 }
 .meter-name {
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 .meter.low .ring-fg { stroke: var(--danger); }
 .meter.low .icon { color: var(--danger); animation: blink 1s steps(2, start) infinite; }
@@ -659,7 +667,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round
 
 .dock {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 4px;
   margin: 10px 12px 10px;
   padding: 6px;
@@ -1017,6 +1025,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round
   text-shadow: 3px 3px 0 var(--pink);
 }
 .adopt-sub { margin: 0; color: var(--muted); font-weight: 800; }
+.memorial-inner { align-items: center; text-align: center; padding-top: 8px; margin-top: 12vh; }
+.memorial-heart { width: 72px; height: 72px; fill: var(--pink); stroke: var(--paper); stroke-width: 1.5; margin-bottom: 4px; }
 .preview {
   width: 100%;
   height: 200px;
@@ -1098,9 +1108,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round
 @media (max-width: 370px) {
   .statusbar { padding-left: 10px; padding-right: 10px; }
   .needs { gap: 3px; }
-  .meter { width: 42px; }
-  .meter .ring { width: 38px; height: 38px; }
-  .meter .icon { top: 9px; width: 18px; height: 18px; }
+  .meter { max-width: 40px; }
+  .meter-name { font-size: 8px; }
   .tools { gap: 4px; }
   .tools .icon-btn { width: 36px; height: 36px; }
 }

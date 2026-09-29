@@ -28,7 +28,7 @@
     arcade: $('arcade'), hudLabel: $('hud-label'), hudTime: $('hud-time'),
     scrim: $('scrim'), shopSheet: $('sheet-shop'), settingsSheet: $('sheet-settings'),
     shopGrid: $('shop-grid'), shopCoins: $('shop-coins'),
-    adopt: $('adopt'), preview: $('preview'),
+    adopt: $('adopt'), preview: $('preview'), memorial: $('memorial'),
   };
   const meters = Array.from(document.querySelectorAll('.meter')).map((el) => ({
     el, key: el.dataset.stat, fill: el.querySelector('.fill'), label: el.textContent.trim(),
@@ -37,26 +37,30 @@
   const ctx = els.canvas.getContext('2d');
   const pet = new PM.PetView();
   const fx = new PM.Particles();
-  const games = { stars: new PM.StarCatch(), bubbles: new PM.BubblePop(), match: new PM.MemoryMatch() };
-  // stars, bubbles and match are solo; duo is two players on this phone; online is a duel with a friend
-  const GAME_OF = { stars: 'stars', bubbles: 'bubbles', match: 'match', duo: 'bubbles', online: 'bubbles' };
+  const games = { stars: new PM.StarCatch(), bubbles: new PM.BubblePop(), match: new PM.MemoryMatch(), walk: new PM.WalkGame() };
+  // stars, bubbles, match and walk are solo; duo is two players on this phone; online is a duel with a friend
+  const GAME_OF = { stars: 'stars', bubbles: 'bubbles', match: 'match', walk: 'walk', duo: 'bubbles', online: 'bubbles' };
   let gameKind = 'stars';   // which arcade game is being played
   let game = games[GAME_OF[gameKind]];
   const GAME_INFO = {
     stars: { label: 'Stars', tip: 'Slide your finger to move.<br>Catch stars and coins, dodge storm clouds!' },
     bubbles: { label: 'Score', tip: 'Tap bubbles to pop them. Pop fast for combos!<br>Rainbows are worth more; storm bubbles cost time.' },
     match: { label: 'Score', tip: 'Flip two cards to find a matching pair.<br>Quick matches build a bigger combo; a miss resets it.' },
+    walk: { label: 'Found', tip: 'Slide to move down the path.<br>Scoop up coins and treats — say hi if a friend passes by!' },
     duo: { label: 'P1', tip: 'Player 1 taps the left half, player 2 the right.<br>Same bubbles on both sides. Storm bubbles cost 5 points!' },
     online: { label: 'You', tip: 'Duel! Pop more bubbles than your friend in 30 seconds.' },
   };
-  const NEED_ROOM = { hunger: 'kitchen', clean: 'bathroom', energy: 'bedroom', fun: 'playroom' };
+  const NEED_ROOM = { hunger: 'kitchen', thirst: 'kitchen', clean: 'bathroom', energy: 'bedroom', fun: 'playroom' };
   // What a reminder says while you're away, keyed by M.timeToNeed()'s `need`.
   const NEED_NOTICE = {
     hunger: (n) => ({ title: `${n} is hungry`, body: `${n} is hungry! Time for a snack.` }),
+    thirst: (n) => ({ title: `${n} is thirsty`, body: `${n} is thirsty! Time for a drink.` }),
     fun: (n) => ({ title: `${n} is bored`, body: `${n} is bored. Come play for a bit!` }),
     clean: (n) => ({ title: `${n} needs a bath`, body: `${n} could use a bubble bath.` }),
     energy: (n) => ({ title: `${n} is sleepy`, body: `${n} is getting sleepy. A nap would help.` }),
     wake: (n) => ({ title: `${n} is awake`, body: `${n} woke up rested and ready to play!` }),
+    sick: (n) => ({ title: `${n} feels sick`, body: `${n} feels sick and needs medicine.` }),
+    critical: (n) => ({ title: `${n} needs you now`, body: `${n} is in real trouble — please come back and help!` }),
   };
 
   let s = null;             // the saved pet
@@ -87,7 +91,7 @@
   let resetArmed = 0;
   let shopTab = 'food';
   const timers = { save: 0, ui: 0, stink: 0, z: 0, purr: 0, bubble: 0, night: 0, idle: 0 };
-  const icons = { food: {}, hat: {}, outfit: {}, wall: {}, sticker: {}, stickerLocked: '' };
+  const icons = { food: {}, drink: {}, hat: {}, outfit: {}, wall: {}, sticker: {}, stickerLocked: '' };
   const toastQueue = [];
   let goalsTab = 'goals';
   let settingsDirty = false; // the birthday changed: check for a party once settings close
@@ -97,6 +101,7 @@
   let lastPoke = 0;
   let pokeToast = 0;
   let giftsIn = 0;
+  let deathKeep = null;      // coins/collection carried over into the next pet, after one dies
 
   /* ---------------- storage ---------------- */
 
@@ -205,13 +210,14 @@
     clean: ['Squeaky clean!', 'So fresh!'],
     bop: ['Wheee!', 'Again!', 'Got it!'],
     hunger: ['I\u2019m hungry...', 'Snack time?'],
+    thirst: ['I\u2019m thirsty...', 'Can I have a drink?'],
     fun: ['Let\u2019s play!', 'I\u2019m bored...'],
     energy: ['So sleepy...', 'Nap time?'],
     clean_need: ['I feel icky...', 'Bath time?'],
     sick: ['I don\u2019t feel well...'],
     poop: ['Eww, stinky!'],
   };
-  const NEED_LINE = { hunger: 'hunger', fun: 'fun', energy: 'energy', clean: 'clean_need', sick: 'sick', poop: 'poop' };
+  const NEED_LINE = { hunger: 'hunger', thirst: 'thirst', fun: 'fun', energy: 'energy', clean: 'clean_need', sick: 'sick', poop: 'poop' };
 
   function speak(key, dur) {
     if (!s || !s.hatched || s.asleep || !LINES[key]) return;
@@ -375,6 +381,7 @@
       if (s.room === 'kitchen' && els.tray.hidden && !s.asleep) action = 'Open the fridge';
       else if (s.room === 'bedroom') action = s.asleep ? 'Wake up' : 'Lights off';
       else if (s.room === 'playroom') action = 'Arcade';
+      else if (s.room === 'garden') action = 'Take a walk';
     }
     if (!els.arcade.hidden) action = null;
     els.roomAction.hidden = !action;
@@ -398,13 +405,19 @@
 
   /* ---------------- snack tray + feeding ---------------- */
 
+  // A snack or a drink; both live in the same tray and the same inventory.
+  const itemOf = (type) => PM.FOODS[type] || PM.DRINKS[type];
+  const isDrink = (type) => !!PM.DRINKS[type];
+  const trayIcon = (type) => (isDrink(type) ? icons.drink[type] : icons.food[type]);
+  const drawItem = (type, x, y, size, rot) => (isDrink(type) ? PM.art.drawDrink : PM.art.drawFood)(ctx, type, x, y, size, rot);
+
   function renderTray() {
     els.trayItems.innerHTML = '';
-    const types = Object.keys(PM.FOODS).filter((k) => s.inv[k] > 0);
+    const types = Object.keys(PM.FOODS).concat(Object.keys(PM.DRINKS)).filter((k) => s.inv[k] > 0);
     if (!types.length) {
       const empty = document.createElement('div');
       empty.className = 'tray-empty';
-      empty.textContent = 'No snacks left.';
+      empty.textContent = 'No snacks or drinks left.';
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'chip-btn';
@@ -419,8 +432,8 @@
       el.className = 'snack';
       el.setAttribute('role', 'button');
       el.setAttribute('tabindex', '0');
-      el.setAttribute('aria-label', `${PM.FOODS[type].name}, ${s.inv[type]} left. Tap to feed.`);
-      el.innerHTML = `<img alt="" src="${icons.food[type]}"><span>${PM.FOODS[type].name}</span><span class="count">${s.inv[type]}</span>`;
+      el.setAttribute('aria-label', `${itemOf(type).name}, ${s.inv[type]} left. Tap to ${isDrink(type) ? 'give' : 'feed'}.`);
+      el.innerHTML = `<img alt="" src="${trayIcon(type)}"><span>${itemOf(type).name}</span><span class="count">${s.inv[type]}</span>`;
       el.addEventListener('pointerdown', (e) => snackDown(e, type, el));
       el.addEventListener('pointermove', snackMove);
       el.addEventListener('pointerup', snackUp);
@@ -512,53 +525,57 @@
 
   function tryFeed(type) {
     if (!canFeed()) return;
-    const r = M.feed(s, type);
+    const drink = isDrink(type);
+    const r = drink ? M.drink(s, type) : M.feed(s, type);
     if (r === 'full') {
       pet.setExpr('no', 1);
       pet.shakeHead(0.6);
       A.play('no');
-      pet.say('I\u2019m full!', 1.6);
-      toast(`${s.name} is full!`);
+      pet.say(drink ? 'I\u2019m not thirsty!' : 'I\u2019m full!', 1.6);
+      toast(`${s.name} is ${drink ? 'not thirsty' : 'full'}!`);
       return;
     }
     if (r !== 'ok') return;
-    eating = { type, t: 0, bites: 0 };
+    eating = { type, drink, t: 0, bites: 0 };
     pet.setExpr('eat', 1.4);
     renderTray();
     updateUI();
   }
 
+  const CRUMB_COLOR = {
+    apple: '#FF5A5F', onigiri: '#FFFFFF', fish: '#7CC0F5', dango: '#FF9FC4', cupcake: '#FFB3D3',
+    pizza: '#FFC53D', icecream: '#FFB3CF', cake: '#FFE6B8',
+    water: '#A3D8FF', juice: '#FFA94D', soda: '#F0433A', milkshake: '#FFB3CF',
+  };
+
   function updateEating(dt) {
     if (!eating) return;
     eating.t += dt;
-    const biteAt = [0.2, 0.6, 1.0];
-    if (eating.bites < 3 && eating.t >= biteAt[eating.bites]) {
+    const biteAt = eating.drink ? [0.25, 0.75] : [0.2, 0.6, 1.0];
+    if (eating.bites < biteAt.length && eating.t >= biteAt[eating.bites]) {
       eating.bites += 1;
-      A.play('chomp');
+      A.play(eating.drink ? 'bubble' : 'chomp');
       A.buzz(12);
       pet.squish(1.4);
-      const crumb = {
-        apple: '#FF5A5F', onigiri: '#FFFFFF', fish: '#7CC0F5', dango: '#FF9FC4', cupcake: '#FFB3D3',
-        pizza: '#FFC53D', icecream: '#FFB3CF', cake: '#FFE6B8',
-      }[eating.type];
-      fx.crumbs(pet.geo.x, pet.geo.mouthY, 5, crumb);
+      fx.crumbs(pet.geo.x, pet.geo.mouthY, 5, CRUMB_COLOR[eating.type]);
     }
     if (eating.t >= 1.4) {
-      const f = PM.FOODS[eating.type];
+      const item = itemOf(eating.type);
       const type = eating.type;
+      const drink = eating.drink;
       eating = null;
-      s.counts.fed += 1;
+      if (drink) { s.counts.drank += 1; } else { s.counts.fed += 1; }
       if (type === 'cake') pet.say('Best cake ever!', 2);
       else if (Math.random() < 0.45) speak('yum');
       A.play('yum');
       pet.setExpr('yum', 1.1);
       pet.hop(200);
       fx.hearts(pet.geo.x, pet.geo.top, 2);
-      gainXP(f.xp);
-      track('feed');
+      gainXP(item.xp);
+      track(drink ? 'drink' : 'feed');
       save();
       updateUI();
-      if (s.stats.hunger >= 96) toast(`${s.name} is nice and full.`);
+      if (drink ? s.stats.thirst >= 96 : s.stats.hunger >= 96) toast(`${s.name} is nice and ${drink ? 'quenched' : 'full'}.`);
     }
   }
 
@@ -779,6 +796,23 @@
         A.play('squeak');
         A.buzz(8);
         pet.setExpr('giggle', 0.6);
+        s.stats.fun = M.clamp(s.stats.fun + 0.5);
+        break;
+      case 'butterfly':
+        A.play('sparkle');
+        A.buzz(8);
+        fx.sparkles(layout.butterfly.x, layout.butterfly.y, 6, 18);
+        pet.setExpr('giggle', 0.6);
+        pet.hop(160);
+        s.stats.fun = M.clamp(s.stats.fun + 0.5);
+        layout.butterfly.x = layout.zone[0] * W + Math.random() * (layout.zone[1] - layout.zone[0]) * W;
+        layout.butterfly.y = layout.floorY * 0.35 + Math.random() * layout.floorY * 0.25;
+        break;
+      case 'can':
+        A.play('splash');
+        A.buzz(8);
+        fx.drops(layout.wcan.x - 10, layout.wcan.x + 10, layout.wcan.y - 6, 14);
+        pet.setExpr('yum', 0.5);
         s.stats.fun = M.clamp(s.stats.fun + 0.5);
         break;
       default:
@@ -1099,7 +1133,8 @@
       ensureBall();
       hint('ball', `Flick the ball and ${s.name} will chase it. The arcade has two games.`, 3800);
     }
-    if (arrived && (id === 'living' || id === 'playroom' || (id === 'bedroom' && !s.asleep))) pet.hop(240);
+    if (id === 'garden') hint('garden', `Tap the butterfly or the watering can, or take ${s.name} for a walk!`, 3800);
+    if (arrived && (id === 'living' || id === 'playroom' || id === 'garden' || (id === 'bedroom' && !s.asleep))) pet.hop(240);
   }
 
   function onRoomAction() {
@@ -1111,6 +1146,8 @@
       onSleep();
     } else if (s.room === 'playroom') {
       openArcade();
+    } else if (s.room === 'garden') {
+      startGame('walk');
     }
   }
 
@@ -1220,6 +1257,7 @@
     if (gameKind === 'duo') { endDuo(); return; }
     if (gameKind === 'online') { endOnline(); return; }
     if (gameKind === 'match') { endMatch(); return; }
+    if (gameKind === 'walk') { endWalk(); return; }
     const stars = gameKind === 'stars';
     const score = game.score;
     const coins = game.coins * 2 + Math.floor(score / (stars ? 3 : 6));
@@ -1302,6 +1340,37 @@
     }
     track('arcade');
     gainXP(4 + Math.min(24, score * 0.25));
+    save();
+    updateUI();
+  }
+
+  function endWalk() {
+    const coins = game.coins + game.friends * 3;
+    s.coins += coins;
+    for (let i = 0; i < game.treats; i++) {
+      const pool = Object.keys(PM.FOODS).filter((k) => !PM.FOODS[k].special && M.isUnlocked(s, PM.FOODS[k]));
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      if (pick) s.inv[pick] = (s.inv[pick] || 0) + 1;
+    }
+    s.stats.fun = M.clamp(s.stats.fun + Math.min(30, 10 + game.score * 1.5));
+    s.stats.energy = M.clamp(s.stats.energy - 10);
+    s.stats.hunger = M.clamp(s.stats.hunger - 6);
+    s.stats.thirst = M.clamp(s.stats.thirst - 6);
+    s.counts.walks += 1;
+    $('go-title').textContent = game.friends > 0 ? 'A friend said hi!' : 'Nice walk!';
+    $('go-score-label').textContent = 'Found';
+    $('go-score').textContent = game.score;
+    $('go-best-label').textContent = 'Treats';
+    $('go-best').textContent = game.treats;
+    $('go-coins').textContent = `+${coins}`;
+    $('go-note').textContent = game.treats > 0
+      ? `${s.name} came home with ${game.treats} treat${game.treats === 1 ? '' : 's'}${coins > 0 ? ` and ${coins} coins.` : '.'}`
+      : `A nice stroll with ${s.name}.${coins > 0 ? ` +${coins} coins.` : ''}`;
+    els.over.hidden = false;
+    A.play(game.friends > 0 ? 'ding' : 'sparkle');
+    if (coins > 0) bumpCoins();
+    track('walk');
+    gainXP(4 + Math.min(20, game.score * 1.2));
     save();
     updateUI();
   }
@@ -1393,6 +1462,11 @@
         if (f.fun >= 10) effects.push(`+${f.fun} fun`);
         add(icons.food[k], f, `${effects.join(', ')} · have ${s.inv[k] || 0}`, priceBtn(f), (el) => buyFood(k, el));
       }
+      for (const [k, d] of Object.entries(PM.DRINKS)) {
+        const effects = [`+${d.drink} thirst`];
+        if (d.fun >= 10) effects.push(`+${d.fun} fun`);
+        add(icons.drink[k], d, `${effects.join(', ')} · have ${s.inv[k] || 0}`, priceBtn(d), (el) => buyDrink(k, el));
+      }
     } else if (shopTab === 'hats') {
       for (const [k, h] of Object.entries(PM.HATS)) {
         const owned = s.hats.includes(k);
@@ -1440,6 +1514,18 @@
   function buyFood(k, item) {
     const f = PM.FOODS[k];
     if (!M.buyFood(s, k)) { notEnough(item, f.price); return; }
+    A.play('coin');
+    A.buzz(10);
+    track('shop');
+    save();
+    renderShop();
+    updateUI();
+    if (!els.tray.hidden) renderTray();
+  }
+
+  function buyDrink(k, item) {
+    const d = PM.DRINKS[k];
+    if (!M.buyDrink(s, k)) { notEnough(item, d.price); return; }
     A.play('coin');
     A.buzz(10);
     track('shop');
@@ -1683,6 +1769,13 @@
     if (hours <= 0) return;
     const away = hours > 0.08;
     const ev = M.simulate(s, hours);
+    if (ev.includes('died')) {
+      syncRoom();
+      save();
+      updateUI();
+      showMemorial();
+      return;
+    }
     if (away) {
       const mins = Math.round(hours * 60);
       const span = mins < 60 ? `${mins} min` : `${Math.round(hours)} h`;
@@ -1949,12 +2042,18 @@
   // will next want something and asks the host to schedule a reminder for
   // then. Cleared again as soon as you come back (see onForeground).
   function scheduleNeedNotice() {
-    if (!s || !s.hatched || !s.settings.notify) { PM.host.notify.cancel(); return; }
+    if (!s || !s.hatched || s.dead || !s.settings.notify) { PM.host.notify.cancel(); return; }
     const t = M.timeToNeed(s);
     if (!t) { PM.host.notify.cancel(); return; }
     const minutes = Math.max(1, Math.round(t.hours * 60));
     const notice = (NEED_NOTICE[t.need] || NEED_NOTICE.hunger)(s.name);
-    PM.host.notify.schedule(minutes, notice.title, notice.body);
+    let body = notice.body;
+    // An occasional nudge to visit a friend, folded into a normal (non-urgent) reminder.
+    if (t.need !== 'critical' && t.need !== 'sick') {
+      const sinceVisit = (Date.now() - (s.lastPlaydate || s.born)) / 86400000;
+      if (sinceVisit >= 3 && Math.random() < 0.3) body += ` It's been a while — invite a friend over?`;
+    }
+    PM.host.notify.schedule(minutes, notice.title, body);
   }
 
   function onBackground() {
@@ -2045,7 +2144,7 @@
     if (eating) {
       const g = pet.geo;
       const k = 1 - eating.bites * 0.3;
-      if (k > 0.05) PM.art.drawFood(ctx, eating.type, g.x, g.mouthY + g.h * 0.08, petSize() * 0.3 * k);
+      if (k > 0.05) drawItem(eating.type, g.x, g.mouthY + g.h * 0.08, petSize() * 0.3 * k);
     }
     PM.rooms.drawFront(s.room, ctx, L, {
       asleep: s.asleep, petX: pet.geo.x, petGround: g0, petW: pet.geo.w, petH: pet.geo.h, t: pet.t, duckHop,
@@ -2060,11 +2159,11 @@
       const e = 1 - (1 - k) * (1 - k);
       const x = fly.x0 + (pet.geo.x - fly.x0) * e;
       const y = fly.y0 + (pet.geo.mouthY - fly.y0) * e - Math.sin(k * Math.PI) * 60;
-      PM.art.drawFood(ctx, fly.type, x, y, Math.max(40, petSize() * 0.3), k * 6);
+      drawItem(fly.type, x, y, Math.max(40, petSize() * 0.3), k * 6);
     }
     if (drag) {
       const hp = heldFoodPos(drag);
-      PM.art.drawFood(ctx, drag.type, hp.x, hp.y, Math.max(46, petSize() * 0.32), Math.sin(pet.t * 8) * 0.12);
+      drawItem(drag.type, hp.x, hp.y, Math.max(46, petSize() * 0.32), Math.sin(pet.t * 8) * 0.12);
     }
     if (s.room === 'bathroom' && s.hatched && pointer && !pointer.onBall) drawSponge(pointer.x, pointer.y);
     if (s.asleep) {
@@ -2190,7 +2289,7 @@
     requestAnimationFrame(frame);
     const dt = Math.min(0.05, Math.max(0, (ts - lastFrame) / 1000));
     lastFrame = ts;
-    if (!s || els.adopt.hidden === false) return;
+    if (!s || els.adopt.hidden === false || els.memorial.hidden === false) return;
 
     tickModel();
 
@@ -2332,6 +2431,7 @@
         if (friend) hint('friend', `Tap ${friend.name} to poke. The buttons on the right send waves, hearts and snacks.`, 4200);
       }, 3400);
       s.counts.playdates += 1;
+      s.lastPlaydate = Date.now();
       closeSheets();
       save();
     }
@@ -2830,6 +2930,7 @@
     A.unlock();
     const name = $('pet-name-input').value.replace(/\s+/g, ' ').trim().slice(0, 12) || 'Mochi';
     s = M.create({ name, species: adoptPick.species, color: adoptPick.color });
+    if (deathKeep) { Object.assign(s, deathKeep); deathKeep = null; }
     s.gift = new Date().toDateString();
     s.settings.sound = $('set-sound').checked;
     s.settings.vibe = $('set-vibe').checked;
@@ -2839,6 +2940,38 @@
     startSession();
     A.play('hatch');
     toast('Tap the egg to help it hatch!', 3000);
+  }
+
+  // The pet died of neglect: a gentle stop before a new one arrives. Coins,
+  // stickers and everything else collected stay — only the pet itself is new.
+  function showMemorial() {
+    if (!s) return;
+    PM.host.notify.cancel();
+    if (friend || PM.online.state !== 'off') leavePlaydate();
+    closeSheets();
+    closeTray();
+    mode = 'home';
+    els.arcade.hidden = true;
+    els.over.hidden = true;
+    els.hud.hidden = true;
+    els.banner.hidden = true;
+    const days = Math.max(1, Math.round((Date.now() - s.born) / 86400000));
+    $('mem-name').textContent = s.name;
+    $('mem-days').textContent = `${days} day${days === 1 ? '' : 's'}`;
+    els.memorial.hidden = false;
+  }
+
+  function continueAfterDeath() {
+    if (!s) return;
+    deathKeep = {
+      coins: s.coins, xp: s.xp, hats: s.hats.slice(), outfits: s.outfits.slice(),
+      walls: s.walls.slice(), stickers: s.stickers.slice(), login: s.login,
+      owner: s.owner, counts: s.counts, weekly: s.weekly, settings: s.settings,
+    };
+    wipe();
+    s = null;
+    els.memorial.hidden = true;
+    showAdopt();
   }
 
   /* ---------------- boot ---------------- */
@@ -3011,6 +3144,7 @@
     });
     $('pet-name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.target.blur(); } });
     $('btn-adopt').addEventListener('click', adopt);
+    $('btn-memorial-continue').addEventListener('click', () => { A.play('click'); continueAfterDeath(); });
     els.preview.addEventListener('pointerdown', () => {
       A.unlock();
       previewPet.hop(260);
@@ -3041,13 +3175,15 @@
 
   function boot() {
     for (const k of Object.keys(PM.FOODS)) icons.food[k] = PM.art.foodIcon(k, 56);
+    for (const k of Object.keys(PM.DRINKS)) icons.drink[k] = PM.art.drinkIcon(k, 56);
     for (const k of Object.keys(PM.HATS)) icons.hat[k] = PM.art.hatIcon(k, 60);
     for (const k of Object.keys(PM.OUTFITS)) icons.outfit[k] = PM.art.outfitIcon(k, 60);
     for (const k of Object.keys(PM.WALLS)) icons.wall[k] = PM.rooms.wallIcon(k, 60);
     icons.stickerLocked = PM.art.stickerIcon('egg', 64, true);
     wire();
     s = load();
-    if (s) startSession();
+    if (s && s.dead) showMemorial();
+    else if (s) startSession();
     else showAdopt();
     requestAnimationFrame((ts) => { lastFrame = ts; frame(ts); });
     registerServiceWorker();
@@ -3056,7 +3192,7 @@
       PM.debug = {
         get s() { return s; }, get game() { return game; }, get layout() { return layout; },
         get friend() { return friend; }, get duel() { return duel; }, pet, goRoom, dailyCheck, partyCheck,
-        onBackground, onForeground, scheduleNeedNotice,
+        onBackground, onForeground, scheduleNeedNotice, tickModel, showMemorial, continueAfterDeath, save,
       };
     }
   }

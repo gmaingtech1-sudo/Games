@@ -60,6 +60,11 @@
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.6 6 11a6 6 0 0 1-12 0c0-4.4 6-11 6-11z"/></svg>
         <span class="meter-name">Clean</span>
       </div>
+      <div class="meter" data-stat="thirst">
+        <svg class="ring" viewBox="0 0 48 48" aria-hidden="true"><circle class="ring-bg" cx="24" cy="24" r="19"/><circle class="ring-fg fill" cx="24" cy="24" r="19" pathLength="100" stroke-dasharray="0 100"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l-1.4 15.5a2 2 0 0 1-2 1.5H9.4a2 2 0 0 1-2-1.5L6 3z"/><path d="M6.6 8h10.8"/></svg>
+        <span class="meter-name">Drink</span>
+      </div>
     </div>
     <div class="tools">
       <button id="btn-goals" class="icon-btn" type="button" aria-label="Goals and stickers">
@@ -210,6 +215,10 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5c-3 3-3 14 0 17M12 3.5c3 3 3 14 0 17M3.8 10c5 1.5 11.4 1.5 16.4 0"/></svg>
       <span>Play</span>
     </button>
+    <button class="act" data-room="garden" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21v-8"/><path d="M12 13c0-4 3-6 7-6 0 4-3 6-7 6z"/><path d="M12 15c0-3.5-2.5-5.5-6-5.5 0 3.5 2.5 5.5 6 5.5z"/></svg>
+      <span>Garden</span>
+    </button>
   </nav>
 </div>
 
@@ -298,20 +307,21 @@
   <ul class="howto">
     <li><b>Stroke</b> your pet with a finger to pet it. Tap it to make it giggle.</li>
     <li><b>Move around the house</b> with the room buttons at the bottom, the arrows, or by swiping sideways on an empty spot.</li>
-    <li><b>Kitchen:</b> drag a snack onto its mouth, or just tap the snack. The fridge opens the snacks again.</li>
+    <li><b>Kitchen:</b> drag a snack or drink onto its mouth, or just tap it. The fridge opens the snacks again.</li>
     <li><b>Bathroom:</b> scrub your pet with your finger, then tap Rinse or the shower.</li>
     <li><b>Bedroom:</b> tap the lamp to turn the lights off so energy refills. It wakes up by itself when rested.</li>
     <li><b>Playroom:</b> flick the ball for your pet to chase. The arcade has Star Catch, Bubble Pop and Memory Match, which earn coins for the Shop.</li>
+    <li><b>Garden:</b> tap the butterfly or the watering can for fun, or <b>Take a walk</b> to stroll a path collecting coins and treats.</li>
     <li><b>Levels:</b> everything you do earns XP. Each new level pays coins and unlocks snacks, hats, outfits and wallpapers.</li>
     <li><b>Daily goals:</b> three new ones every day. Finish them for coins and XP, and all three for a bonus. The <b>Week</b> tab has one bigger quest for a bigger prize.</li>
     <li><b>Daily rewards:</b> open the game every day for a bigger gift. Day 7 is the best one.</li>
     <li><b>Birthdays:</b> your pet has a party every month on the day it hatched, and on your birthday too. Blow out the candles and open the present in the living room.</li>
-    <li><b>Stickers:</b> collect all 19 in the sticker album (the checklist button).</li>
+    <li><b>Stickers:</b> collect all 21 in the sticker album (the checklist button).</li>
     <li><b>Friends:</b> tap the friends button to host a playdate or join one with a code. Your pets visit, wave, swap snacks and duel at Bubble Pop. <b>Bubble Pop for 2</b> in the arcade is for two players on one phone.</li>
     <li><b>Tap the thought bubble</b> (or a need meter) to go straight to the room that helps.</li>
     <li><b>Tap poop</b> to clean it up. A dot on a room button means there's a mess in that room.</li>
-    <li>Needs keep changing while the app is closed. If your pet gets sick, give it medicine.</li>
-    <li><b>Notifications:</b> turn them on in Settings for a reminder while you're away, when your pet is hungry, bored, needs a bath, or wakes up.</li>
+    <li>Needs keep changing while the app is closed. If your pet gets sick, give it medicine — a pet left sick and neglected for a couple of days can pass away, so don't leave it too long!</li>
+    <li><b>Notifications:</b> turn them on in Settings for a reminder while you're away, when your pet is hungry, thirsty, bored, needs a bath, wakes up, or is in real trouble.</li>
   </ul>
   <div class="danger-zone">
     <button id="btn-reset" class="btn danger" type="button">Start over with a new egg</button>
@@ -386,6 +396,16 @@
       </div>
     </div>
     <button id="btn-adopt" class="btn primary big" type="button">Adopt this egg</button>
+  </div>
+</section>
+
+<section id="memorial" class="adopt" hidden>
+  <div class="adopt-inner memorial-inner">
+    <svg class="memorial-heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/></svg>
+    <h1 class="logo">Goodbye,<br><span id="mem-name">Mochi</span></h1>
+    <p class="adopt-sub">You were together for <span id="mem-days">1 day</span>. A pet needs food, water, play and rest to stay well — this one went without for far too long.</p>
+    <p class="adopt-sub">Your coins, stickers, hats and outfits are all still here, waiting for a new little one to enjoy them.</p>
+    <button id="btn-memorial-continue" class="btn primary big" type="button">Welcome a new pet</button>
   </div>
 </section>
 

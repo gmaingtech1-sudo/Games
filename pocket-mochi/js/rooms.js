@@ -17,6 +17,7 @@
     { id: 'bathroom', name: 'Bathroom' },
     { id: 'bedroom', name: 'Bedroom' },
     { id: 'playroom', name: 'Playroom' },
+    { id: 'garden', name: 'Garden' },
   ];
 
   /* ---------- wallpapers ---------- */
@@ -34,7 +35,7 @@
     forest: { name: 'Forest leaves',  base: '#C4E6B8', ink: '#D9F0CF', pattern: 'leaves',   price: 55, level: 7 },
     night:  { name: 'Starry night',   base: '#343F7C', ink: '#5561A2', pattern: 'sparkles', price: 70, level: 10 },
   };
-  const DEFAULT_WALL = { living: 'mint', kitchen: 'butter', bathroom: 'aqua', bedroom: 'lilac', playroom: 'sky' };
+  const DEFAULT_WALL = { living: 'mint', kitchen: 'butter', bathroom: 'aqua', bedroom: 'lilac', playroom: 'sky', garden: 'sky' };
 
   function paintWall(ctx, W, floorY, id) {
     const w = WALLS[id] || WALLS.mint;
@@ -1035,6 +1036,215 @@
     ctx.restore();
   }
 
+  /* ---------- garden ---------- */
+
+  // Blends two hex colors (0 = a, 1 = b), for a night-tinted sky.
+  function mix(a, b, t) {
+    const pa = parseInt(a.slice(1), 16);
+    const pb = parseInt(b.slice(1), 16);
+    const ar = pa >> 16 & 255, ag = pa >> 8 & 255, ab = pa & 255;
+    const br = pb >> 16 & 255, bg = pb >> 8 & 255, bb = pb & 255;
+    const r = Math.round(ar + (br - ar) * t), g = Math.round(ag + (bg - ag) * t), bl = Math.round(ab + (bb - ab) * t);
+    return `rgb(${r},${g},${bl})`;
+  }
+
+  function drawFlower(ctx, x, y, r, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, r * 1.1);
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#3E9A5C';
+    ctx.stroke();
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * TAU;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * r * 0.55, Math.sin(a) * r * 0.55, r * 0.42, r * 0.26, a, 0, TAU);
+      ctx.fillStyle = color;
+      ctx.fill();
+      outline(ctx, 1.6);
+    }
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.32, 0, TAU);
+    ctx.fillStyle = '#FFE27A';
+    ctx.fill();
+    outline(ctx, 1.6);
+    ctx.restore();
+  }
+
+  function drawWateringCan(ctx, x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    roundRect(ctx, -18, -26, 32, 26, 6);
+    ctx.fillStyle = '#5DB4F0';
+    ctx.fill();
+    outline(ctx, 3);
+    ctx.beginPath();
+    ctx.moveTo(14, -20);
+    ctx.lineTo(30, -30);
+    ctx.lineTo(34, -24);
+    ctx.lineTo(18, -12);
+    ctx.closePath();
+    ctx.fillStyle = '#5DB4F0';
+    ctx.fill();
+    outline(ctx, 2.5);
+    ctx.beginPath();
+    ctx.arc(32, -27, 4, 0, TAU);
+    ctx.fillStyle = '#5DB4F0';
+    ctx.fill();
+    outline(ctx, 2);
+    ctx.beginPath();
+    ctx.arc(-2, -30, 10, Math.PI * 0.15, Math.PI * 0.85, true);
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function garden(ctx, W, H, night, wall) {
+    const floorY = Math.round(H * 0.55);
+    const w = WALLS[wall] || WALLS.sky;
+    // The chosen wallpaper tints the sky here instead of drawing its pattern.
+    const sky = ctx.createLinearGradient(0, 0, 0, floorY);
+    if (night) {
+      sky.addColorStop(0, mix(w.base, '#141A42', 0.72));
+      sky.addColorStop(1, mix(w.ink, '#2C3468', 0.6));
+    } else {
+      sky.addColorStop(0, w.base);
+      sky.addColorStop(1, w.ink);
+    }
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, floorY);
+
+    if (night) {
+      ctx.fillStyle = '#FFF4C2';
+      ctx.beginPath();
+      ctx.arc(W * 0.82, H * 0.12, Math.min(W, H) * 0.05, 0, TAU);
+      ctx.fill();
+      outline(ctx, 2.5);
+    } else {
+      ctx.fillStyle = '#FFD84D';
+      ctx.beginPath();
+      ctx.arc(W * 0.85, H * 0.1, Math.min(W, H) * 0.055, 0, TAU);
+      ctx.fill();
+      outline(ctx, 3);
+    }
+    cloud(ctx, W * 0.18, H * 0.13, Math.min(W, H) * 0.055);
+    cloud(ctx, W * 0.42, H * 0.08, Math.min(W, H) * 0.04);
+
+    // grass, with a scalloped edge along the horizon
+    ctx.fillStyle = night ? '#5A9E5F' : '#7BCB7E';
+    ctx.fillRect(0, floorY, W, H - floorY);
+    ctx.beginPath();
+    ctx.moveTo(0, floorY + 6);
+    for (let x = 0; x <= W; x += 18) ctx.lineTo(x, floorY + 2 - Math.abs(Math.sin(x * 0.25)) * 5);
+    ctx.lineTo(W, floorY + 6);
+    ctx.lineTo(W, floorY - 4);
+    ctx.lineTo(0, floorY - 4);
+    ctx.closePath();
+    ctx.fillStyle = night ? '#6BB06E' : '#8CD47E';
+    ctx.fill();
+    outline(ctx, 2.5);
+
+    // a low picket fence along the back
+    for (let x = 6; x < W; x += 34) {
+      roundRect(ctx, x, floorY - 24, 8, 22, 2);
+      ctx.fillStyle = '#FFFDF8';
+      ctx.fill();
+      outline(ctx, 2);
+    }
+    ctx.beginPath();
+    ctx.moveTo(0, floorY - 14);
+    ctx.lineTo(W, floorY - 14);
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+
+    // pond, off to one side
+    const pond = { cx: W * 0.2, cy: H * 0.82, rx: Math.min(W * 0.18, 80), ry: Math.min(H * 0.05, 24) };
+    ctx.beginPath();
+    ctx.ellipse(pond.cx, pond.cy, pond.rx, pond.ry, 0, 0, TAU);
+    ctx.fillStyle = '#8FD8F5';
+    ctx.fill();
+    outline(ctx, 3);
+    ctx.beginPath();
+    ctx.ellipse(pond.cx - pond.rx * 0.15, pond.cy - pond.ry * 0.25, pond.rx * 0.45, pond.ry * 0.35, 0, 0, TAU);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fill();
+    [[-0.3, 0.15, 13], [0.35, -0.25, 10]].forEach(([fx, fy, r]) => {
+      ctx.beginPath();
+      ctx.arc(pond.cx + pond.rx * fx, pond.cy + pond.ry * fy, r, 0.4, TAU - 0.4);
+      ctx.closePath();
+      ctx.fillStyle = '#5CC07A';
+      ctx.fill();
+      outline(ctx, 2);
+    });
+
+    // flower beds, skipping the strip taken up by the pond
+    const flowerColors = ['#FF5DA2', '#FFC53D', '#B38BFF', '#FFFFFF'];
+    const bedY = H * 0.94;
+    for (let i = 0; i < 9; i++) {
+      const fx0 = W * 0.06 + i * ((W * 0.88) / 8);
+      if (Math.abs(fx0 - pond.cx) < pond.rx * 1.2) continue;
+      drawFlower(ctx, fx0, bedY - (i % 2) * 9, 10, flowerColors[i % flowerColors.length]);
+    }
+
+    // watering can, tucked by the flowers
+    const wcan = { x: W * 0.88, y: H * 0.9 };
+    drawWateringCan(ctx, wcan.x, wcan.y);
+
+    const groundY = H * 0.88;
+    const butterfly = { x: W * 0.62, y: floorY * 0.55, r: 15 };
+    return { floorY, groundY, poopY: groundY + 6, zone: [0.32, 0.68], pond, wcan, butterfly };
+  }
+
+  function drawButterfly(ctx, x, y, r, t) {
+    ctx.save();
+    ctx.translate(x, y);
+    const flap = Math.sin(t * 12) * 0.6;
+    ['#FF5DA2', '#B38BFF'].forEach((c, i) => {
+      const d = i ? 1 : -1;
+      ctx.save();
+      ctx.scale(d, 1);
+      ctx.rotate(-0.2);
+      ctx.beginPath();
+      ctx.ellipse(r * 0.55, -r * 0.4, r * 0.55, r * (0.42 + Math.abs(flap) * 0.25), 0, 0, TAU);
+      ctx.fillStyle = c;
+      ctx.fill();
+      outline(ctx, 1.8);
+      ctx.beginPath();
+      ctx.ellipse(r * 0.45, r * 0.28, r * 0.4, r * (0.3 + Math.abs(flap) * 0.18), 0, 0, TAU);
+      ctx.fillStyle = c;
+      ctx.fill();
+      outline(ctx, 1.8);
+      ctx.restore();
+    });
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 0.7);
+    ctx.lineTo(0, r * 0.7);
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function gardenLive(ctx, L, t) {
+    const b = L.butterfly;
+    const x = b.x + Math.sin(t * 0.9) * 26;
+    const y = b.y + Math.sin(t * 2.1) * 10;
+    drawButterfly(ctx, x, y, b.r, t);
+    b.liveX = x;
+    b.liveY = y;
+
+    // a little sparkle on the pond
+    const { pond } = L;
+    ctx.beginPath();
+    ctx.arc(pond.cx + Math.sin(t * 1.4) * pond.rx * 0.3, pond.cy - pond.ry * 0.3, 3, 0, TAU);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.fill();
+  }
+
   function drawBall(ctx, x, y, r, rot) {
     ctx.save();
     ctx.translate(x, y);
@@ -1371,7 +1581,7 @@
 
   /* ---------- public ---------- */
 
-  const DRAW = { living, kitchen, bathroom, bedroom, playroom };
+  const DRAW = { living, kitchen, bathroom, bedroom, playroom, garden };
 
   PM.ROOMS = ROOMS;
   PM.WALLS = WALLS;
@@ -1397,6 +1607,7 @@
     drawLive(id, ctx, L, t) {
       if (id === 'kitchen') kitchenLive(ctx, L, t);
       else if (id === 'playroom') playroomLive(ctx, L, t);
+      else if (id === 'garden') gardenLive(ctx, L, t);
     },
 
     // Drawn over the pet. info: { asleep, petX, petGround, petW, petH, t, duckHop }
@@ -1419,6 +1630,8 @@
       if (id === 'bathroom' && near(L.shower, 36)) return 'shower';
       if (id === 'bedroom' && near(L.lamp, L.lamp.r)) return 'lamp';
       if (id === 'playroom' && inBox(L.arcade)) return 'arcade';
+      if (id === 'garden' && near({ x: L.butterfly.liveX ?? L.butterfly.x, y: L.butterfly.liveY ?? L.butterfly.y }, L.butterfly.r * 1.8)) return 'butterfly';
+      if (id === 'garden' && near(L.wcan, 32)) return 'can';
       return null;
     },
 
