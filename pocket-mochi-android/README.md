@@ -32,8 +32,9 @@ It's the same game as the web version in [`../pocket-mochi`](../pocket-mochi), p
 | `src/app/pocketmochi/game/NotifyReceiver.java` | Posts the reminder notification when its alarm fires, even if the app has since been closed |
 | `AndroidManifest.xml` | App name, icon, permissions (internet for fonts and playdates, vibration, posting notifications), portrait screen |
 | `res/` | Launcher icons (including the Android 8+ adaptive icon and the Android 13+ themed icon) and the dark theme |
-| `build.sh` | Builds `dist/pocket-mochi.apk` |
-| `signing.keystore` | The key the APK is signed with |
+| `build.sh` | Builds `dist/pocket-mochi.apk`, for sideloading |
+| `build-aab.sh` | Builds `dist/pocket-mochi.aab`, the format Google Play requires for a new app's Play Console upload |
+| `signing.keystore` | The key both the APK and the App Bundle are signed with |
 | `../pocket-mochi/js/host.js` | The game's side of the bridge (it looks for `window.AndroidHost`) |
 
 ## Building it
@@ -49,6 +50,17 @@ sudo apt install openjdk-21-jdk-headless aapt dalvik-exchange zipalign apksigner
 
 The code compiles against the Android 6.0 SDK (the newest one Ubuntu packages) and targets Android 14. Features from newer Android versions, like the tuned vibration effects, are used only on phones that have them.
 
+### Building the App Bundle (for Google Play)
+
+Play Console only accepts an `.aab` (App Bundle) for a new app's release — not the `.apk` above. `build-aab.sh` makes one by reusing `build.sh`'s compiled resources and dex (run `build.sh` first), relinking the resources in the protobuf format a bundle module needs, and packaging it with [bundletool](https://github.com/google/bundletool):
+
+```sh
+./build.sh
+BUNDLETOOL=/path/to/bundletool-all-*.jar ./build-aab.sh
+```
+
+Upload the resulting `dist/pocket-mochi.aab` in the Play Console release flow ("Upload app bundles"). It's signed with the same `signing.keystore` as the APK, which Play Console will use as your **upload key**; enroll in Play App Signing (Play Console offers this automatically for a new app) and Google re-signs the app itself with a separate key it manages, so this upload key never reaches users' phones directly.
+
 ### About the signing key
 
-`signing.keystore` (password `pocketmochi`) is committed on purpose. It lets anyone who builds this project produce an update that installs over your existing app. That's fine for a personal app you install yourself. Before publishing to the Google Play Store, create a new private key and keep it out of the repository.
+`signing.keystore` (password `pocketmochi`) is committed on purpose, so anyone who builds this project can produce an update that installs over an existing sideloaded app — fine for a personal app installed by hand. Once this key is also used as a Play Console **upload key** for a real listing, that calculus changes: anyone with repository access could use it to push an update to your Play Store listing. Before a production (non-internal-testing) release, generate a fresh private key, use it as the upload key instead, and keep it out of the repository (or use Play Console's "request upload key reset" if this one's already registered).
