@@ -91,7 +91,7 @@
   let resetArmed = 0;
   let shopTab = 'food';
   const timers = { save: 0, ui: 0, stink: 0, z: 0, purr: 0, bubble: 0, night: 0, idle: 0 };
-  const icons = { food: {}, drink: {}, hat: {}, outfit: {}, wall: {}, sticker: {}, stickerLocked: '' };
+  const icons = { food: {}, drink: {}, hat: {}, outfit: {}, toy: {}, wall: {}, sticker: {}, stickerLocked: '' };
   const toastQueue = [];
   let goalsTab = 'goals';
   let settingsDirty = false; // the birthday changed: check for a party once settings close
@@ -815,6 +815,16 @@
         pet.setExpr('yum', 0.5);
         s.stats.fun = M.clamp(s.stats.fun + 0.5);
         break;
+      case 'toybox':
+        if (!s.toys.length) {
+          A.play('no');
+          toast(`Buy a toy in the shop for ${s.name} to play with!`);
+          break;
+        }
+        playToy(s.toys[Math.floor(Math.random() * s.toys.length)]);
+        save();
+        updateUI();
+        break;
       default:
         break;
     }
@@ -1131,7 +1141,7 @@
     if (id === 'bedroom' && !s.asleep) hint('bed', `Tap the lamp to put ${s.name} to bed.`);
     if (id === 'playroom') {
       ensureBall();
-      hint('ball', `Flick the ball and ${s.name} will chase it. The arcade has two games.`, 3800);
+      hint('ball', `Flick the ball and ${s.name} will chase it. The arcade has two games, and the toy box has more to play with.`, 4200);
     }
     if (id === 'garden') hint('garden', `Tap the butterfly or the watering can, or take ${s.name} for a walk!`, 3800);
     if (arrived && (id === 'living' || id === 'playroom' || id === 'garden' || (id === 'bedroom' && !s.asleep))) pet.hop(240);
@@ -1439,7 +1449,7 @@
 
   function renderShop() {
     els.shopCoins.textContent = s.coins;
-    ['food', 'hats', 'outfits', 'decor'].forEach((t) => $(`tab-${t}`).setAttribute('aria-selected', String(t === shopTab)));
+    ['food', 'hats', 'outfits', 'toys', 'decor'].forEach((t) => $(`tab-${t}`).setAttribute('aria-selected', String(t === shopTab)));
     els.shopGrid.innerHTML = '';
     const coinDot = '<span class="coin-dot" aria-hidden="true"></span>';
     const priceBtn = (item) => `<button type="button" class="buy${s.coins < item.price ? ' poor' : ''}" ` +
@@ -1485,6 +1495,13 @@
         if (wearing) btn = '<button type="button" class="buy wearing">Take off</button>';
         else if (owned) btn = '<button type="button" class="buy alt">Wear</button>';
         add(icons.outfit[k], o, wearing ? 'Wearing now' : owned ? 'Yours' : '', btn, (el) => outfitAction(k, el));
+      }
+    } else if (shopTab === 'toys') {
+      for (const [k, t] of Object.entries(PM.TOYS)) {
+        const owned = s.toys.includes(k);
+        let btn = priceBtn(t);
+        if (owned) btn = '<button type="button" class="buy alt">Play</button>';
+        add(icons.toy[k], t, owned ? `+${t.fun} fun each time` : '', btn, (el) => toyAction(k, el));
       }
     } else {
       const here = M.wallOf(s, s.room);
@@ -1572,6 +1589,44 @@
       pet.setExpr('yum', 1);
     }
     sendHello();
+    save();
+    renderShop();
+    updateUI();
+  }
+
+  // Gives a fun (and XP) bump for the named toy. Called from the toy box in
+  // the playroom (a random owned toy) and from the shop's "Play" button
+  // (a specific one) — toys aren't worn, so playing is the whole point.
+  function playToy(type) {
+    const t = PM.TOYS[type];
+    if (!t) return;
+    A.play('boing');
+    A.buzz(10);
+    pet.setExpr('giggle', 0.7);
+    pet.hop(220);
+    pet.squish(1.4);
+    fx.sparkles(pet.geo.x, pet.geo.top, 6, 20);
+    fx.hearts(pet.geo.x, pet.geo.top, 2);
+    s.stats.fun = M.clamp(s.stats.fun + t.fun);
+    s.counts.toysPlayed += 1;
+    track('toy');
+    gainXP(t.xp);
+    toast(`${s.name} had fun with the ${t.name}!`);
+  }
+
+  function toyAction(k, item) {
+    const t = PM.TOYS[k];
+    if (!s.toys.includes(k)) {
+      if (!M.buyToy(s, k)) { notEnough(item, t.price); return; }
+      A.play('coin');
+      A.buzz(10);
+      track('shop');
+      save();
+      renderShop();
+      updateUI();
+      return;
+    }
+    playToy(k);
     save();
     renderShop();
     updateUI();
@@ -3178,6 +3233,7 @@
     for (const k of Object.keys(PM.DRINKS)) icons.drink[k] = PM.art.drinkIcon(k, 56);
     for (const k of Object.keys(PM.HATS)) icons.hat[k] = PM.art.hatIcon(k, 60);
     for (const k of Object.keys(PM.OUTFITS)) icons.outfit[k] = PM.art.outfitIcon(k, 60);
+    for (const k of Object.keys(PM.TOYS)) icons.toy[k] = PM.art.toyIcon(k, 60);
     for (const k of Object.keys(PM.WALLS)) icons.wall[k] = PM.rooms.wallIcon(k, 60);
     icons.stickerLocked = PM.art.stickerIcon('egg', 64, true);
     wire();

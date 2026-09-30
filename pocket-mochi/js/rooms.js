@@ -1042,7 +1042,8 @@
 
     const groundY = H * 0.84;
     const arcade = { x: ax0, y: aTop, w: aw, h: aBottom - aTop, screen };
-    return { floorY, groundY, poopY: groundY + 6, zone: [0.3, 0.66], arcade };
+    const toybox = { x: bx0 - 6, y: bTop - 60, w: bx1 - bx0 + 14, h: bBottom - bTop + 64 };
+    return { floorY, groundY, poopY: groundY + 6, zone: [0.3, 0.66], arcade, toybox };
   }
 
   function playroomLive(ctx, L, t) {
@@ -1664,6 +1665,7 @@
       if (id === 'bathroom' && near(L.shower, 36)) return 'shower';
       if (id === 'bedroom' && near(L.lamp, L.lamp.r)) return 'lamp';
       if (id === 'playroom' && inBox(L.arcade)) return 'arcade';
+      if (id === 'playroom' && inBox(L.toybox)) return 'toybox';
       if (id === 'garden' && near({ x: L.butterfly.liveX ?? L.butterfly.x, y: L.butterfly.liveY ?? L.butterfly.y }, L.butterfly.r * 1.8)) return 'butterfly';
       if (id === 'garden' && near(L.wcan, 32)) return 'can';
       return null;

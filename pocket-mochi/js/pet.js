@@ -60,12 +60,13 @@
       login: { last: '', streak: 0, total: 0 },
       owner: { name: '', bday: '', party: 0 },
       party: null,
-      counts: { fed: 0, drank: 0, baths: 0, hearts: 0, poops: 0, duelsWon: 0, playdates: 0, parties: 0, weeklyDone: 0, matchWins: 0, walks: 0 },
+      counts: { fed: 0, drank: 0, baths: 0, hearts: 0, poops: 0, duelsWon: 0, playdates: 0, parties: 0, weeklyDone: 0, matchWins: 0, walks: 0, toysPlayed: 0 },
       lastPlaydate: 0,
       stickers: [],
       weekly: null,
       outfit: null,
       outfits: [],
+      toys: [],
       settings: { sound: true, vibe: true, notify: false },
     };
   }
@@ -118,6 +119,8 @@
     s.criticalHours = Number(raw.criticalHours) || 0;
     s.dead = !!raw.dead;
     s.lastPlaydate = Number(raw.lastPlaydate) || 0;
+    // Added in 1.7: toys.
+    s.toys = Array.isArray(raw.toys) ? raw.toys.filter((k) => PM.TOYS && PM.TOYS[k]) : [];
     return s;
   }
 
@@ -288,7 +291,7 @@
   // Names of shop items that unlock above level `from`, up to level `to`.
   function unlocksBetween(from, to) {
     const out = [];
-    [PM.FOODS, PM.DRINKS, PM.HATS, PM.WALLS, PM.OUTFITS].forEach((table) => {
+    [PM.FOODS, PM.DRINKS, PM.HATS, PM.WALLS, PM.OUTFITS, PM.TOYS].forEach((table) => {
       Object.values(table).forEach((item) => {
         const lv = item.level || 1;
         if (lv > from && lv <= to) out.push(item.name);
@@ -368,6 +371,7 @@
     { id: 'cards', name: 'Card shark', desc: 'Win 5 rounds of Memory Match', icon: 'cards', test: (s) => s.counts.matchWins >= 5 },
     { id: 'drink10', name: 'Well hydrated', desc: 'Give 10 drinks', icon: 'cup', test: (s) => s.counts.drank >= 10 },
     { id: 'walk5', name: 'Regular walker', desc: 'Go for 5 walks', icon: 'paw', test: (s) => s.counts.walks >= 5 },
+    { id: 'toys3', name: 'Toy box', desc: 'Own 3 toys', icon: 'toy', test: (s) => s.toys.length >= 3 },
   ];
   const STICKER_COINS = 10;
 
@@ -422,6 +426,7 @@
     bath:    { amounts: [1], text: (n, name) => `Scrub ${name} in the bath, then rinse` },
     sleep:   { amounts: [1], text: (n, name) => `Tuck ${name} into bed` },
     ball:    { amounts: [8, 12], text: (n, name) => `Play ball until ${name} bops it ${n} times` },
+    toy:     { amounts: [2, 3], text: (n) => `Play with a toy ${n} times` },
     stars:   { amounts: [15, 25], text: (n) => `Catch ${n} stars in Star Catch` },
     bubbles: { amounts: [30, 50], text: (n) => `Pop ${n} bubbles in Bubble Pop` },
     arcade:  { amounts: [2, 3], text: (n) => `Play ${n} arcade games` },
@@ -495,6 +500,7 @@
     pet:     { amounts: [120, 160], text: (n, name) => `Pet ${name} until ${n} hearts float up this week` },
     bath:    { amounts: [4, 5], text: (n, name) => `Give ${name} ${n} bubble baths this week` },
     ball:    { amounts: [40, 60], text: (n, name) => `Bop the ball ${n} times this week` },
+    toy:     { amounts: [10, 15], text: (n) => `Play with a toy ${n} times this week` },
     arcade:  { amounts: [8, 12], text: (n) => `Play ${n} arcade games this week` },
     bubbles: { amounts: [150, 200], text: (n) => `Pop ${n} bubbles in Bubble Pop this week` },
     stars:   { amounts: [80, 120], text: (n) => `Catch ${n} stars in Star Catch this week` },
@@ -658,6 +664,14 @@
       s.coins -= o.price;
       s.outfits.push(type);
       s.outfit = type;
+      return true;
+    },
+
+    buyToy(s, type) {
+      const t = PM.TOYS[type];
+      if (!t || s.toys.includes(type) || s.coins < t.price || !isUnlocked(s, t)) return false;
+      s.coins -= t.price;
+      s.toys.push(type);
       return true;
     },
 
