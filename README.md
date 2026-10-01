@@ -17,6 +17,7 @@ Small games for phones. Each one lives in its own folder.
 | Mod | Description |
 | --- | --- |
 | [Diver's Companion](subnautica2-divers-companion/) | A Subnautica 2 helper mod (UE4SS Lua). Warns you before your oxygen, health, food, water, body temperature or vehicle power run out, with a countdown of how much air you have left. It also adds an emergency oxygen tank, a status report key, Turbo Fins, recall-home and unstuck keys, and optional slower hunger and thirst. [Download the zip](subnautica2-divers-companion/dist/DiversCompanion.zip). |
+| [Narwhal Chassis](subnautica2-narwhal-sub/) | A new submarine body for Subnautica 2's Tadpole, modelled in Blender: a narwhal-shaped shell with a spiral sensor tusk, ducted thrusters, whale flukes and a fold-up carrying mode. It comes with the Blender build script, Unreal-ready FBX files with collision, a modkit plugin and an editor setup script. |
 
 ## Books
 

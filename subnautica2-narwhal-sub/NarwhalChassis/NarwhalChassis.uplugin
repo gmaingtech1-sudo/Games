@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Narwhal Chassis",
+	"Description": "A new chassis for the Tadpole: a narwhal-shaped submarine shell with a spiral sensor tusk, twin ducted thrusters and whale flukes.",
+	"Category": "Modding",
+	"CreatedBy": "Games repo",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"SemVersion": "",
+	"RequiredOnRemote": false
+}
