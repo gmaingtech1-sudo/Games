@@ -666,29 +666,34 @@ svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round
 /* ---------- Dock ---------- */
 
 .dock {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  display: flex;
   gap: 4px;
   margin: 10px 12px 10px;
   padding: 6px;
   border-radius: 24px;
   background: var(--shell-deep);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
 }
+.dock::-webkit-scrollbar { display: none; }
 .act {
   position: relative;
+  flex: 1 0 64px;
   min-height: 54px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 6px 0 5px;
+  padding: 6px 2px 5px;
   border: 0;
   border-radius: 18px;
   background: transparent;
   color: var(--muted);
   font-weight: 800;
   font-size: 12px;
+  scroll-snap-align: start;
   transition: background-color 0.15s, color 0.15s, transform 0.06s;
 }
 .act svg { width: 26px; height: 26px; stroke-width: 2.4; }

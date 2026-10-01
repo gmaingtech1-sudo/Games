@@ -6,7 +6,7 @@ It's plain HTML, CSS and JavaScript. There's no build step and nothing to instal
 
 ## Playing
 
-The house has six rooms. Move between them with the room buttons at the bottom, the arrows on the sides, or by swiping sideways on an empty spot.
+The house has eight rooms. Move between them with the room buttons at the bottom (which scroll sideways if they don't all fit), the arrows on the sides, or by swiping sideways on an empty spot.
 
 | Room | What you do there |
 | --- | --- |
@@ -16,6 +16,8 @@ The house has six rooms. Move between them with the room buttons at the bottom, 
 | Bedroom | Tap the lamp (or **Lights off**) and your pet climbs into bed. Energy refills while it sleeps, and it wakes up on its own when rested. In a hurry? An **Energy fizz** from the shop tops up energy right away, no nap needed. |
 | Playroom | Flick the ball and your pet chases it and bops it with its head, which is fun for it. Tap the toy box to play with a toy you own, for more fun and a little XP. The arcade machine has four games: **Star Catch** (slide to move, catch stars and coins, dodge storm clouds), **Bubble Pop** (tap bubbles before they float away; quick pops build a combo up to x5, rainbow bubbles are worth more, storm bubbles cost 3 seconds), **Memory Match** (flip cards to find the six pairs before the clock runs out; quick matches build a bigger combo) and **Bubble Pop for 2** (two players on one phone, one half of the screen each, with the same bubbles mirrored on both sides). |
 | Garden | Tap the butterfly or the watering can for a little fun, or tap **Take a walk** for a 20-second stroll down the path: slide to move and scoop up coins and treats, with the odd friend passing by to say hello. Ends with a summary of what you found. The wallpaper you pick for this room tints its sky instead of covering it. |
+| Attic | A cozy loft under the roof with fairy lights and a full-length mirror. Tap the mirror for a little preen, for a bit of fun. |
+| Rooftop | A terrace above the house with a skyline view and a telescope. Tap the telescope to gaze out, for a bit of fun — by night the sky fills with stars, and a cloud drifts by during the day. Tints its sky the same way the garden does. |
 
 If you're not sure what your pet needs, tap its thought bubble or one of the need rings at the top, and you'll go straight to the room that helps. Your pet also talks in speech bubbles: it says hi, tells you when it's hungry or bored, and reacts when you feed, pet or wash it.
 
@@ -89,7 +91,7 @@ Then open <http://localhost:8000>. To try it on your phone, connect it to the sa
 | `js/host.js` | Where saves, vibration and reminders go: the browser (localStorage, `navigator.vibrate`, the Notification API), or the Android app when running inside it |
 | `js/audio.js` | Sound effects synthesized with WebAudio (no audio files), plus vibration |
 | `js/art.js` | Canvas drawings: snacks, drinks, hats, toys, poop, particles |
-| `js/rooms.js` | The house: each room's art, wallpapers, its tappable props (fridge, duck, lamp, arcade, toy box, butterfly, watering can), the birthday party and where the pet stands |
+| `js/rooms.js` | The house: each room's art, wallpapers, its tappable props (fridge, duck, lamp, arcade, toy box, butterfly, watering can, mirror, telescope), the birthday party and where the pet stands |
 | `js/pet.js` | The care model (needs including thirst, levels, daily goals, login streak, birthdays, stickers, poop, sickness, neglect/death, offline catch-up) and the animated pet renderer with its speech bubbles |
 | `js/minigame.js` | The arcade games: Star Catch, Bubble Pop (solo, two players, or seeded for an online duel), Memory Match and Walk |
 | `js/online.js` | Playdates: hosting, joining with a code, and passing messages between the two phones (emotes, snacks, duels, sleepovers) |

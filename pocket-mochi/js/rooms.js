@@ -18,6 +18,8 @@
     { id: 'bedroom', name: 'Bedroom' },
     { id: 'playroom', name: 'Playroom' },
     { id: 'garden', name: 'Garden' },
+    { id: 'attic', name: 'Attic' },
+    { id: 'rooftop', name: 'Rooftop' },
   ];
 
   /* ---------- wallpapers ---------- */
@@ -35,7 +37,7 @@
     forest: { name: 'Forest leaves',  base: '#C4E6B8', ink: '#D9F0CF', pattern: 'leaves',   price: 55, level: 7 },
     night:  { name: 'Starry night',   base: '#343F7C', ink: '#5561A2', pattern: 'sparkles', price: 70, level: 10 },
   };
-  const DEFAULT_WALL = { living: 'mint', kitchen: 'butter', bathroom: 'aqua', bedroom: 'lilac', playroom: 'sky', garden: 'sky' };
+  const DEFAULT_WALL = { living: 'mint', kitchen: 'butter', bathroom: 'aqua', bedroom: 'lilac', playroom: 'sky', garden: 'sky', attic: 'butter', rooftop: 'sky' };
 
   function paintWall(ctx, W, floorY, id) {
     const w = WALLS[id] || WALLS.mint;
@@ -1313,6 +1315,295 @@
     ctx.fill();
   }
 
+  /* ---------- attic ---------- */
+
+  function attic(ctx, W, H, night, wall) {
+    const roofH = Math.min(H * 0.11, 70);
+    const floorY = Math.round(H * 0.6);
+    paintWall(ctx, W, floorY, wall);
+
+    // the sloped roof overhead, with a beam down each side
+    ctx.beginPath();
+    ctx.moveTo(-4, roofH);
+    ctx.lineTo(W * 0.5, -4);
+    ctx.lineTo(W + 4, roofH);
+    ctx.lineTo(W + 4, -4);
+    ctx.lineTo(-4, -4);
+    ctx.closePath();
+    ctx.fillStyle = PAPER;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-4, roofH);
+    ctx.lineTo(W * 0.5, -4);
+    ctx.lineTo(W + 4, roofH);
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    [0.22, 0.78].forEach((f) => {
+      const bx = W * f;
+      const by = roofH * (1 - Math.abs(f - 0.5) / 0.5);
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx, roofH + 4);
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#D9A66C';
+      ctx.stroke();
+    });
+
+    // a window set into the gable
+    const ww = Math.min(W * 0.26, 110);
+    drawWindow(ctx, W / 2 - ww / 2, roofH * 0.1, ww, Math.min(H * 0.15, 80), night);
+
+    // fairy lights strung along the roof beams
+    const gx0 = W * 0.06;
+    const gx1 = W * 0.94;
+    const gy = roofH + 10;
+    const sag = H * 0.05;
+    ctx.beginPath();
+    ctx.moveTo(gx0, gy);
+    ctx.quadraticCurveTo((gx0 + gx1) / 2, gy + sag, gx1, gy);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    const BULB_COLORS = ['#FFE27A', '#FF9FC4', '#8FD8F5', '#B9A3F0'];
+    const lights = [];
+    for (let i = 1; i <= 6; i++) {
+      const f = i / 7;
+      const x = (1 - f) * (1 - f) * gx0 + 2 * (1 - f) * f * ((gx0 + gx1) / 2) + f * f * gx1;
+      const y = (1 - f) * (1 - f) * gy + 2 * (1 - f) * f * (gy + sag) + f * f * gy;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y + 9);
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y + 13, 5, 0, TAU);
+      ctx.fillStyle = BULB_COLORS[i % BULB_COLORS.length];
+      ctx.fill();
+      outline(ctx, 1.6);
+      lights.push({ x, y: y + 13 });
+    }
+
+    planks(ctx, W, H, floorY, '#E9C08C', '#D2A36C');
+    baseboard(ctx, W, floorY);
+    const groundY = H * 0.86;
+    rug(ctx, W * 0.5, groundY, W * 0.3, H * 0.055, '#FFCADC', '#FFE0EB');
+
+    // a travel trunk, tucked to one side
+    const tx = W * 0.14;
+    const tw = Math.min(W * 0.2, 86);
+    const th = tw * 0.62;
+    const ty = groundY - th * 0.55;
+    roundRect(ctx, tx - tw / 2, ty, tw, th, 8);
+    ctx.fillStyle = '#C98B5A';
+    ctx.fill();
+    outline(ctx, 3);
+    roundRect(ctx, tx - tw / 2, ty, tw, th * 0.32, 8);
+    ctx.fillStyle = '#DDA06E';
+    ctx.fill();
+    outline(ctx, 2.5);
+    roundRect(ctx, tx - tw * 0.06, ty + th * 0.22, tw * 0.12, th * 0.3, 3);
+    ctx.fillStyle = '#8A5A36';
+    ctx.fill();
+    outline(ctx, 2);
+
+    // a full-length mirror on the other side
+    const mx = W * 0.84;
+    const mw = Math.min(W * 0.16, 66);
+    const mh = mw * 2.3;
+    const my = groundY - mh * 0.96;
+    roundRect(ctx, mx - mw / 2 - 6, my - 8, mw + 12, mh + 16, mw * 0.5);
+    ctx.fillStyle = '#E9C08C';
+    ctx.fill();
+    outline(ctx, 3);
+    ctx.save();
+    roundRect(ctx, mx - mw / 2, my, mw, mh, mw * 0.46);
+    ctx.clip();
+    const mg = ctx.createLinearGradient(mx - mw / 2, my, mx + mw / 2, my + mh);
+    mg.addColorStop(0, '#EAF6FF');
+    mg.addColorStop(1, '#C7E8FF');
+    ctx.fillStyle = mg;
+    ctx.fillRect(mx - mw / 2, my, mw, mh);
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.beginPath();
+    ctx.ellipse(mx - mw * 0.2, my + mh * 0.3, mw * 0.18, mh * 0.22, -0.3, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+    roundRect(ctx, mx - mw / 2, my, mw, mh, mw * 0.46);
+    outline(ctx, 3);
+    const mirror = { x: mx, y: my + mh * 0.5, r: Math.max(mw, mh) * 0.4 };
+
+    return { floorY, groundY, poopY: groundY + 4, zone: [0.28, 0.72], mirror, lights };
+  }
+
+  // A slow shimmer sweeping across the mirror, and the fairy lights twinkling.
+  function atticLive(ctx, L, t) {
+    const { mirror } = L;
+    const sweep = (Math.sin(t * 0.6) + 1) / 2;
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.ellipse(mirror.x - mirror.r * 0.6 + sweep * mirror.r * 1.2, mirror.y, mirror.r * 0.22, mirror.r * 0.75, -0.3, 0, TAU);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+    ctx.restore();
+
+    L.lights.forEach((p, i) => {
+      const glow = Math.max(0, Math.sin(t * 1.7 + i * 1.4));
+      if (glow < 0.15) return;
+      ctx.save();
+      ctx.globalAlpha = glow * 0.7;
+      sparklePath(ctx, p.x, p.y, 4 + glow * 2);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  /* ---------- rooftop ---------- */
+
+  function rooftop(ctx, W, H, night, wall) {
+    const floorY = Math.round(H * 0.56);
+    const w = WALLS[wall] || WALLS.sky;
+    // Like the garden, the wallpaper tints the sky instead of covering it.
+    const sky = ctx.createLinearGradient(0, 0, 0, floorY);
+    if (night) {
+      sky.addColorStop(0, mix(w.base, '#10143A', 0.78));
+      sky.addColorStop(1, mix(w.ink, '#232A5E', 0.62));
+    } else {
+      sky.addColorStop(0, mix(w.base, '#FFD9A0', 0.25));
+      sky.addColorStop(1, w.ink);
+    }
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, floorY);
+
+    // a skyline of distant rooftops along the horizon
+    const skylineColors = night ? ['#2B3166', '#343B74'] : ['#B9C6DE', '#CBD6E8'];
+    let x = -10;
+    let bi = 0;
+    while (x < W + 10) {
+      const bw = 28 + ((bi * 37) % 30);
+      const bh = floorY * (0.12 + ((bi * 53) % 40) / 140);
+      ctx.fillStyle = skylineColors[bi % 2];
+      ctx.fillRect(x, floorY - bh, bw, bh + 4);
+      outline(ctx, 2);
+      x += bw - 4;
+      bi++;
+    }
+
+    if (night) {
+      ctx.fillStyle = '#FFF4C2';
+      ctx.beginPath();
+      ctx.arc(W * 0.18, H * 0.12, Math.min(W, H) * 0.05, 0, TAU);
+      ctx.fill();
+      outline(ctx, 2.5);
+    } else {
+      ctx.fillStyle = '#FFD84D';
+      ctx.beginPath();
+      ctx.arc(W * 0.82, H * 0.1, Math.min(W, H) * 0.055, 0, TAU);
+      ctx.fill();
+      outline(ctx, 3);
+      cloud(ctx, W * 0.22, H * 0.14, Math.min(W, H) * 0.05);
+    }
+
+    // a low parapet ledge along the edge
+    for (let bx = 2; bx < W; bx += 30) {
+      roundRect(ctx, bx, floorY - 26, 24, 24, 4);
+      ctx.fillStyle = PAPER;
+      ctx.fill();
+      outline(ctx, 2.5);
+    }
+    ctx.beginPath();
+    ctx.moveTo(0, floorY - 14);
+    ctx.lineTo(W, floorY - 14);
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+
+    // the terrace deck
+    planks(ctx, W, H, floorY, night ? '#6B5A48' : '#C98B5A', night ? '#574A3A' : '#B07A48');
+    const groundY = H * 0.88;
+    rug(ctx, W * 0.42, groundY, W * 0.26, H * 0.045, '#8FD8F5', '#EAF9FF');
+
+    // potted plants flanking the ledge
+    [[0.08, 1], [0.94, -1]].forEach(([fx, dir]) => {
+      const px = W * fx;
+      const py = floorY + 10;
+      roundRect(ctx, px - 14, py, 28, 22, 5);
+      ctx.fillStyle = '#C98B5A';
+      ctx.fill();
+      outline(ctx, 2.5);
+      [[-0.4, 34], [0, 42], [0.4, 32]].forEach(([a, len]) => {
+        ctx.save();
+        ctx.translate(px, py - 2);
+        ctx.rotate(a * dir);
+        ctx.beginPath();
+        ctx.ellipse(0, -len / 2, 8, len / 2, 0, 0, TAU);
+        ctx.fillStyle = '#5CC07A';
+        ctx.fill();
+        outline(ctx, 2);
+        ctx.restore();
+      });
+    });
+
+    // a telescope on its tripod
+    const telescope = { x: W * 0.68, y: floorY + (groundY - floorY) * 0.55, r: Math.max(26, W * 0.07) };
+    ctx.save();
+    ctx.translate(telescope.x, telescope.y);
+    [-1, 1].forEach((d) => {
+      ctx.beginPath();
+      ctx.moveTo(0, -6);
+      ctx.lineTo(d * 20, 34);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#8A5A36';
+      ctx.stroke();
+    });
+    ctx.beginPath();
+    ctx.moveTo(0, -6);
+    ctx.lineTo(0, 36);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#8A5A36';
+    ctx.stroke();
+    ctx.save();
+    ctx.rotate(-0.55);
+    roundRect(ctx, -9, -46, 18, 44, 8);
+    ctx.fillStyle = '#5DB4F0';
+    ctx.fill();
+    outline(ctx, 3);
+    roundRect(ctx, -11, -50, 22, 10, 5);
+    ctx.fillStyle = '#FFD84D';
+    ctx.fill();
+    outline(ctx, 2.5);
+    ctx.restore();
+    ctx.beginPath();
+    ctx.ellipse(0, -2, 9, 5, 0, 0, TAU);
+    ctx.fillStyle = '#8A5A36';
+    ctx.fill();
+    outline(ctx, 2.5);
+    ctx.restore();
+
+    return { floorY, groundY, poopY: groundY + 6, zone: [0.3, 0.64], telescope, night };
+  }
+
+  // Twinkling stars at night, or a slow-drifting cloud by day.
+  function rooftopLive(ctx, L, t) {
+    if (L.night) {
+      for (let i = 0; i < 14; i++) {
+        const sx = (L.W * ((i * 0.37) % 1) + i * 11) % L.W;
+        const sy = L.floorY * ((i * 0.23 + 0.05) % 0.9);
+        const glow = Math.max(0, Math.sin(t * (0.8 + (i % 5) * 0.15) + i * 1.7));
+        if (glow < 0.25) continue;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1.6 + glow, 0, TAU);
+        ctx.fillStyle = `rgba(255, 255, 255, ${glow * 0.85})`;
+        ctx.fill();
+      }
+    } else {
+      const u = (t * 0.03) % 1.3;
+      cloud(ctx, L.W * (u - 0.15), L.floorY * 0.2, Math.min(L.W, L.H) * 0.045);
+    }
+  }
+
   /* ---------- birthday party (living room) ---------- */
 
   const PARTY_COLORS = ['#FF5DA2', '#FFC53D', '#5DB4F0', '#36C2A2', '#B38BFF'];
@@ -1615,13 +1906,15 @@
 
   /* ---------- public ---------- */
 
-  const DRAW = { living, kitchen, bathroom, bedroom, playroom, garden };
+  const DRAW = { living, kitchen, bathroom, bedroom, playroom, garden, attic, rooftop };
 
   PM.ROOMS = ROOMS;
   PM.WALLS = WALLS;
   PM.rooms = {
     defaultWall: (id) => DEFAULT_WALL[id] || 'mint',
-    defaultWalls: Object.values(DEFAULT_WALL),
+    // Deduped: several rooms share a default wallpaper, and this is what
+    // s.walls actually starts with, so it's what "+3 more" should count from.
+    defaultWalls: Array.from(new Set(Object.values(DEFAULT_WALL))),
     wallIcon,
     list: ROOMS,
     ids: ROOMS.map((r) => r.id),
@@ -1643,6 +1936,8 @@
       else if (id === 'playroom') playroomLive(ctx, L, t);
       else if (id === 'garden') gardenLive(ctx, L, t);
       else if (id === 'bedroom') bedroomLive(ctx, L, t);
+      else if (id === 'attic') atticLive(ctx, L, t);
+      else if (id === 'rooftop') rooftopLive(ctx, L, t);
     },
 
     // Drawn over the pet. info: { asleep, petX, petGround, petW, petH, t, duckHop }
@@ -1668,6 +1963,8 @@
       if (id === 'playroom' && inBox(L.toybox)) return 'toybox';
       if (id === 'garden' && near({ x: L.butterfly.liveX ?? L.butterfly.x, y: L.butterfly.liveY ?? L.butterfly.y }, L.butterfly.r * 1.8)) return 'butterfly';
       if (id === 'garden' && near(L.wcan, 32)) return 'can';
+      if (id === 'attic' && near(L.mirror, L.mirror.r)) return 'mirror';
+      if (id === 'rooftop' && near(L.telescope, L.telescope.r)) return 'telescope';
       return null;
     },
 

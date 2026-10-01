@@ -817,6 +817,21 @@
         pet.setExpr('yum', 0.5);
         s.stats.fun = M.clamp(s.stats.fun + 0.5);
         break;
+      case 'mirror':
+        A.play('sparkle');
+        A.buzz(8);
+        fx.sparkles(layout.mirror.x, layout.mirror.y, 6, 20);
+        pet.setExpr('happy', 0.6);
+        pet.hop(160);
+        s.stats.fun = M.clamp(s.stats.fun + 0.5);
+        break;
+      case 'telescope':
+        A.play('star');
+        A.buzz(8);
+        fx.sparkles(layout.telescope.x, layout.telescope.y - 30, 6, 20);
+        pet.setExpr('giggle', 0.6);
+        s.stats.fun = M.clamp(s.stats.fun + 0.5);
+        break;
       case 'toybox':
         if (!s.toys.length) {
           A.play('no');
@@ -1131,6 +1146,8 @@
     ground = null;
     enterRoom(s.room, from !== null);
     updateUI();
+    const btn = els.roomButtons.find((b) => b.dataset.room === s.room);
+    if (btn) btn.scrollIntoView({ behavior: from === null ? 'auto' : 'smooth', inline: 'nearest', block: 'nearest' });
   }
 
   function enterRoom(id, arrived) {
