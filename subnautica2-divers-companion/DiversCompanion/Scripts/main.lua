@@ -125,8 +125,11 @@ end
 local function findOwnCharacter(pc)
     local ps = pc.PlayerState
     if not valid(ps) then return nil end
-    local all = FindAllOf("SN2PlayerCharacter")
-    if not all then return nil end
+    -- Search the Blueprint class too, in case a UE4SS build only matches exact classes.
+    local all = {}
+    for _, className in ipairs({ "SN2PlayerCharacter", "BP_Character_01_C" }) do
+        for _, c in ipairs(FindAllOf(className) or {}) do table.insert(all, c) end
+    end
     for _, character in ipairs(all) do
         if character:IsValid() then
             local cps = character:GetPS()
