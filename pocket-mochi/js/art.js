@@ -42,6 +42,8 @@
     juice:     { name: 'Juice',      price: 5,  drink: 26, fun: 6,  clean: 0,  xp: 3, level: 1 },
     soda:      { name: 'Soda',       price: 7,  drink: 18, fun: 14, clean: -2, xp: 4, level: 5 },
     milkshake: { name: 'Milkshake',  price: 9,  drink: 20, fun: 18, clean: -3, xp: 5, level: 9 },
+    // A pick-me-up that perks energy up on its own, without a trip to bed.
+    energize:  { name: 'Energy fizz', price: 16, drink: 10, fun: 4, clean: -2, xp: 4, level: 3, energy: 25 },
   };
 
   const HATS = {
@@ -471,6 +473,34 @@
         ctx.fill();
       });
     },
+    energize(ctx, s) {
+      const lw = s * 0.06;
+      roundRect(ctx, -s * 0.2, -s * 0.46, s * 0.4, s * 0.9, s * 0.1);
+      ctx.fillStyle = '#36C2A2';
+      ctx.fill();
+      outline(ctx, lw);
+      ctx.beginPath();
+      ctx.ellipse(0, -s * 0.46, s * 0.2, s * 0.05, 0, 0, TAU);
+      ctx.fillStyle = '#C7C9D6';
+      ctx.fill();
+      outline(ctx, lw * 0.6);
+      ctx.beginPath();
+      ctx.ellipse(-s * 0.03, -s * 0.48, s * 0.05, s * 0.02, 0, 0, TAU);
+      ctx.fillStyle = '#8B8DA0';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(s * 0.05, -s * 0.22);
+      ctx.lineTo(-s * 0.09, s * 0.02);
+      ctx.lineTo(s * 0.01, s * 0.02);
+      ctx.lineTo(-s * 0.07, s * 0.26);
+      ctx.lineTo(s * 0.09, -s * 0.04);
+      ctx.lineTo(-s * 0.01, -s * 0.04);
+      ctx.closePath();
+      ctx.fillStyle = '#FFE27A';
+      ctx.fill();
+      outline(ctx, lw * 0.6);
+    },
+
     milkshake(ctx, s) {
       const lw = s * 0.06;
       ctx.beginPath();
@@ -1476,7 +1506,7 @@
     poop: '#FFE27A', star: '#CDB9FF', bubble: '#9FE7CA', lv5: '#FFB347', lv12: '#FF8FBF',
     calendar: '#9FE7CA', cake: '#FFE27A', party: '#CDB9FF', wall: '#FFB3CF', friends: '#FFE27A', crown: '#FF8FBF',
     bowtie: '#CDB9FF', trophy: '#FFC53D', cards: '#A3D8FF',
-    cup: '#A3D8FF', paw: '#FFC978', toy: '#FF8FBF',
+    cup: '#A3D8FF', paw: '#FFC978', toy: '#FF8FBF', moon: '#CDB9FF',
   };
 
   function drawStickerSymbol(g, icon, c, s) {
@@ -1631,6 +1661,30 @@
       case 'toy':
         g.translate(0, s * 0.02);
         toyDraw.yarn(g, s * 0.74);
+        break;
+      case 'moon':
+        g.beginPath();
+        g.arc(-s * 0.03, 0, s * 0.26, 0, TAU);
+        g.fillStyle = '#FFE27A';
+        g.fill();
+        outline(g, 2.5);
+        g.save();
+        g.beginPath();
+        g.arc(-s * 0.03, 0, s * 0.26, 0, TAU);
+        g.clip();
+        g.beginPath();
+        g.arc(s * 0.07, -s * 0.05, s * 0.23, 0, TAU);
+        g.fillStyle = '#FFFDF8';
+        g.fill();
+        g.restore();
+        g.beginPath();
+        g.arc(-s * 0.03, 0, s * 0.26, 0, TAU);
+        outline(g, 2.5);
+        [[0.17, -0.2, 5], [0.22, 0.12, 3.5]].forEach(([x, y, r]) => {
+          sparklePath(g, x * s, y * s, r);
+          g.fillStyle = '#FFFFFF';
+          g.fill();
+        });
         break;
       case 'friends':
         [[-0.1, '#FFB3CF'], [0.11, '#A3D8FF']].forEach(([x, col]) => {

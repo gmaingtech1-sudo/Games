@@ -97,6 +97,8 @@
   let settingsDirty = false; // the birthday changed: check for a party once settings close
   let friend = null;        // the pet visiting on a playdate
   let duel = null;          // an online Bubble Pop duel in progress
+  let sleepover = null;     // a sleepover with a friend's pet in progress
+  let inviteKind = 'duel';  // which kind of invite #duel-invite is currently showing
   let lastEmote = 0;
   let lastPoke = 0;
   let pokeToast = 0;
@@ -545,7 +547,7 @@
   const CRUMB_COLOR = {
     apple: '#FF5A5F', onigiri: '#FFFFFF', fish: '#7CC0F5', dango: '#FF9FC4', cupcake: '#FFB3D3',
     pizza: '#FFC53D', icecream: '#FFB3CF', cake: '#FFE6B8',
-    water: '#A3D8FF', juice: '#FFA94D', soda: '#F0433A', milkshake: '#FFB3CF',
+    water: '#A3D8FF', juice: '#FFA94D', soda: '#F0433A', milkshake: '#FFB3CF', energize: '#36C2A2',
   };
 
   function updateEating(dt) {
@@ -1028,6 +1030,7 @@
     A.play('lights');
     if (s.asleep) {
       s.asleep = false;
+      sleepover = null;
       pet.hop(280); // hops out of bed
       if (s.stats.energy < 50) {
         pet.setExpr('grumpy', 2.2);
@@ -1432,7 +1435,7 @@
   // living room, and only then leave the app.
   function handleBack() {
     if (!els.scrim.hidden) onScrim();
-    else if (!els.invite.hidden) answerDuel(false);
+    else if (!els.invite.hidden) (inviteKind === 'sleepover' ? answerSleepover(false) : answerDuel(false));
     else if (mode === 'game') endGame();
     else if (mode === 'gameover') leaveGame();
     else if (!els.arcade.hidden) closeArcade();
@@ -1475,6 +1478,7 @@
       for (const [k, d] of Object.entries(PM.DRINKS)) {
         const effects = [`+${d.drink} thirst`];
         if (d.fun >= 10) effects.push(`+${d.fun} fun`);
+        if (d.energy) effects.push(`+${d.energy} energy`);
         add(icons.drink[k], d, `${effects.join(', ')} · have ${s.inv[k] || 0}`, priceBtn(d), (el) => buyDrink(k, el));
       }
     } else if (shopTab === 'hats') {
@@ -2176,7 +2180,7 @@
     ctx.drawImage(roomBg(s.room).canvas, 0, 0, W, H);
     PM.rooms.drawLive(s.room, ctx, L, pet.t);
     if (s.party && s.room === 'living') PM.rooms.drawParty(ctx, L, s.party, pet.t);
-    const visitor = friendHere();
+    const visitor = friendHere() || (sleepover && sleepover.state === 'active' && s.room === 'bedroom');
     if (visitor) drawFriend();
 
     // Poop behind the pet's feet is drawn first, poop in front of it last.
@@ -2313,9 +2317,10 @@
     timers.z -= dt;
     timers.stink -= dt;
     timers.idle -= dt;
-    if (s.asleep && timers.z <= 0) {
+    if (timers.z <= 0 && (s.asleep || (sleepover && sleepover.state === 'active'))) {
       timers.z = 1.1;
-      fx.zzz(pet.geo.x + pet.geo.w * 0.3, pet.geo.top + 6);
+      if (s.asleep) fx.zzz(pet.geo.x + pet.geo.w * 0.3, pet.geo.top + 6);
+      if (sleepover && sleepover.state === 'active' && friend && friend.view.geo) fx.zzz(friend.view.geo.x + friend.view.geo.w * 0.3, friend.view.geo.top + 6);
     }
     if (timers.stink <= 0) {
       timers.stink = 0.45;
@@ -2460,6 +2465,8 @@
       gotGift(m.snack);
     } else if (m.t === 'duel') {
       onDuelMessage(m);
+    } else if (m.t === 'sleepover') {
+      onSleepoverMessage(m);
     }
   }
 
@@ -2503,6 +2510,7 @@
       else if (duel.state === 'waiting') { duel.left = true; showDuelResult(); }
       else duel = null;
     }
+    sleepover = null;
     A.play('sad');
     toast(why === 'left' ? `${name} went home. Come back soon!` : `Lost the connection to ${name}.`, 3200);
     renderFriends();
@@ -2515,6 +2523,7 @@
     PM.online.leave();
     friend = null;
     duel = null;
+    sleepover = null;
     els.invite.hidden = true;
     if (had) toast('Playdate over. See you next time!');
     renderFriends();
@@ -2532,9 +2541,10 @@
 
   function drawFriend() {
     const v = friend.view;
+    const asleepTogether = sleepover && sleepover.state === 'active';
     v.draw(ctx, {
       species: friend.species, color: friend.color, hat: friend.hat, outfit: friend.outfit, size: petSize() * 0.88,
-      groundY: layout.groundY, clean: 100, sick: false, mood: 'happy',
+      groundY: layout.groundY, clean: 100, sick: false, mood: asleepTogether ? 'sleep' : 'happy',
     });
     const label = friend.name;
     ctx.save();
@@ -2687,8 +2697,11 @@
         b.addEventListener('click', () => giftSnack(k));
         box.appendChild(b);
       });
-      $('fr-duel').disabled = !!duel && duel.state !== 'done';
+      $('fr-duel').disabled = (!!duel && duel.state !== 'done') || (!!sleepover && sleepover.state !== 'done') || s.asleep;
       $('fr-duel').textContent = duel && duel.state === 'inviting' ? 'Waiting for an answer...' : 'Bubble Pop duel';
+      $('fr-sleepover').disabled = (!!sleepover && sleepover.state !== 'done') || (!!duel && duel.state !== 'done') || s.asleep;
+      $('fr-sleepover').textContent = sleepover && sleepover.state === 'inviting' ? 'Waiting for an answer...'
+        : sleepover && sleepover.state === 'active' ? 'Sleeping over...' : 'Sleepover';
     }
   }
 
@@ -2763,7 +2776,9 @@
             updateUI();
           }
         }, 19000);
+        $('invite-title').textContent = 'Duel time!';
         $('invite-text').textContent = `${friend.name} wants a Bubble Pop duel! Whoever pops more in 30 seconds wins.`;
+        inviteKind = 'duel';
         closeTray();
         els.arcade.hidden = true;
         els.invite.hidden = false;
@@ -2794,6 +2809,110 @@
           duel.theirs = Math.max(0, Math.min(99999, Math.floor(Number(m.s)) || 0));
           duel.theirFinal = duel.theirs;
           if (duel.state === 'waiting') showDuelResult();
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  /* online sleepovers: both pets tuck in for the night at once */
+
+  function inviteSleepover() {
+    if (!friend || (sleepover && sleepover.state !== 'done')) return;
+    if (needsPet()) return;
+    if (duel && duel.state !== 'done') { toast('Finish your duel first.'); return; }
+    if (s.asleep) { toast(`${s.name} is already asleep.`); return; }
+    sleepover = { state: 'inviting', name: friend.name };
+    PM.online.send({ t: 'sleepover', a: 'invite' });
+    A.play('click');
+    closeSheets();
+    toast(`Sleepover invite sent! Waiting for ${friend.name}...`, 3000);
+    const mine = sleepover;
+    setTimeout(() => {
+      if (sleepover === mine && sleepover.state === 'inviting') {
+        sleepover = null;
+        toast('No answer. Try again in a bit.');
+        renderFriends();
+      }
+    }, 20000);
+  }
+
+  function answerSleepover(yes) {
+    els.invite.hidden = true;
+    A.play('click');
+    if (!sleepover || sleepover.state !== 'invited') { updateUI(); return; }
+    if (yes) {
+      PM.online.send({ t: 'sleepover', a: 'accept' });
+      beginSleepover();
+    } else {
+      sleepover = null;
+      PM.online.send({ t: 'sleepover', a: 'decline' });
+      updateUI();
+    }
+  }
+
+  // Tucks this phone's own pet into bed as part of the sleepover; each side
+  // does this independently once it has accepted, so there's no need for a
+  // duel-style "start" handshake to keep the two in lockstep.
+  function beginSleepover() {
+    sleepover = { state: 'active', name: friend.name };
+    closeSheets();
+    closeTray();
+    const settle = () => {
+      if (!sleepover || sleepover.state !== 'active' || !friend) return;
+      if (!s.asleep) onSleep();
+      sleepover.rewarded = true;
+      s.counts.sleepovers += 1;
+      toast(`Sleepover with ${sleepover.name}! Sweet dreams.`, 3400);
+      save();
+      updateUI();
+    };
+    if (s.room === 'bedroom') settle();
+    else { goRoom('bedroom'); setTimeout(settle, 450); }
+    updateUI();
+  }
+
+  function onSleepoverMessage(m) {
+    switch (m.a) {
+      case 'invite': {
+        const free = mode === 'home' && els.scrim.hidden && !s.asleep
+          && !(duel && duel.state !== 'done') && !(sleepover && sleepover.state !== 'done');
+        if (sleepover && sleepover.state === 'inviting') {
+          // both asked at once: the host starts it
+          if (PM.online.role === 'host') beginSleepover();
+          return;
+        }
+        if (!free) { PM.online.send({ t: 'sleepover', a: 'busy' }); return; }
+        sleepover = { state: 'invited', name: friend.name };
+        const asked = sleepover;
+        setTimeout(() => {
+          if (sleepover === asked && sleepover.state === 'invited') {
+            sleepover = null;
+            els.invite.hidden = true;
+            updateUI();
+          }
+        }, 19000);
+        $('invite-title').textContent = 'Sleepover?';
+        $('invite-text').textContent = `${friend.name} wants a sleepover! Both pets will tuck in for the night.`;
+        inviteKind = 'sleepover';
+        closeTray();
+        els.arcade.hidden = true;
+        els.invite.hidden = false;
+        A.play('ding');
+        A.buzz([20, 40, 20]);
+        updateUI();
+        break;
+      }
+      case 'accept':
+        if (sleepover && sleepover.state === 'inviting') beginSleepover();
+        break;
+      case 'decline':
+      case 'busy':
+        if (sleepover && sleepover.state === 'inviting') {
+          sleepover = null;
+          toast(m.a === 'busy' ? `${friend.name} is busy right now.` : `${friend.name} said not now.`);
+          renderFriends();
         }
         break;
       default:
@@ -3120,12 +3239,13 @@
     $('fr-cancel').addEventListener('click', leavePlaydate);
     $('fr-leave').addEventListener('click', leavePlaydate);
     $('fr-duel').addEventListener('click', inviteDuel);
+    $('fr-sleepover').addEventListener('click', inviteSleepover);
     $('emote-wave').addEventListener('click', () => sendEmote('wave'));
     $('emote-heart').addEventListener('click', () => sendEmote('heart'));
     $('emote-dance').addEventListener('click', () => sendEmote('dance'));
     $('emote-gift').addEventListener('click', openFriends);
-    $('invite-yes').addEventListener('click', () => answerDuel(true));
-    $('invite-no').addEventListener('click', () => answerDuel(false));
+    $('invite-yes').addEventListener('click', () => (inviteKind === 'sleepover' ? answerSleepover(true) : answerDuel(true)));
+    $('invite-no').addEventListener('click', () => (inviteKind === 'sleepover' ? answerSleepover(false) : answerDuel(false)));
     PM.online.on('state', () => { renderFriends(); updateUI(); });
     PM.online.on('code', renderFriends);
     PM.online.on('error', friendError);
@@ -3247,7 +3367,7 @@
     if (/[?&]debug\b/.test(location.search)) {
       PM.debug = {
         get s() { return s; }, get game() { return game; }, get layout() { return layout; },
-        get friend() { return friend; }, get duel() { return duel; }, pet, goRoom, dailyCheck, partyCheck,
+        get friend() { return friend; }, get duel() { return duel; }, get sleepover() { return sleepover; }, pet, goRoom, dailyCheck, partyCheck,
         onBackground, onForeground, scheduleNeedNotice, tickModel, showMemorial, continueAfterDeath, save,
       };
     }

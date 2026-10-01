@@ -60,7 +60,7 @@
       login: { last: '', streak: 0, total: 0 },
       owner: { name: '', bday: '', party: 0 },
       party: null,
-      counts: { fed: 0, drank: 0, baths: 0, hearts: 0, poops: 0, duelsWon: 0, playdates: 0, parties: 0, weeklyDone: 0, matchWins: 0, walks: 0, toysPlayed: 0 },
+      counts: { fed: 0, drank: 0, baths: 0, hearts: 0, poops: 0, duelsWon: 0, playdates: 0, parties: 0, weeklyDone: 0, matchWins: 0, walks: 0, toysPlayed: 0, sleepovers: 0 },
       lastPlaydate: 0,
       stickers: [],
       weekly: null,
@@ -372,6 +372,7 @@
     { id: 'drink10', name: 'Well hydrated', desc: 'Give 10 drinks', icon: 'cup', test: (s) => s.counts.drank >= 10 },
     { id: 'walk5', name: 'Regular walker', desc: 'Go for 5 walks', icon: 'paw', test: (s) => s.counts.walks >= 5 },
     { id: 'toys3', name: 'Toy box', desc: 'Own 3 toys', icon: 'toy', test: (s) => s.toys.length >= 3 },
+    { id: 'sleepover', name: 'Sleepover', desc: 'Have a sleepover with a friend', icon: 'moon', test: (s) => s.counts.sleepovers >= 1 },
   ];
   const STICKER_COINS = 10;
 
@@ -615,6 +616,7 @@
       s.stats.thirst = clamp(s.stats.thirst + d.drink);
       s.stats.fun = clamp(s.stats.fun + d.fun);
       s.stats.clean = clamp(s.stats.clean + d.clean);
+      if (d.energy) s.stats.energy = clamp(s.stats.energy + d.energy);
       s.digest += d.drink * 0.6;
       return 'ok';
     },
