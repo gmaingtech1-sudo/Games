@@ -12,6 +12,12 @@ Small games for phones. Each one lives in its own folder.
 | [Cosmos 360](cosmos-360/) | A to-scale universe to explore in 360°. Look around by dragging or moving your phone, fly to real planets and moons where they are today, scan them for your logbook, and jump to Alpha Centauri, TRAPPIST-1 and the black hole at the centre of the Milky Way. |
 | [Starforge](starforge/) | A space shooter where you build your own starfighter. Pick its hull, wings, engine, weapon and special, paint it, then blast through waves of enemy ships and bosses to earn credits for better parts. |
 
+## Mods
+
+| Mod | Description |
+| --- | --- |
+| [Diver's Companion](subnautica2-divers-companion/) | A Subnautica 2 helper mod (UE4SS Lua). Warns you before your oxygen, health, food, water, body temperature or vehicle power run out, with a countdown of how much air you have left. It also adds an emergency oxygen tank, a status report key, Turbo Fins, recall-home and unstuck keys, and optional slower hunger and thirst. [Download the zip](subnautica2-divers-companion/dist/DiversCompanion.zip). |
+
 ## Books
 
 | Book | Description |
