@@ -31,7 +31,7 @@ This is the first playable version: **one haunted house, three ghost types, five
 | Snap a photo / ask the spirit box | The second round button | Q or Space |
 | Journal / map / pause | Buttons at the top right | J, M, Esc |
 
-There's a left-handed option in Settings that swaps the sides.
+There's a left-handed option in Settings that swaps the sides. **How to play** on the main menu (and in the pause menu) walks through the basics, and the first story case has the team talking you through it over the radio.
 
 ### An investigation
 
@@ -47,7 +47,7 @@ There's a left-handed option in Settings that swaps the sides.
    | Ghost Photograph | Some spirits show up on camera even when your eyes see nothing. Photograph the ghost room. |
    | Objects Thrown | You have to see something fly off a shelf or a table. |
 
-   Your equipment logs evidence in the journal automatically. You can also rule evidence out yourself.
+   Your equipment logs evidence in the journal automatically. You can also rule evidence out yourself. The journal's Kit tab shows everything you're carrying.
 4. **Identify the ghost.** The journal shows which ghosts still fit your evidence. Pick one.
 5. **Go back to the van** and finish. The investigation report shows whether you were right, the evidence, your photos, objectives and rewards.
 
@@ -66,6 +66,8 @@ They don't all behave the same, and how they behave is a clue too:
 ### Nerve, surges and hiding
 
 Your **nerve** drops in the dark and when things happen near you. Lit rooms steady it, and resting by the van restores it. When the team's nerve gets low, the ghost may **surge**: the lights flicker everywhere, the front door jams, and the ghost becomes visible and comes looking for you. Keep your distance or hide in a wardrobe (there's one in most bedrooms, the kitchen pantry and the study) until it calms down. If it catches you, you're spooked: you wake up at the van and lose a share of the case's rewards.
+
+Stay too long and the house turns dangerous: after a few surges the team radios everyone to get back to the van, and surges come faster until you leave.
 
 ### Story: Chapter 1, Whispers on Wren Lane
 

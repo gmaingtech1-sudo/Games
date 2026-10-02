@@ -466,6 +466,7 @@ export class House {
       mesh.receiveShadow = true;
       mesh.castShadow = true;
       mesh.userData.layer = L;
+      mesh.userData.arch = true;
       this.static.add(mesh);
     }
   }
@@ -482,6 +483,7 @@ export class House {
     m.receiveShadow = true;
     m.castShadow = !up;
     m.userData.layer = L;
+    m.userData.arch = true;
     this.static.add(m);
     return m;
   }
@@ -752,7 +754,7 @@ export class House {
       door.width = w;
       door.hinge = { x: hx, z: hz };
       compactGroup(pivot);
-      this.dynamic.add(pivot);
+      (d.ext ? this.layerGroups.ext : this.layerGroups[d.layer]).add(pivot);
       this.doors[d.id] = door;
     }
   }
@@ -826,7 +828,7 @@ export class House {
         g.userData.noMerge = true;
         g.rotation.order = 'YXZ';
         this.anims.push({ kind: 'rock', obj: g, amp: 0, phase: 0, room: roomId, base: g.rotation.clone() });
-        this.dynamic.add(g);
+        this.layerGroups[room.layer].add(g);
         continue;
       }
       if (type === 'candles' || type === 'sigil') g.userData.storyProp = true;
@@ -845,8 +847,9 @@ export class House {
         const L = l[3] !== undefined ? l[3] : room.layer;
         const lay = LAYER[L];
         const lamp = buildLamp(l[2]);
+        lamp.g.traverse((o) => { o.castShadow = false; });
         lamp.g.position.set(l[0], lay.ceil, l[1]);
-        this.dynamic.add(lamp.g);
+        this.layerGroups[L].add(lamp.g);
         const drop = l[2] === 'chandelier' ? 0.45 : l[2] === 'pendant' ? 0.68 : 0.42;
         room.lamps.push({ x: l[0], y: lay.ceil - drop, z: l[1], bulb: lamp.bulb, shade: lamp.shade, kind: l[2], layer: L });
       }
@@ -862,7 +865,7 @@ export class House {
         g.add(toggle);
         g.position.set(x, y, z);
         g.rotation.y = Math.atan2(nx, nz);
-        this.dynamic.add(g);
+        this.layerGroups[L].add(g);
         const hit = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 0.15), new THREE.MeshBasicMaterial({ visible: false }));
         g.add(hit);
         hit.userData.interact = { type: 'switch', id };
@@ -904,7 +907,8 @@ export class House {
       const t = buildThrowable(kind);
       t.g.position.set(x, fl + y, z);
       t.g.rotation.y = (x * 7 + z * 3) % 6.28;
-      this.dynamic.add(t.g);
+      t.g.traverse((o) => { o.castShadow = false; });
+      this.layerGroups[room.layer].add(t.g);
       this.throwables.push({
         id: this.throwables.length, kind, room: roomId, obj: t.g, r: t.r, h: t.h, ball: !!t.ball,
         home: { x, y: fl + y, z, ry: t.g.rotation.y },
@@ -952,7 +956,7 @@ export class House {
       g.add(glint);
       g.position.set(x, fl + y, z);
       g.visible = false;
-      this.dynamic.add(g);
+      this.layerGroups[room.layer].add(g);
       const hit = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.5), new THREE.MeshBasicMaterial({ visible: false }));
       hit.position.y = 0.1;
       g.add(hit);
@@ -1468,13 +1472,15 @@ export class House {
     const keep = [];
     const noMerge = (o) => { for (let p = o; p && p !== this.static; p = p.parent) if (p.userData.noMerge) return true; return false; };
     const layerOf = (o) => { for (let p = o; p && p !== this.static; p = p.parent) if (p.userData.layer !== undefined) return p.userData.layer; return 'ext'; };
+    const archOf = (o) => !!o.userData.arch || layerOf(o) === 'ext';
     this.static.traverse((o) => {
       if (!o.isMesh && !o.isSprite) return;
       if (o.isSprite || noMerge(o) || o.material.transparent) { keep.push(o); return; }
       const g = bakeGeo(o, o.matrixWorld);
       const L = layerOf(o);
-      const key = o.material.uuid + '|' + L;
-      if (!buckets.has(key)) buckets.set(key, { mat: o.material, L, geos: [] });
+      const arch = archOf(o);
+      const key = o.material.uuid + '|' + L + '|' + arch;
+      if (!buckets.has(key)) buckets.set(key, { mat: o.material, L, arch, geos: [] });
       buckets.get(key).geos.push(g);
     });
     for (const o of keep) {
@@ -1482,23 +1488,43 @@ export class House {
       const grp = this.layerGroups[L] || this.layerGroups.ext;
       grp.attach(o);
     }
-    for (const { mat, L, geos } of buckets.values()) {
+    this.arch = [];
+    for (const { mat, L, arch, geos } of buckets.values()) {
       const merged = mergeGeos(geos);
       const m = new THREE.Mesh(merged, mat);
       m.castShadow = true;
       m.receiveShadow = true;
       m.matrixAutoUpdate = false;
+      if (arch) this.arch.push(m);
       (this.layerGroups[L] || this.layerGroups.ext).add(m);
     }
     this.static.clear();
   }
 
-  /** Show only the floors the player could possibly see. */
-  setVisibleLayers(L, outside) {
-    this.layerGroups[-1].visible = L <= 0 && !outside;
-    this.layerGroups[1].visible = L >= 0;
-    this.layerGroups[0].visible = true;
-    this.layerGroups.ext.visible = L >= 0;
+  /** The moonlight's shadow is drawn once. After that, walls, floors and the
+      yard only need to receive shadows, which keeps the flashlight's shadow
+      pass down to the furniture. */
+  afterShadowBake() {
+    for (const m of this.arch) m.castShadow = false;
+  }
+
+  /** Draw only what the player could possibly see from where they are. */
+  setVisibleFor(L, room) {
+    const out = !room || room === 'yard';
+    const cellarOpen = this.doors.cellar && this.doors.cellar.target > 0.3;
+    const g = this.layerGroups;
+    if (out) {
+      // from outside only the hall shows, and only through the open front door
+      g[-1].visible = false; g[1].visible = false; g.ext.visible = true;
+      g[0].visible = this.doors.front.target > 0.3;
+      return;
+    }
+    // the stairwells are the only places you can see between floors
+    g[-1].visible = L === -1 || room === 'cellar' || (room === 'hall' && cellarOpen);
+    g[0].visible = L === 0 || room === 'hall' || room === 'landing' || room === 'cellar';
+    g[1].visible = L === 1 || room === 'hall';
+    // outside is only visible through the front door
+    g.ext.visible = room === 'hall' && this.doors.front.target > 0.3;
   }
 
   /* ---------- per-frame ---------- */

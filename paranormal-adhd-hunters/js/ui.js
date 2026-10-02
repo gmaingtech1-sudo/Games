@@ -372,6 +372,29 @@ export class UI {
     step();
   }
 
+  /* ---------- how to play ---------- */
+
+  howToPlay() {
+    const body = this.openSheet('How to play', { wide: true, name: 'help' });
+    const step = (n, ic, title, text) => h('div.card', { style: { marginBottom: '8px' }, html: `<div class="gear"><span class="gi">${icon(ic)}</span><div class="txt"><b>${n}. ${title}</b><br><small class="muted">${text}</small></div></div>` });
+    body.append(
+      step(1, 'hand', 'Explore', 'Drag on the left side of the screen to walk, and swipe on the right side to look around. The round button uses whatever you’re looking at: doors, light switches, wardrobes, pages, the van. Switch your flashlight on with the torch button.'),
+      step(2, 'thermo', 'Find the ghost room', 'The ghost room is the coldest room in the house. Hold the thermometer and walk from room to room. Odd noises and things moving give it away too.'),
+      step(3, 'emf', 'Collect evidence', 'Each ghost shows three kinds of evidence. Your equipment logs them in the journal automatically:'),
+    );
+    body.append(h('div.ev-icons', { style: { margin: '-2px 0 10px 66px' }, html: EVIDENCE_ORDER.map((e) => `<span>${icon(EV_ICON[e])}${EVIDENCE[e].name}</span>`).join('') }));
+    body.append(
+      step(4, 'journal', 'Identify the ghost', 'Open the journal to see which ghosts still fit your evidence, and tap the one you think it is. How the ghost behaves is a clue too: check the Ghost guide.'),
+      step(5, 'heart', 'Keep your nerve', 'Darkness and scares lower your nerve. Lit rooms steady it and resting by the van restores it. When nerves run low the ghost may surge: keep away from it or hide in a wardrobe until it calms down.'),
+      step(6, 'van', 'Head back to the van', 'Tap the van to finish. The report shows if you were right, and pays out coins and XP for evidence, photos, objectives and clues.'),
+    );
+    body.append(h('h3', 'On a computer'));
+    body.append(h('p.small.muted', 'WASD or arrow keys to walk (Shift to run). Click to look with the mouse. E to use, F flashlight, 1 to 4 equipment, Q or Space to snap or ask, J journal, M map, Esc pause.'));
+    const b = h('button.big', { type: 'button', style: { width: '100%', marginTop: '10px' } }, 'Got it');
+    b.addEventListener('click', () => this.closeSheet());
+    body.append(b);
+  }
+
   /* ---------- profile ---------- */
 
   profileSheet() {
@@ -663,7 +686,7 @@ export class UI {
   journal(tab = 'evidence') {
     this.journalTab = tab;
     this.openSheet('Evidence Journal', {
-      tabs: [['evidence', 'Evidence'], ['guide', 'Ghost guide'], ['photos', 'Photos'], ['notes', 'Notes']], tab,
+      tabs: [['evidence', 'Evidence'], ['guide', 'Ghost guide'], ['photos', 'Photos'], ['kit', 'Kit'], ['notes', 'Notes']], tab,
       onTab: (t) => { this.journalTab = t; this.journalRefresh(); }, name: 'journal', wide: true,
     });
     this.journalRefresh();
@@ -705,6 +728,17 @@ export class UI {
       const grid = h('div.photos');
       list.forEach((ph, i) => grid.append(h(`div.polaroid${ph.kind === 'ghost' ? '.ghost' : ''}`, { style: { '--r': `${(i % 3 - 1) * 1.5}deg` }, html: `<img src="${ph.url}" alt="${escapeHtml(ph.label)}"><span>${escapeHtml(ph.label)}${inv.roster.length > 1 ? ` · ${escapeHtml(ph.by || '')}` : ''}</span>` })));
       body.append(grid);
+    } else if (tab === 'kit') {
+      const k = this.app.kit;
+      body.append(h('p.small.muted', 'What you’re carrying tonight. Tap an item on the equipment bar to hold it. Upgrades are in Equipment on the main menu.'));
+      for (const id of ['flashlight', ...TOOLS]) {
+        const e = EQUIPMENT[id];
+        const tier = e.tiers[k.tiers[id] || 0];
+        const status = id === 'flashlight' ? (k.flash ? 'On' : 'Off') : id === 'camera' ? `${k.camera.shots}/${k.camera.max} photos left` : (k.pending || k.current) === id ? 'In your hand' : '';
+        body.append(h(`div.card${(k.pending || k.current) === id || (id === 'flashlight' && k.flash) ? '.on' : ''}`, { style: { marginBottom: '8px' }, html: `<div class="gear"><span class="gi">${icon(id)}</span><div class="txt"><b>${e.name}</b> <span class="pill">${tier.label}</span> ${status ? `<span class="pill good">${status}</span>` : ''}<br><small class="muted">${e.desc}</small><br><small>${tier.desc}</small></div></div>` }));
+      }
+      const later = EQUIP_ORDER.filter((id) => !EQUIPMENT[id].active).map((id) => EQUIPMENT[id].name);
+      body.append(h('p.small.muted', `Coming with new locations: ${later.join(', ')}.`));
     } else {
       body.append(h('h3', 'Objectives'));
       body.append(h('div', { html: inv.objectives().map((o) => `<div class="chk ${o.done ? 'yes' : 'no'}"><i>${o.done ? '✓' : ''}</i>${escapeHtml(o.text)}${o.side ? ' <span class="pill gold">bonus</span>' : ''}</div>`).join('') }));
@@ -878,6 +912,7 @@ export class UI {
     const mk = (label, cls, fn) => { const b = h(`button.btn${cls}`, { type: 'button', style: { width: '100%', marginBottom: '10px' } }, label); b.addEventListener('click', fn); body.append(b); };
     mk('Resume', '.primary', () => this.closeSheet());
     mk('Evidence journal', '', () => this.journal());
+    mk('How to play', '', () => this.howToPlay());
     mk('Settings', '', () => this.settingsSheet());
     body.append(h('p.small.muted', inv.net ? 'In team mode the investigation keeps going while this menu is open.' : 'Leaving now ends the investigation without a report or rewards.'));
     mk('Leave investigation', '.warn', () => { this.closeSheet(); this.app.abandon(); });

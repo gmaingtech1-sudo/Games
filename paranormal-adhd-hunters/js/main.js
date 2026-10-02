@@ -59,6 +59,9 @@ class App {
     window.addEventListener('resize', () => this.resize());
     this.menuView();
     this.engine.renderer.compile(this.engine.scene, this.engine.camera);
+    // draw the moonlight's shadow once, then stop the house casting it
+    this.engine.render();
+    this.house.afterShadowBake();
     this.ui.bootProgress(1, 'Ready.');
     this.loop();
     this.ui.bootReady(() => this.begin());
@@ -142,6 +145,7 @@ class App {
     // main menu
     $('#btn-investigate').addEventListener('click', () => { this.audio.unlock(); this.audio.play('ui'); this.ui.caseBoard(); });
     $('#menu-profile').addEventListener('click', () => { this.audio.play('ui'); this.ui.profileSheet(); });
+    $('#btn-help').addEventListener('click', () => { this.audio.unlock(); this.audio.play('ui'); this.ui.howToPlay(); });
     $$('.menu-grid button').forEach((b) => b.addEventListener('click', () => {
       this.audio.play('ui');
       const k = b.dataset.open;
@@ -171,7 +175,7 @@ class App {
     for (const id in h.doors) if (!h.doors[id].def.open) h.setDoor(id, false, true);
     for (const k in h.clues) h.clues[k].group.visible = false;
     h.blackout = false;
-    h.setVisibleLayers(0, true);
+    h.setVisibleFor(0, 'yard');
     this.engine.torch.intensity = 0;
     this.engine.scene.fog.density = 0.04;
     this.kit.visible = false;

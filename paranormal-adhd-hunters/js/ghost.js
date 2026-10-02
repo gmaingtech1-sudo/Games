@@ -333,7 +333,7 @@ export class GhostBrain {
     if (this.surgeCheck <= 0) {
       this.surgeCheck = 6;
       const since = t - this.lastSurgeEnd;
-      const ready = t > this.diff.surgeAfter && since > 75;
+      const ready = t > this.diff.surgeAfter && since > (this.inv.danger ? 40 : 75);
       const nervy = avgNerve < this.diff.surgeNerve || t > this.diff.surgeAfter + 300;
       if (ready && nervy && inside.length && this.r() < 0.32) this.startSurge(t);
     }
@@ -392,8 +392,11 @@ export class GhostBrain {
     const h = this.house;
     switch (k) {
       case 'manifest': {
+        // it shouldn't show itself too often, or it stops being scary
+        if (t - (this.lastSeen || -99) < 14) return false;
         const spot = this.peekSpot(players);
         if (!spot) return false;
+        this.lastSeen = t;
         this.pos = { ...spot };
         this.path = [];
         this.wait = 2.5;
@@ -420,8 +423,10 @@ export class GhostBrain {
         return true;
       }
       case 'follow': {
+        if (t - (this.lastFollow || -99) < 45) return false;
         const p = this.nearestPlayer(players, 14, (q) => !q.lit);
         if (!p || this.mode === 'follow') return false;
+        this.lastFollow = t;
         this.mode = 'follow';
         this.follow = { pid: p.pid, until: t + 12 + this.r() * 6, repath: 0, stepT: 1.5 };
         return true;
@@ -583,6 +588,7 @@ export class GhostBrain {
       const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw);
       const dot = ((this.pos.x - p.pos.x) * fx + (this.pos.z - p.pos.z) * fz) / Math.max(0.01, d);
       if (dot > 0.75 && this.house.los(p.eye, { x: this.pos.x, y: this.pos.y + 1.2, z: this.pos.z })) {
+        this.lastSeen = t;
         this.inv.emit({ t: 'manifest', x: this.pos.x, y: this.pos.y, z: this.pos.z, dur: 0.45 });
         this.emf(this.pos.x, this.pos.y + 1, this.pos.z);
         this.mode = 'wander';
@@ -611,6 +617,8 @@ export class GhostBrain {
     this.path = [];
     this.wait = 2;
     this.inv.emit({ t: 'surge', on: false });
+    // after a few surges the house gets properly dangerous
+    if (this.surges >= 3 && !this.inv.danger && !this.escape) this.inv.emit({ t: 'danger' });
   }
 
   updateSurge(dt, t, players) {

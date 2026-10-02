@@ -59,7 +59,7 @@ export const GHOSTS = {
       'Never throws things.',
     ],
     // How often it does each kind of thing (relative weights).
-    acts: { manifest: 3, flicker: 4, torch: 3, follow: 3, steps: 2, creak: 1.5, whisper: 1.5, lightsOff: 1.5 },
+    acts: { manifest: 2.5, flicker: 4, torch: 3, follow: 2, steps: 2, creak: 1.5, whisper: 1.5, lightsOff: 1.5 },
     pace: 0.75, surgeSpeed: 1.65, height: 2.05,
     words: [],
   },
@@ -294,7 +294,7 @@ export const CHAPTERS = [
 
 /** Radio tips for the first case. Each fires once, when its trigger happens. */
 export const TUTORIAL = {
-  start: ['juno', 'Use the stick on the left to walk, and swipe on the right to look around. The house is straight ahead.'],
+  start: ['juno', 'Use the stick on the left to walk, and swipe on the right to look around. The house is straight ahead: look at the front door and tap the round button to open it.'],
   dark: ['juno', 'It’s dark. Tap the flashlight button to switch your torch on.'],
   inside: ['mags', 'You’re in. Switch to the EMF meter or the thermometer and walk from room to room. The ghost room is the coldest one.'],
   cold: ['mags', 'Cold in here. Keep the thermometer out: if it drops below zero, that’s evidence.'],

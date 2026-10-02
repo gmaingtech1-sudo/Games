@@ -386,6 +386,12 @@ export class Investigation {
         this.ui.hud.setReady(ev.list.map((p) => this.nameOf(p)), this.roster.length);
         break;
       case 'escape': this.onEscape(ev); break;
+      case 'danger':
+        this.danger = true;
+        this.radio('mags', 'The readings are off the charts. It’s getting dangerous in there. Wrap it up and get everyone back to the van!', true);
+        vibrate([60, 40, 60]);
+        this.refreshObjectives();
+        break;
       case 'callNow':
         if (!this.verdict) this.ui.verdictPicker(this, true);
         break;
@@ -460,7 +466,7 @@ export class Investigation {
       onLand: (t, first) => { if (first || !t.flying) this.audio.play('land', { pos: t.obj.position, kind: t.kind, hard: first ? 1 : 0 }); },
       sigilGlow: this.escape ? 0.85 : 0.22,
     });
-    this.house.setVisibleLayers(me.layer, !me.room || me.room === 'yard');
+    this.house.setVisibleFor(me.layer, me.room);
     this.watchThrows(dt);
 
     // torch
@@ -502,7 +508,7 @@ export class Investigation {
     this.inside = !!me.room && me.room !== 'yard';
     if (this.inside && !this.wasInside) this.onEnterHouse();
     this.wasInside = this.inside;
-    this.checkTips();
+    this.checkTips(dt);
     this.checkBeats();
     this.updateVan(dt);
 
@@ -729,7 +735,36 @@ export class Investigation {
       if (!this.house.los(eye, p)) continue;
       return it;
     }
-    return null;
+    return this.nearbyTarget(eye);
+  }
+
+  /** On a phone it's fiddly to aim exactly at a light switch or a page, so
+      anything small that's close and roughly in front of you counts too. */
+  nearbyTarget(eye) {
+    if (!this.smallTargets) {
+      this.smallTargets = this.house.interact
+        .filter((m) => m.userData.interact && ['switch', 'clue', 'hide'].includes(m.userData.interact.type))
+        .map((m) => ({ it: m.userData.interact, pos: m.getWorldPosition(new THREE.Vector3()) }));
+    }
+    const f = this.player.forward();
+    const pitch = this.player.pitch;
+    let best = null, bs = -1;
+    for (const t of this.smallTargets) {
+      if (t.it.type === 'clue' && !this.house.clues[t.it.id].group.visible) continue;
+      const dx = t.pos.x - eye.x, dz = t.pos.z - eye.z, dy = t.pos.y - eye.y;
+      const d = Math.hypot(dx, dz);
+      if (d > 1.6 || Math.abs(dy) > 1.8) continue;
+      const dot = (dx * f.x + dz * f.z) / Math.max(0.05, d);
+      if (dot < 0.6) continue;
+      // looking roughly toward it vertically too (pages lie on tables)
+      const want = Math.atan2(dy, Math.max(0.2, d));
+      if (Math.abs(want - pitch) > 0.75) continue;
+      const k = 0.12 / Math.max(0.12, d);
+      if (!this.house.los(eye, { x: t.pos.x - dx * k, y: t.pos.y, z: t.pos.z - dz * k })) continue;
+      const score = dot - d * 0.2;
+      if (score > bs) { bs = score; best = t.it; }
+    }
+    return best;
   }
 
   promptFor(t) {
@@ -1048,15 +1083,15 @@ export class Investigation {
     return true;
   }
 
-  checkTips() {
+  checkTips(dt) {
     if (!this.setup.tutorial) return;
     if (this.inside && !this.kit.flash) {
-      this.darkT = (this.darkT || 0) + 1 / 60;
+      this.darkT = (this.darkT || 0) + dt;
       if (this.darkT > 1.2) this.tip('dark');
     }
     if (this.inside && this.tips.has('dark') && !this.tips.has('inside')) {
-      this.insideT = (this.insideT || 0) + 1 / 60;
-      if (this.insideT > 6) this.tip('inside');
+      this.insideT = (this.insideT || 0) + dt;
+      if (this.insideT > 5) this.tip('inside');
     }
   }
 
@@ -1087,7 +1122,9 @@ export class Investigation {
       list.push({ id: 'clue', text: label, done: this.clueTaken(this.setup.clue) });
     }
     if (this.setup.page) list.push({ id: 'page', text: 'Optional: find a lost notebook page', done: this.clueTaken(this.setup.page), optional: true });
-    list.push(this.escape ? { id: 'van', text: 'ESCAPE to the van!', done: false, urgent: true } : { id: 'van', text: 'Return to the van to finish', done: false });
+    if (this.escape) list.push({ id: 'van', text: 'ESCAPE to the van!', done: false, urgent: true });
+    else if (this.danger) list.push({ id: 'van', text: 'Too dangerous! Get back to the van', done: false, urgent: true });
+    else list.push({ id: 'van', text: 'Return to the van to finish', done: false });
     for (const id of this.setup.side) list.push({ id, text: SIDE_OBJECTIVES[id].text, done: this.sideDone(id), side: true });
     return list;
   }
