@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>ParanormalADHDhunters</title>
+<meta name="description" content="Join the ParanormalADHDhunters team and investigate a haunted house: collect evidence with your EMF meter, thermometer, spirit box and camera, work out which ghost is there, and uncover the secret that links eight haunted places.">
+<meta name="theme-color" content="#05060c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ADHD Hunters">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Special+Elite&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+</head>
+<body>
+
+<canvas id="scene" aria-label="The investigation"></canvas>
+<div id="touch" aria-hidden="true"></div>
+<div id="stick" class="stick" aria-hidden="true"><div class="knob"></div></div>
+
+<!-- screen effects -->
+<div id="fx" aria-hidden="true">
+  <div class="fx-vignette"></div>
+  <div class="fx-surge"></div>
+  <div class="fx-grain"></div>
+  <div class="fx-hide"></div>
+  <div class="fx-flash"></div>
+  <div class="fx-spook"><div class="spook-face"></div><b>You got spooked!</b></div>
+</div>
+
+<!-- ============ In-game HUD ============ -->
+<main id="hud" hidden>
+  <div class="hud-tl">
+    <button id="nerve" class="nerve" type="button" aria-label="Your nerve">
+      <svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="18" class="track"/><circle cx="22" cy="22" r="18" class="bar" id="nerve-bar"/></svg>
+      <span id="nerve-val">100</span>
+      <small>NERVE</small>
+    </button>
+    <button id="objectives" class="objectives" type="button" aria-label="Objectives"></button>
+  </div>
+  <div class="hud-tr">
+    <button id="btn-map" class="hud-btn" type="button" aria-label="Map"></button>
+    <button id="btn-journal" class="hud-btn" type="button" aria-label="Evidence journal"><i id="ev-count" class="badge" hidden>0</i></button>
+    <button id="btn-chat" class="hud-btn" type="button" aria-label="Team radio" hidden></button>
+    <button id="btn-pause" class="hud-btn" type="button" aria-label="Pause"></button>
+    <div id="team-list" class="team-list" hidden></div>
+  </div>
+  <div id="radio" class="radio" role="status" aria-live="polite"></div>
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+  <div id="crosshair" class="crosshair"></div>
+  <div id="van-chip" class="van-chip" hidden><button id="btn-van" type="button">At the van · Finish investigation</button></div>
+  <div id="ready-chip" class="ready-chip" hidden></div>
+
+  <div class="hud-bottom">
+    <div id="questions" class="questions" hidden></div>
+    <div id="readout" class="readout"></div>
+    <div id="hotbar" class="hotbar" role="toolbar" aria-label="Equipment"></div>
+  </div>
+  <div class="hud-actions">
+    <button id="btn-use" class="act-btn use" type="button" hidden><span class="ic-wrap"></span><b>Snap</b></button>
+    <button id="btn-interact" class="act-btn interact" type="button" hidden><span class="ic-wrap"></span><b>Open</b></button>
+  </div>
+</main>
+
+<!-- ============ Boot / loading ============ -->
+<section id="boot" class="boot">
+  <div class="boot-inner">
+    <div id="boot-logo" class="boot-logo"></div>
+    <div class="load-bar"><i id="boot-fill"></i></div>
+    <p id="boot-tip" class="boot-tip">Getting the gear ready…</p>
+    <button id="btn-begin" class="big" type="button" hidden>Tap to begin</button>
+    <p class="boot-note">Best with headphones. Spooky, never gory.</p>
+  </div>
+</section>
+
+<!-- ============ Main menu ============ -->
+<section id="menu" class="menu" hidden>
+  <header class="menu-top">
+    <button id="menu-profile" class="profile-chip" type="button" aria-label="Your investigator profile"></button>
+    <div id="menu-coins" class="coins"></div>
+  </header>
+  <div class="menu-center">
+    <div id="menu-logo" class="menu-logo"></div>
+    <div id="menu-story" class="menu-story"></div>
+    <button id="btn-investigate" class="big glow" type="button">Investigate</button>
+    <nav class="menu-grid">
+      <button data-open="team" type="button"><span data-icon="team"></span>Team Up</button>
+      <button data-open="profile" type="button"><span data-icon="badge"></span>Investigator</button>
+      <button data-open="equipment" type="button"><span data-icon="gear"></span>Equipment</button>
+      <button data-open="achievements" type="button"><span data-icon="trophy"></span>Badges</button>
+      <button data-open="daily" type="button"><span data-icon="calendar"></span>Daily<i id="daily-dot" class="dot" hidden></i></button>
+      <button data-open="settings" type="button"><span data-icon="sound"></span>Settings</button>
+    </nav>
+  </div>
+  <footer class="menu-foot">We notice what others miss.</footer>
+</section>
+
+<!-- ============ Loading into a case ============ -->
+<section id="loading" class="loading" hidden>
+  <div class="loading-inner">
+    <div id="loading-emblem"></div>
+    <h2 id="loading-title">Driving to 13 Wren Lane…</h2>
+    <div class="load-bar"><i id="loading-fill"></i></div>
+    <p id="loading-tip" class="boot-tip"></p>
+  </div>
+</section>
+
+<!-- ============ Sheets (menus, journal, map, report…) ============ -->
+<div id="sheet" class="sheet" hidden>
+  <div class="sheet-scrim" data-close></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <header class="sheet-head">
+      <h2 id="sheet-title"></h2>
+      <button id="sheet-x" class="icon-btn" type="button" data-close aria-label="Close"></button>
+    </header>
+    <div id="sheet-tabs" class="tabs" hidden></div>
+    <div id="sheet-body" class="sheet-body"></div>
+  </div>
+</div>
+
+<div id="modal-toast" class="achievement-pop" hidden></div>
+<div id="fade" class="fade" aria-hidden="true"></div>
+
+<script type="module" src="js/main.js"></script>
+<script>
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
