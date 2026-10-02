@@ -12,6 +12,7 @@ Small games for phones. Each one lives in its own folder.
 | [Cosmos 360](cosmos-360/) | A to-scale universe to explore in 360°. Look around by dragging or moving your phone, fly to real planets and moons where they are today, scan them for your logbook, and jump to Alpha Centauri, TRAPPIST-1 and the black hole at the centre of the Milky Way. |
 | [Starforge](starforge/) | A space shooter where you build your own starfighter. Pick its hull, wings, engine, weapon and special, paint it, then blast through waves of enemy ships and bosses to earn credits for better parts. |
 | [ParanormalADHDhunters](paranormal-adhd-hunters/) | A first-person paranormal investigation in 3D. Join the ParanormalADHDhunters team, explore a foggy haunted house with an EMF meter, thermometer, spirit box, camera and flashlight, collect evidence and work out which of three very different ghosts is there. Story chapter, levels, ranks, upgrades, uniforms, daily challenges, badges, and team play for up to four investigators online. Spooky, never gory. |
+| [ParanormalADHDhunters for Android](paranormal-adhd-hunters-android/) | The same game as an installable Android app. [Download the APK](paranormal-adhd-hunters-android/dist/paranormal-adhd-hunters.apk). |
 
 ## Books
 

@@ -66,8 +66,12 @@ class App {
     this.loop();
     this.ui.bootReady(() => this.begin());
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden && this.inv && !this.net && !this.ui.sheetOpen && this.mode === 'game') this.ui.pauseMenu(this.inv);
+      if (document.hidden) this.onAppPause(); else this.onAppResume();
     });
+    // the Android app calls these for its back button and when it goes to the background
+    window.PAH_back = () => this.onBack();
+    window.PAH_pause = () => this.onAppPause();
+    window.PAH_resume = () => this.onAppResume();
     window.__pah = this; // handy for testing from the console
     this.makeSetup = makeSetup;
   }
@@ -87,6 +91,31 @@ class App {
         onDone: () => { this.profile.d.story.prologue = true; this.profile.save(); this.ui.refreshMenu(); },
       });
     }
+  }
+
+  onAppPause() {
+    this.audio.suspend();
+    if (this.inv && !this.net && !this.ui.sheetOpen && this.mode === 'game') this.ui.pauseMenu(this.inv);
+  }
+
+  onAppResume() {
+    if (this.mode !== 'boot') this.audio.resume();
+  }
+
+  /** Back button: close what's open, pause a game, or (from the main menu) leave. */
+  onBack() {
+    if (this.mode === 'boot') return false;
+    if (!$('#loading').hidden) return true;
+    if (this.ui.sheetOpen) {
+      if (this.ui.sheetClosable) this.ui.closeSheet();
+      return true;
+    }
+    if (this.mode === 'game' && this.inv) {
+      if (!$('#questions').hidden) this.ui.questions(false);
+      else this.ui.pauseMenu(this.inv);
+      return true;
+    }
+    return this.mode !== 'menu';
   }
 
   resize() {

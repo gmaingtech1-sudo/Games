@@ -1,4 +1,5 @@
 /* ParanormalADHDhunters — small shared helpers. */
+import { host } from './host.js';
 
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const lerp = (a, b, t) => a + (b - a) * t;
@@ -144,5 +145,5 @@ export function segsCross(x1, z1, x2, z2, x3, z3, x4, z4) {
 }
 
 export function vibrate(ms) {
-  try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ }
+  host.vibrate(ms);
 }

@@ -1,6 +1,7 @@
 /* ParanormalADHDhunters — every sound is synthesised with WebAudio: footsteps,
    creaks, slams, giggles, the music box, the spirit box and the ambience.
    Sounds in the world are positioned in 3D and muffled through walls. */
+import { host } from './host.js';
 
 const MUSIC_BOX = [76, 81, 83, 84, 83, 81, 76, 77, 81, 84, 83, 80, 76, 74, 76, 81];
 
@@ -54,6 +55,11 @@ export class Audio {
   }
 
   get now() { return this.ctx ? this.ctx.currentTime : 0; }
+
+  /** Silence everything while the game is in the background. */
+  suspend() { if (this.ctx && this.ctx.state === 'running') this.ctx.suspend().catch(() => {}); }
+
+  resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); }
 
   makeNoise(sec, kind) {
     const c = this.ctx, n = Math.floor(c.sampleRate * sec);
@@ -506,11 +512,16 @@ export class Audio {
   }
 
   speak(text, opts = {}) {
-    if (!this.voiceOn || !this.speechOK) return;
+    if (!this.voiceOn) return;
+    const words = text.toLowerCase().replace(/[^a-z' ?]/g, ' ');
+    const pitch = opts.pitch == null ? 0.1 : opts.pitch;
+    const rate = opts.rate || 0.62;
+    if (host.speak(words, pitch, rate)) return; // the Android app speaks with the phone's own voice
+    if (!this.speechOK) return;
     try {
-      const u = new SpeechSynthesisUtterance(text.toLowerCase().replace(/[^a-z' ?]/g, ' '));
-      u.pitch = opts.pitch == null ? 0.1 : opts.pitch;
-      u.rate = opts.rate || 0.62;
+      const u = new SpeechSynthesisUtterance(words);
+      u.pitch = pitch;
+      u.rate = rate;
       u.volume = 0.9;
       speechSynthesis.cancel();
       speechSynthesis.speak(u);

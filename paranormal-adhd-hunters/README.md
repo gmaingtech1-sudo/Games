@@ -6,6 +6,8 @@ It's spooky and mysterious but never gory. When a ghost catches you, you get "sp
 
 It runs in the browser on phones and computers. It's plain HTML, CSS and JavaScript with a bundled copy of [three.js](https://threejs.org/) for the 3D. There's no build step and nothing to install. Every texture, model, icon and sound is made in code, so the only image files are the app icons. After the first visit it also works offline (team play needs the internet).
 
+There's also an Android app: [download the APK](../paranormal-adhd-hunters-android/dist/paranormal-adhd-hunters.apk), or see [`../paranormal-adhd-hunters-android`](../paranormal-adhd-hunters-android) for how to install and build it.
+
 ## What's in this first version
 
 This is the first playable version: **one haunted house, three ghost types, five pieces of equipment and a complete story chapter**, plus the progression, team mode and branding the larger game is built on.
@@ -152,7 +154,8 @@ Volume (overall, effects, ambience), spirit voices, look sensitivity, invert loo
 | `js/net.js` | Team mode: hosting, joining with a code, and passing messages over PeerJS (or between tabs for testing) |
 | `js/avatars.js` | Your teammates as you see them |
 | `js/profile.js` | Your save: level, coins, gear, uniforms, story, badges, daily challenges and settings |
-| `js/main.js` | Boot, the menu backdrop, starting cases, the main loop, report and story flow, and the team lobby |
+| `js/main.js` | Boot, the menu backdrop, starting cases, the main loop, report and story flow, the team lobby, and the back button and pause hooks the Android app calls |
+| `js/host.js` | The bridge to the Android app (vibration, spoken spirit answers, a copy of the save); in a browser it falls back to the web versions |
 | `vendor/` | [three.js](https://github.com/mrdoob/three.js) r186 and [PeerJS](https://peerjs.com) 1.5.5 (both MIT licence, see `PEERJS-LICENSE`) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Installable app + offline support |
 
@@ -165,7 +168,7 @@ Progress is saved in the browser's `localStorage`, so each phone or browser has 
 - Equipment tiers and prices: `EQUIPMENT` in `js/data.js`.
 - Rewards: `score()` in `js/game.js`. XP per level: `xpToNext` in `js/data.js`.
 - The house: `ROOMS`, `DOORS`, `FURNITURE`, `THROWABLES` and `CLUE_SPOTS` at the top of `js/house.js`.
-- When you change any file, bump `CACHE` in `sw.js` so installed copies pick up the update.
+- When you change any file, bump `CACHE` in `sw.js` so installed copies pick up the update, and run `./build.sh` in `../paranormal-adhd-hunters-android` so the Android app gets the change too.
 
 ### Adding the next location
 

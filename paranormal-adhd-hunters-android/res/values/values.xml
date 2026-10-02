@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ParanormalADHDhunters</string>
+    <!-- The full name doesn't fit under a home screen icon. -->
+    <string name="launcher_name">ADHD Hunters</string>
+    <color name="night">#05060C</color>
+
+    <style name="Hunters" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/night</item>
+        <item name="android:statusBarColor">@color/night</item>
+        <item name="android:navigationBarColor">@color/night</item>
+    </style>
+</resources>

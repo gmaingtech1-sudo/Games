@@ -131,7 +131,8 @@
 
 <script type="module" src="js/main.js"></script>
 <script>
-  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  // the Android app ships every file inside it, so it doesn't need the offline cache
+  if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.AndroidHost) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 </script>

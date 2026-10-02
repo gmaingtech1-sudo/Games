@@ -3,6 +3,7 @@
    localStorage. */
 import { RANKS, xpToNext, DAILY, ACHIEVEMENTS, UNIFORMS, EQUIPMENT, CHAPTERS } from './data.js';
 import { todayKey, rng, hashString } from './util.js';
+import { host } from './host.js';
 
 const KEY = 'paranormaladhdhunters-v1';
 
@@ -54,12 +55,15 @@ export class Profile {
   constructor() {
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { saved = null; }
+    // the Android app keeps its own copy, in case the WebView's storage was cleared
+    if (!saved) { try { saved = JSON.parse(host.loadSave() || 'null'); } catch (e) { saved = null; } }
     this.d = merge(defaults(), saved);
     this.fresh = !saved;
     this.ensureDaily();
   }
 
   save() {
+    host.writeSave(JSON.stringify(this.d));
     try { localStorage.setItem(KEY, JSON.stringify(this.d)); } catch (e) {
       // storage full: drop the photo thumbnails from history and try again
       this.d.history.forEach((h) => { h.photo = null; });

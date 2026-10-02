@@ -1,7 +1,7 @@
 /* ParanormalADHDhunters — offline support. Serves the cached game instantly and
    refreshes the cache in the background, so updates land on the next launch.
    Fonts come from Google and are left to the browser's own cache. */
-const CACHE = 'paranormaladhdhunters-v1';
+const CACHE = 'paranormaladhdhunters-v2';
 const SHELL = [
   './',
   'index.html',
@@ -10,6 +10,7 @@ const SHELL = [
   'vendor/peerjs.min.js',
   'js/main.js',
   'js/util.js',
+  'js/host.js',
   'js/data.js',
   'js/textures.js',
   'js/props.js',
