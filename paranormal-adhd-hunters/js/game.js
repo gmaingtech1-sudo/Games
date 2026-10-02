@@ -780,7 +780,7 @@ export class Investigation {
       case 'hide': return { label: 'Hide', icon: 'hide' };
       case 'unhide': return { label: 'Leave hiding spot', icon: 'hide' };
       case 'clue': { const c = h.clues[t.id]; return { label: CLUES[c.page] && CLUES[c.page].notebook ? 'Pick up page' : 'Examine', icon: 'page' }; }
-      case 'van': return { label: 'Van', icon: 'van' };
+      case 'van': return { label: 'The van', icon: 'van' };
       default: return null;
     }
   }

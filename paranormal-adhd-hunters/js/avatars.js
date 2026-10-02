@@ -10,7 +10,9 @@ function nameTag(text, color) {
   c.width = 256; c.height = 64;
   const x = c.getContext('2d');
   x.fillStyle = 'rgba(11,16,48,0.75)';
-  x.beginPath(); x.roundRect(8, 10, 240, 44, 22); x.fill();
+  x.beginPath();
+  if (x.roundRect) x.roundRect(8, 10, 240, 44, 22); else x.rect(8, 10, 240, 44); // older Safari
+  x.fill();
   x.strokeStyle = color; x.lineWidth = 3; x.stroke();
   x.fillStyle = '#e9f0ff';
   x.font = '600 26px Nunito, sans-serif';
