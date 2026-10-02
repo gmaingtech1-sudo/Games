@@ -169,7 +169,8 @@ class App {
 
   menuView() {
     const h = this.house;
-    for (const id in h.rooms) if (!h.rooms[id].outside) h.setLight(id, false);
+    for (const id in h.rooms) if (!h.rooms[id].outside) { h.setLight(id, false); h.rooms[id].flickUntil = 0; }
+    h.resetThrowables();
     h.setLight('nursery', true);
     h.setLight('hall', true);
     for (const id in h.doors) if (!h.doors[id].def.open) h.setDoor(id, false, true);

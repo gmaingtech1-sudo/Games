@@ -127,6 +127,7 @@ export class Investigation {
     if (this.setup.clue) this.showClue(this.setup.clue, this.setup.clue);
     if (this.setup.page && this.setup.pageSpot) this.showClue(this.setup.pageSpot, this.setup.page);
     this.player.place(SPAWN.x, SPAWN.y, SPAWN.z, SPAWN.yaw);
+    this.player.frozen = false;
     this.kit.reset();
     this.kit.visible = true;
     this.engine.torch.intensity = 0;
@@ -986,6 +987,7 @@ export class Investigation {
     this.ui.spookFx(this.setup.ghost);
     const a = this.profile.unlock('spooked');
     setTimeout(() => {
+      if (this.over) return;
       me.place(SPAWN.x + (Math.random() - 0.5), 0, SPAWN.z - 0.6, 0);
       this.nerve = Math.max(this.nerve, 45);
       me.frozen = false;
