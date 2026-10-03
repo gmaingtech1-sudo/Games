@@ -83,6 +83,19 @@ Firebase project, one account plays in both and your progress follows you.
    - Drag to turn the camera and scroll to zoom.
    - Click creatures, Rifts and caches to use them.
 
+## The Riftborn window and a Windows game
+
+A **Riftborn** window opens with the project. You can also open it from
+**Riftborn → Open Riftborn window**. It has buttons to:
+- play the game in the editor;
+- **build a Windows game**: `Builds/Windows/Riftborn.exe`, which you
+  double-click to play without Unity, walking with WASD and catching in 3D;
+- build for Android or iPhone;
+- hook up the imported dinosaurs, portals and effects, and see what's used.
+
+The scene looks empty in the editor on purpose, because the game builds
+everything when you press Play.
+
 ## Put it on your Android phone
 
 1. On the phone, turn on **Developer options → USB debugging**, then plug it

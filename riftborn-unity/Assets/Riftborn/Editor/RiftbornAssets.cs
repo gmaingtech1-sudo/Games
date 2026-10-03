@@ -23,7 +23,7 @@ namespace Riftborn.EditorTools
     [InitializeOnLoad]
     public static class RiftbornAssets
     {
-        const string LINKS = "Assets/Riftborn/Resources/RiftbornAssetLinks.asset";
+        public const string LINKS = "Assets/Riftborn/Resources/RiftbornAssetLinks.asset";
         const string GEN = "Assets/Riftborn/Generated";
 
         static RiftbornAssets()
@@ -36,14 +36,14 @@ namespace Riftborn.EditorTools
         }
 
         [MenuItem("Riftborn/Use imported assets (dinosaurs, portals, effects)", priority = 5)]
-        static void Menu()
+        public static void Menu()
         {
             if (File.Exists(LINKS) && !EditorUtility.DisplayDialog("Riftborn", "Look for dinosaurs, portals and effects again? This replaces the choices in RiftbornAssetLinks.", "Look again", "Cancel")) return;
             Run(true);
         }
 
         [MenuItem("Riftborn/Show asset links", priority = 6)]
-        static void Show()
+        public static void Show()
         {
             var a = AssetDatabase.LoadAssetAtPath<AssetLinks>(LINKS);
             if (a == null) { EditorUtility.DisplayDialog("Riftborn", "No asset links yet. Use Riftborn → Use imported assets first.", "OK"); return; }

@@ -18,7 +18,7 @@ namespace Riftborn.EditorTools
     public static class RiftbornSetup
     {
         const string DONE = "ProjectSettings/RiftbornSetup.txt";
-        const string SCENE = "Assets/Scenes/Riftborn.unity";
+        public const string SCENE = "Assets/Scenes/Riftborn.unity";
         const string MATS = "Assets/Riftborn/Resources/Materials";
 
         static RiftbornSetup()
@@ -192,6 +192,33 @@ namespace Riftborn.EditorTools
                 if (!run) EditorUtility.RevealInFinder(opts.locationPathName);
             }
             else Debug.LogError("Riftborn: Android build failed. Check that Android Build Support (with SDK, NDK and OpenJDK) is installed in Unity Hub.");
+        }
+
+        // A Windows game you can run without Unity: Builds/Windows/Riftborn.exe.
+        // On a PC there's no AR or GPS, so encounters happen in 3D and you
+        // walk with WASD.
+        [MenuItem("Riftborn/Build Windows game (.exe)", priority = 19)]
+        public static void BuildWindows()
+        {
+            if (!File.Exists(DONE)) Run();
+            PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
+            PlayerSettings.defaultScreenWidth = 1280;
+            PlayerSettings.defaultScreenHeight = 800;
+            PlayerSettings.resizableWindow = true;
+            Directory.CreateDirectory("Builds/Windows");
+            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+            {
+                scenes = new[] { SCENE },
+                locationPathName = "Builds/Windows/Riftborn.exe",
+                target = BuildTarget.StandaloneWindows64,
+                targetGroup = BuildTargetGroup.Standalone,
+            });
+            if (report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
+            {
+                Debug.Log($"Riftborn: built {Path.GetFullPath("Builds/Windows/Riftborn.exe")} ({report.summary.totalSize / 1048576} MB). Double-click it to play.");
+                EditorUtility.RevealInFinder("Builds/Windows/Riftborn.exe");
+            }
+            else Debug.LogError("Riftborn: Windows build failed. Look at the red lines above for why.");
         }
 
         [MenuItem("Riftborn/Build iPhone Xcode project", priority = 22)]
