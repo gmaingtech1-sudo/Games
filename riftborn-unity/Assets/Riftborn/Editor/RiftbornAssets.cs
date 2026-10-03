@@ -78,6 +78,16 @@ namespace Riftborn.EditorTools
             return null;
         }
 
+        // Tall for its length: long-neck. Otherwise a big biped.
+        static Plan ShapeOf(GameObject prefab)
+        {
+            var rs = prefab.GetComponentsInChildren<Renderer>(true);
+            if (rs.Length == 0) return Plan.Rex;
+            var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+            float len = Mathf.Max(b.size.x, b.size.z);
+            return b.size.y > len * 0.85f ? Plan.Longneck : Plan.Rex;
+        }
+
         static bool Mine(string p) => !p.StartsWith("Assets/") || p.StartsWith("Assets/Riftborn") || p.StartsWith("Assets/Scenes") || p.StartsWith("Assets/XR");
 
         static IEnumerable<Found> Scan()
@@ -95,6 +105,13 @@ namespace Riftborn.EditorTools
                     bool skinned = go.GetComponentInChildren<SkinnedMeshRenderer>(true) != null;
                     var d = DinoOf(Path.GetFileNameWithoutExtension(low)) ?? DinoOf(low);
                     if (skinned && d.HasValue) { f.key = "dino:" + d.Value.key; f.plan = d.Value.plan; yield return f; continue; }
+                    // A creature in a dinosaur pack with a name we don't know:
+                    // guess its body type from its shape.
+                    if (skinned && (low.Contains("dinosaur") || low.Contains("ferocious")) && !NOT_CREATURES.Any(low.Contains) && !low.Contains("@"))
+                    {
+                        string n = Path.GetFileNameWithoutExtension(low).Split('_', ' ', '-')[0];
+                        f.key = "dino:" + n; f.plan = ShapeOf(go); yield return f; continue;
+                    }
                     if (!f.prefab) continue;
                     bool particles = go.GetComponentInChildren<ParticleSystem>(true) != null;
                     bool meshes = go.GetComponentInChildren<MeshRenderer>(true) != null;
