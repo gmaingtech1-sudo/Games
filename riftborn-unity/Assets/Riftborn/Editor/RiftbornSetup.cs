@@ -189,7 +189,11 @@ namespace Riftborn.EditorTools
             if (report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
             {
                 Debug.Log($"Riftborn: built {Path.GetFullPath(opts.locationPathName)} ({report.summary.totalSize / 1048576} MB).");
-                if (!run) EditorUtility.RevealInFinder(opts.locationPathName);
+                if (!run)
+                {
+                    EditorUtility.RevealInFinder(opts.locationPathName);
+                    EditorUtility.DisplayDialog("Riftborn: phone app ready", $"Your app is {Path.GetFullPath(opts.locationPathName)}\n\nTo install it:\n1. Copy Riftborn.apk to your phone (USB cable, Google Drive or email).\n2. Tap it on the phone. If asked, allow installing apps from that source.\n3. Open Riftborn and allow location and camera.", "OK");
+                }
             }
             else Debug.LogError("Riftborn: Android build failed. Check that Android Build Support (with SDK, NDK and OpenJDK) is installed in Unity Hub.");
         }

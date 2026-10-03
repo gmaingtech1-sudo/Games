@@ -61,6 +61,12 @@ namespace Riftborn.EditorTools
                 GUI.backgroundColor = Color.white;
             }
 
+            GUILayout.Space(10);
+            GUI.backgroundColor = new Color(1f, 0.8f, 0.4f);
+            if (GUILayout.Button("📱  Make phone app (Android)", big)) Later(PhoneApp);
+            GUI.backgroundColor = Color.white;
+            GUILayout.Label("Makes Builds/Riftborn.apk. Copy it to your phone and open it to install, or plug the phone in with USB and use \"Build and run\" below.", note);
+
             GUILayout.Space(14);
             GUILayout.Label("Make the game", EditorStyles.boldLabel);
             if (GUILayout.Button("Build Windows game (.exe)", btn)) Later(RiftbornSetup.BuildWindows);
@@ -99,6 +105,25 @@ namespace Riftborn.EditorTools
 
         // Builds and dialogs run after this window has finished drawing.
         static void Later(System.Action a) => EditorApplication.delayCall += () => a();
+
+        // Android needs Unity's Android Build Support; say how to get it.
+        public static void PhoneApp()
+        {
+            if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Android, BuildTarget.Android))
+            {
+                EditorUtility.DisplayDialog("Riftborn: one more thing first",
+                    "To make a phone app, Unity needs Android Build Support:\n\n" +
+                    "1. Close Unity and open Unity Hub.\n" +
+                    "2. Click Installs, then the cog next to your Unity 6 version, then Add modules.\n" +
+                    "3. Tick Android Build Support, with OpenJDK and Android SDK & NDK Tools under it.\n" +
+                    "4. Click Install, wait, then open Riftborn again and click Make phone app.", "OK");
+                return;
+            }
+            if (!EditorUtility.DisplayDialog("Riftborn", "Make the Android phone app now? The first time takes 10–20 minutes while Unity prepares Android. Unity is busy until it's done.", "Make it", "Not now")) return;
+            if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
+                EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android);
+            RiftbornSetup.BuildApk();
+        }
 
         static void Play()
         {
