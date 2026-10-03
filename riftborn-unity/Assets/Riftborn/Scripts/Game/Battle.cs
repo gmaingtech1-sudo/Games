@@ -18,7 +18,7 @@ namespace Riftborn
             public Creature c; public Species sp; public int side;
             public int hp, max, atk, spd, cdBlast, cdGuard; public bool guard;
             public BeastInstance b; public Vector3 home; public float k, lunge, hurt, faint, shield, mouth;
-            public GameObject shieldGo;
+            public GameObject shieldGo; public bool dying;
         }
         List<F> me, foe;
         int mi, fi;
@@ -27,7 +27,7 @@ namespace Riftborn
         Action<bool, bool> done;
 
         GameObject arena; Camera cam; Transform stage; Light sun;
-        class Shot { public GameObject go; public Vector3 from, to; public float t; }
+        class Shot { public GameObject go; public Vector3 from, to; public float t; public bool fx; }
         readonly List<Shot> shots = new List<Shot>();
         class Num { public Vector3 p; public string text; public Color c; public float life; }
         readonly List<Num> nums = new List<Num>();
@@ -109,6 +109,16 @@ namespace Riftborn
             }
             var tear = Props.Glow(new Color(0.6f, 0.3f, 1f), 9, arena.transform);
             tear.transform.localPosition = new Vector3(0, 4, 12);
+            // An imported portal stands behind the fighters.
+            var pp = AssetLinks.Portal("arena");
+            if (pp != null)
+            {
+                var holder = new GameObject("portal").transform;
+                holder.SetParent(arena.transform, false);
+                holder.localPosition = new Vector3(0, 0, 12);
+                holder.localRotation = Quaternion.Euler(0, 180, 0);
+                if (Props.PortalModel(pp, holder, 9) != null) tear.transform.localScale = Vector3.one * 5;
+            }
             arena.SetActive(false);
         }
 
@@ -187,6 +197,7 @@ namespace Riftborn
             {
                 who.cdGuard = 3;
                 who.guard = true;
+                if (who.b != null) Fx.Play(AssetLinks.I?.guard, who.b.root.transform.position + Vector3.up * 0.05f, Mathf.Max(0.8f, who.b.Height * 0.8f), null, stage, 1.2f);
                 who.shield = 1;
                 int heal = Mathf.RoundToInt(who.max * 0.08f);
                 who.hp = Mathf.Min(who.max, who.hp + heal);
@@ -203,11 +214,14 @@ namespace Riftborn
             int d = Mathf.Max(1, Mathf.RoundToInt(dmg));
             log = mv == "blast" ? $"{who.sp.name} used {el.move}!" : $"{who.sp.name} strikes!";
             who.lunge = 1; who.mouth = 1;
+            who.b?.Act("attack");
             if (mv == "blast")
             {
                 Sfx.Play("blast");
-                var go = Props.Glow(el.color, 0.9f, stage);
-                shots.Add(new Shot { go = go, from = ChestOf(who), to = ChestOf(target) });
+                // An imported projectile if there is one, else a glow.
+                var proj = Fx.Play(Fx.ElementProjectile(who.sp.el), ChestOf(who), 1, Fx.HasOwnColour(who.sp.el) ? (Color?)null : el.color, stage, 0.6f);
+                var go = proj ?? Props.Glow(el.color, 0.9f, stage);
+                shots.Add(new Shot { go = go, from = ChestOf(who), to = ChestOf(target), fx = proj != null });
                 yield return new WaitForSeconds(0.45f);
             }
             else
@@ -218,6 +232,10 @@ namespace Riftborn
             target.hp = Mathf.Max(0, target.hp - d);
             target.hurt = 1;
             var p = ChestOf(target);
+            var L = AssetLinks.I;
+            if (mv == "blast") Fx.Play(Fx.ElementHit(who.sp.el), p, target.b != null ? Mathf.Max(0.8f, target.b.Height * 0.7f) : 1, Fx.HasOwnColour(who.sp.el) ? (Color?)null : el.color, stage);
+            else Fx.Play(L?.strikeHit, p, target.b != null ? Mathf.Max(0.6f, target.b.Height * 0.5f) : 1, null, stage);
+            target.b?.Act("hit");
             nums.Add(new Num { p = p + Vector3.up * 0.6f, text = $"-{d}{(crit ? "!" : "")}", c = adv > 1 ? new Color(1, 0.88f, 0.3f) : Color.white, life = 1.1f });
             Sfx.Play("hit");
             if (adv > 1.3f) log = "Super effective!";
@@ -233,6 +251,7 @@ namespace Riftborn
             {
                 var f = Cur(1);
                 f.faint = 0.001f;
+                f.dying = f.b != null && f.b.Act("die");
                 log = $"{f.sp.name} fainted!";
                 Sfx.Play("flee");
                 yield return new WaitForSeconds(0.9f);
@@ -249,6 +268,7 @@ namespace Riftborn
             {
                 var f = Cur(0);
                 f.faint = 0.001f;
+                f.dying = f.b != null && f.b.Act("die");
                 log = $"{f.sp.name} fainted!";
                 Sfx.Play("flee");
                 yield return new WaitForSeconds(0.9f);
@@ -328,8 +348,12 @@ namespace Riftborn
                 if (f.faint > 0)
                 {
                     f.faint = Mathf.Min(1, f.faint + dt * 1.5f);
-                    p.y -= f.faint * f.b.Height * 0.5f;
-                    root.localScale = Vector3.one * f.k * (1 - f.faint * 0.6f);
+                    // Models with a death animation play it; others sink away.
+                    if (!f.dying)
+                    {
+                        p.y -= f.faint * f.b.Height * 0.5f;
+                        root.localScale = Vector3.one * f.k * (1 - f.faint * 0.6f);
+                    }
                 }
                 root.position = p;
                 f.b.Update(dt, 0, Mathf.SmoothStep(0, 1, f.mouth), 0);
@@ -348,7 +372,7 @@ namespace Riftborn
                 var s = shots[i];
                 s.t += dt / 0.45f;
                 s.go.transform.position = Vector3.Lerp(s.from, s.to, s.t) + Vector3.up * Mathf.Sin(s.t * Mathf.PI) * 0.8f;
-                s.go.transform.localScale = Vector3.one * (0.6f + s.t * 1.4f);
+                if (!s.fx) s.go.transform.localScale = Vector3.one * (0.6f + s.t * 1.4f);
                 if (s.t >= 1) { Destroy(s.go); shots.RemoveAt(i); }
             }
             for (int i = nums.Count - 1; i >= 0; i--) { nums[i].life -= dt; nums[i].p += Vector3.up * dt * 0.6f; if (nums[i].life <= 0) nums.RemoveAt(i); }

@@ -31,7 +31,7 @@ namespace Riftborn
     public class Link { public string a, b; public double[] al, bl; }
     public class Field { public string[] ids; public double[][] ll; public int aether; }
     public class Stats { public int caught, darts, hits, hacks, claimed, links, fields, wins, fused, hatched, apex, purged; public double meters; }
-    public class Settings { public bool sound = true; public string map = "scanner"; public int mapV = 2; public string tiles = "auto"; public bool ar = true; public string googleKey = ""; public Dictionary<string, object> _extra; }
+    public class Settings { public bool sound = true; public string map = "scanner"; public int mapV = 2; public string tiles = "auto"; public bool ar = true; public string googleKey = ""; public bool imported = true; public Dictionary<string, object> _extra; }
     public class Mission { public string kind, text; public int need; public double got; public bool claimed; }
     public class Missions { public string day; public List<Mission> list = new List<Mission>(); public bool bonus; public string surge; }
     public class Walk { public double buddy, stash; }

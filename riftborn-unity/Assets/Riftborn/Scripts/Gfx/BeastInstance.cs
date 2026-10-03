@@ -27,6 +27,13 @@ namespace Riftborn
             asset = Beasts.Asset(id);
             sp = asset.sp;
             root = new GameObject(sp.name);
+            // An imported, animated model when one is linked (see AssetLinks).
+            var model = AssetLinks.ModelFor(id, out var skin);
+            if (model != null && Imported(model, skin))
+            {
+                root.transform.localScale = Vector3.one * sp.size;
+                return;
+            }
             var body = new GameObject("body");
             body.transform.SetParent(root.transform, false);
             var tr = new Transform[asset.bones.Count];
@@ -116,6 +123,7 @@ namespace Riftborn
         public void Update(float dt, float speed, float mouth, float? lookAt, float flap = 0)
         {
             t += dt;
+            if (dino != null) { UpdateImported(dt, speed, mouth, flap); return; }
             var P = asset.plan;
             float speedU = speed / Mathf.Max(0.01f, root.transform.localScale.x);
             float stride = P.stride;
@@ -178,6 +186,12 @@ namespace Riftborn
         public void SetTint(Color c, float k)
         {
             if (k <= 0 && tint <= 0) return;
+            if (dino != null)
+            {
+                foreach (var m in dinoMats) if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", k > 0 ? c * k : Color.black);
+                tint = k;
+                return;
+            }
             foreach (var m in ownMats)
             {
                 if (k > 0) { m.SetColor("_EmissionColor", c * k); m.SetTexture("_EmissionMap", null); }
@@ -191,8 +205,154 @@ namespace Riftborn
             tint = k;
         }
 
+        /* ------------------ Imported models ------------------ */
+
+        class Rig
+        {
+            public DinoModel m; public GameObject model; public Animator anim;
+            public string state; public bool loop, dead; public float oneShot, lastMouth;
+        }
+        Rig dino;
+        Material[] dinoMats;
+        public bool IsImported => dino != null;
+
+        bool Imported(DinoModel m, Material skin)
+        {
+            var go = Object.Instantiate(m.prefab);
+            go.name = "model";
+            // Keep only the looks: no scripts, physics or AI from the pack.
+            foreach (var b in go.GetComponentsInChildren<Behaviour>(true)) if (!(b is Animator)) b.enabled = false;
+            foreach (var rb in go.GetComponentsInChildren<Rigidbody>(true)) Object.Destroy(rb);
+            foreach (var c in go.GetComponentsInChildren<Collider>(true)) c.enabled = false;
+            go.transform.SetParent(root.transform, false);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Quaternion.Euler(0, m.yaw, 0);
+            var anim = go.GetComponentInChildren<Animator>();
+            if (anim == null) anim = go.AddComponent<Animator>();
+            if (m.controller != null) anim.runtimeAnimatorController = m.controller;
+            anim.applyRootMotion = false;
+            anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            dino = new Rig { m = m, model = go, anim = anim };
+            Play(m.idle, true);
+            anim.Update(0);
+
+            var rs = go.GetComponentsInChildren<Renderer>().Where((r) => !(r is ParticleSystemRenderer)).ToArray();
+            if (rs.Length == 0) { Object.Destroy(go); dino = null; return false; }
+            // Fit it in the same box as the game's own model, feet on the ground.
+            Bounds Box() { var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); return b; }
+            var have = Box(); var want = asset.bounds;
+            float k = Mathf.Sqrt(want.size.y / Mathf.Max(0.001f, have.size.y) * want.size.z / Mathf.Max(0.001f, have.size.z));
+            go.transform.localScale *= k;
+            have = Box();
+            go.transform.localPosition += new Vector3(want.center.x - have.center.x, want.min.y - have.min.y, want.center.z - have.center.z);
+
+            // Own materials: a skin, a hint of the species' colours, and an
+            // emission channel for hit flashes.
+            var tint = Color.Lerp(sp.dorsal, Color.white, 0.35f);
+            var mats = new List<Material>();
+            foreach (var r in rs)
+            {
+                var ms = r.materials;
+                for (int i = 0; i < ms.Length; i++)
+                {
+                    if (skin != null && ms.Length == 1) { Object.Destroy(ms[i]); ms[i] = new Material(skin); }
+                    if (ms[i].HasProperty("_Color")) ms[i].color = Color.Lerp(ms[i].color, tint, m.tint);
+                    if (ms[i].HasProperty("_EmissionColor")) ms[i].EnableKeyword("_EMISSION");
+                    mats.Add(ms[i]);
+                }
+                r.materials = ms;
+                if (r is SkinnedMeshRenderer smr) smr.updateWhenOffscreen = true;
+                renderers.Add(r);
+            }
+            dinoMats = mats.ToArray();
+
+            // Where darts aim: the model's own bones when they have usual
+            // names, otherwise points in the right places.
+            var all = go.GetComponentsInChildren<Transform>(true);
+            Transform Find(params string[] keys) => all.FirstOrDefault((x) => keys.Any((key) => x.name.ToLowerInvariant().Contains(key)) && x.GetComponentsInChildren<Transform>().Length > 1)
+                ?? all.FirstOrDefault((x) => keys.Any((key) => x.name.ToLowerInvariant().Contains(key)));
+            Transform Mark(string n, Vector3 p) { var x = new GameObject(n).transform; x.SetParent(root.transform, false); x.localPosition = p; return x; }
+            var bb = want;
+            bones[asset.headName] = Find("head") ?? Mark("head", new Vector3(bb.center.x, bb.min.y + bb.size.y * 0.85f, bb.max.z - bb.size.z * 0.1f));
+            bones["f1"] = Find("neck") ?? Mark("neck", new Vector3(bb.center.x, bb.min.y + bb.size.y * 0.75f, bb.center.z + bb.size.z * 0.25f));
+            bones["hip"] = Find("pelvis", "hip") ?? Mark("hip", new Vector3(bb.center.x, bb.min.y + bb.size.y * 0.6f, bb.center.z));
+            bones["t1"] = Find("tail") ?? Mark("tail", new Vector3(bb.center.x, bb.min.y + bb.size.y * 0.5f, bb.min.z + bb.size.z * 0.2f));
+            bones["jaw"] = Find("jaw") ?? bones[asset.headName];
+            return true;
+        }
+
+        float ClipLength(string state)
+        {
+            var c = dino.m.controller;
+            if (c == null) return 1.2f;
+            foreach (var clip in c.animationClips) if (clip != null && clip.name == state) return clip.length;
+            return 1.2f;
+        }
+
+        void Play(string state, bool loop)
+        {
+            if (string.IsNullOrEmpty(state) || state == dino.state) return;
+            dino.anim.CrossFadeInFixedTime(state, 0.25f);
+            dino.state = state;
+            dino.loop = loop;
+        }
+
+        void OneShot(string state)
+        {
+            if (string.IsNullOrEmpty(state)) return;
+            dino.anim.CrossFadeInFixedTime(state, 0.12f, 0, 0);
+            dino.state = state;
+            dino.loop = false;
+            dino.oneShot = ClipLength(state);
+        }
+
+        // A move for the imported model: "attack", "roar", "hit" or "die".
+        // The game's own creatures show these with their jaw and tint.
+        public bool Act(string what)
+        {
+            if (dino == null || dino.dead) return false;
+            var m = dino.m;
+            switch (what)
+            {
+                case "attack": { var st = !string.IsNullOrEmpty(m.attack) ? m.attack : m.roar; OneShot(st); return !string.IsNullOrEmpty(st); }
+                case "roar": OneShot(m.roar); return !string.IsNullOrEmpty(m.roar);
+                case "hit": OneShot(m.hit); return !string.IsNullOrEmpty(m.hit);
+                case "die":
+                    if (string.IsNullOrEmpty(m.die)) return false;
+                    OneShot(m.die);
+                    dino.dead = true;
+                    return true;
+            }
+            return false;
+        }
+
+        void UpdateImported(float dt, float speed, float mouth, float flap)
+        {
+            var R = dino; var m = R.m;
+            if (R.dead) return;
+            float speedU = speed / Mathf.Max(0.01f, root.transform.localScale.x);
+            if (mouth > 0.6f && R.lastMouth <= 0.6f) OneShot(m.roar);
+            R.lastMouth = mouth;
+            if (R.oneShot > 0) R.oneShot -= dt;
+            else
+            {
+                string want = sp.plan == Plan.Flyer && !string.IsNullOrEmpty(m.fly) ? m.fly
+                    : speedU > 0.8f && !string.IsNullOrEmpty(m.run) ? m.run
+                    : speedU > 0.02f && !string.IsNullOrEmpty(m.walk) ? m.walk : m.idle;
+                Play(want, true);
+            }
+            // Clips that weren't imported as loops are restarted.
+            if (R.loop && !R.anim.IsInTransition(0) && R.anim.GetCurrentAnimatorStateInfo(0).normalizedTime >= 0.98f) R.anim.Play(R.state, 0, 0);
+            R.anim.speed = R.state == m.walk ? Mathf.Clamp(speedU / 0.3f, 0.6f, 1.6f) : R.state == m.run ? Mathf.Clamp(speedU / 1.2f, 0.8f, 1.5f) : 1;
+        }
+
         public void SetLayer(int layer) { foreach (var t2 in root.GetComponentsInChildren<Transform>(true)) t2.gameObject.layer = layer; }
 
-        public void Destroy() { foreach (var m in ownMats) Object.Destroy(m); Object.Destroy(root); }
+        public void Destroy()
+        {
+            if (ownMats != null) foreach (var m in ownMats) Object.Destroy(m);
+            if (dinoMats != null) foreach (var m in dinoMats) Object.Destroy(m);
+            Object.Destroy(root);
+        }
     }
 }

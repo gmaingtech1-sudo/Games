@@ -163,6 +163,50 @@ accounts walk you through it:
 
 If the web game uses the same project, the same account works in both.
 
+## Using Asset Store art (dinosaurs, portals, effects)
+
+Riftborn can use these free Asset Store packs instead of its own generated
+art:
+
+| Pack | Used for |
+|---|---|
+| **PBR Animated Dinosaurs** (Ferocious Industries) | The creatures, with their real animations, on the map, in AR, in battles and in menus |
+| **The Portal Collection** (ReversedInt) | The Rifts on the map, the Rift a creature steps out of in AR, and the arena backdrop |
+| **Magic Effects FREE** (Hovl Studio) | Dart hits, bullseyes, catches and break-outs, battle strikes and element blasts, guards, hacks, claims and level ups |
+
+1. **Import the packs into this project.** In Unity, open **Window → Package
+   Manager → My Assets** with the Riftborn project open. Choose each pack and
+   click **Download**, then **Import** and **Import** again.
+   - If they show "In Project" for another project, import them again here.
+2. **Let Riftborn set them up.** Riftborn sets them up by itself the first time
+   it finds them. You can also run it from **Riftborn → Use imported assets
+   (dinosaurs, portals, effects)**. It does four things:
+   - It finds each dinosaur and works out its animations (idle, walk, run,
+     attack, roar, hit, death, fly), which way it faces and its skins. It then
+     makes an Animator Controller for it in `Assets/Riftborn/Generated`.
+   - It gives every species a dinosaur of the same body type: raptor, rex,
+     horned, plated, long-neck or flyer. Where it can, it matches a feature,
+     so dome heads get a Pachycephalosaurus and plated backs a Stegosaurus.
+   - It uses the portals for the Rifts.
+   - It picks effects by name, such as explosion, spark, slash, circle and
+     shield. Effects named after an element, like fire or lightning, are used
+     for that element's moves.
+3. **Press Play.** Species without a matching dinosaur keep the game's own
+   creature.
+
+**Changing what it picked:** open **Riftborn → Show asset links** and change
+anything in the Inspector. For each dinosaur you can set:
+- its body type, and how much it turns (`yaw`) if it walks sideways or
+  backwards;
+- which animation plays for each move;
+- how much it's tinted towards each species' colours.
+
+Under **Species** you can choose which dinosaur and skin each species uses (−1
+means the game's own model). Each effect slot takes any particle prefab.
+
+**Turning them off:** in the game, **Menu → Imported dinosaurs, portals &
+effects** switches between this art and the game's own.
+
 ## What's inside
 
 | Folder | What |
@@ -171,7 +215,8 @@ If the web game uses the same project, the same account works in both.
 | `Assets/Riftborn/Scripts/Game` | World generator, save data, map, UI, AR encounter, battles, game loop |
 | `Assets/Riftborn/Scripts/Gfx` | Creature models, their skeletons and animation, textures, props, menu previews |
 | `Assets/Riftborn/Shaders` | Map tile, glow and AR shadow shaders |
-| `Assets/Riftborn/Editor` | The automatic setup and build menu |
+| `Assets/Riftborn/Editor` | The automatic setup, the Asset Store hook-up and the build menu |
+| `Assets/Riftborn/Resources/RiftbornAssetLinks.asset` | Which imported dinosaurs, portals and effects are used (made by Riftborn → Use imported assets) |
 
 - The scene is empty on purpose, because the game builds everything when it
   starts.

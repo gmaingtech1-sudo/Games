@@ -41,6 +41,7 @@ namespace Riftborn
         Transform stage;
         Light sun;
         GameObject reticle, shadow, ground, rift, ring, target;
+        Transform portalRoot;
         BeastInstance beast; BoxCollider body;
         Vector3 home, pos, walkTo; float scale, H, mouth, walkWait, roarT, hurt, speedK = 1;
         float floorY;
@@ -276,6 +277,18 @@ namespace Riftborn
 
             rift = Props.Glow(Species.Elements[sp.el].color, 0.1f, stage);
             rift.transform.position = home + Vector3.up * scale * 0.6f;
+            // An imported portal opens behind the creature (see AssetLinks).
+            var portalPrefab = AssetLinks.Portal(spawn.id);
+            if (portalPrefab != null)
+            {
+                portalRoot = new GameObject("portalRoot").transform;
+                portalRoot.SetParent(stage, false);
+                portalRoot.position = home + fwd * scale * 0.7f;
+                portalRoot.rotation = Quaternion.LookRotation(-fwd);
+                if (Props.PortalModel(portalPrefab, portalRoot, Mathf.Max(1.6f, H * 1.9f)) == null) { Destroy(portalRoot.gameObject); portalRoot = null; }
+                else portalRoot.localScale = Vector3.one * 0.001f;
+            }
+            Fx.Play(AssetLinks.I?.appear, home + Vector3.up * H * 0.4f, Mathf.Max(0.6f, scale * 0.8f), Species.Elements[sp.el].color, stage);
             ring = Props.Mesh("ring", Props.Quad, Mats.Glow(Color.green, Tex.Ring), stage, false);
             ring.AddComponent<Billboard>();
             ring.SetActive(false);
@@ -372,6 +385,9 @@ namespace Riftborn
                 hurt = 1; speedK = 1.8f; tgtT = 0; mouth = Mathf.Max(mouth, 0.7f);
                 Say(bull ? $"Bullseye! +{n} DNA" : $"+{n} DNA", d.at + Vector3.up * 0.1f, bull ? new Color(1, 0.88f, 0.3f) : new Color(0.5f, 0.95f, 0.8f), bull);
                 Burst(d.at, Species.Elements[sp.el].color, bull ? 16 : 9);
+                var L = AssetLinks.I;
+                Fx.Play(bull && L?.bullseye != null ? L.bullseye : L?.dartHit, d.at, bull ? 0.5f : 0.35f, Species.Elements[sp.el].color, stage);
+                beast.Act("hit");
                 Sfx.Play(bull ? "bull" : "hit");
                 NextTarget();
             }
@@ -435,6 +451,7 @@ namespace Riftborn
             orbRest = orb.transform.position;
             if (label != null) Say(label, orbRest + Vector3.up * 0.2f, new Color(1, 0.88f, 0.3f), true);
             Burst(orbRest, Color.white, 18);
+            Fx.Play(AssetLinks.I?.dartHit, orbRest, 0.4f, Color.white, stage);
             phase = Phase.Absorb; phaseT = 0;
             ring.SetActive(false); target.SetActive(false);
             Sfx.Play("absorb");
@@ -446,11 +463,13 @@ namespace Riftborn
             caughtIt = true;
             Sfx.Play("caught");
             for (int i = 0; i < 2; i++) Burst(orb.transform.position, i == 0 ? new Color(1, 0.88f, 0.3f) : Species.Elements[sp.el].color, 16, 1.2f);
+            Fx.Play(AssetLinks.I?.catchBurst, orb.transform.position, 0.6f, null, stage);
         }
 
         void Breakout()
         {
             Burst(orb.transform.position, Species.Elements[sp.el].color, 20);
+            Fx.Play(AssetLinks.I?.breakout, orb.transform.position, Mathf.Max(0.5f, scale * 0.6f), Species.Elements[sp.el].color, stage);
             Destroy(orb); orb = null;
             beast.root.SetActive(true);
             beast.root.transform.position = pos;
@@ -512,6 +531,7 @@ namespace Riftborn
                     {
                         float k = Mathf.Clamp01(phaseT / 0.9f);
                         rift.transform.localScale = Vector3.one * scale * 2.2f * Mathf.Sin(Mathf.Min(1, phaseT / 1.4f) * Mathf.PI);
+                        if (portalRoot) portalRoot.localScale = Vector3.one * Mathf.Max(0.001f, Mathf.Sin(Mathf.Min(1, phaseT / 1.4f) * Mathf.PI));
                         beast.root.transform.localScale = Vector3.one * scale * Mathf.Max(0.001f, Mathf.SmoothStep(0, 1, k));
                         if (phaseT > 0.5f && roarT == 0) { mouth = 1; roarT = 6; Sfx.Play("roar"); }
                         if (phaseT > 1.4f) { phase = Phase.Free; phaseT = 0; rift.SetActive(false); ring.SetActive(true); target.SetActive(true); hint = null; }
@@ -561,6 +581,7 @@ namespace Riftborn
                         rift.SetActive(true);
                         rift.transform.position = Chest;
                         rift.transform.localScale = Vector3.one * scale * 2 * Mathf.Sin(k * Mathf.PI);
+                        if (portalRoot) portalRoot.localScale = Vector3.one * Mathf.Max(0.001f, Mathf.Sin(k * Mathf.PI));
                         if (k >= 1) ShowResult();
                         break;
                     }

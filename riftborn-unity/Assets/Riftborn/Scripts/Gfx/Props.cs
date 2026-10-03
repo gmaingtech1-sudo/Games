@@ -2,6 +2,7 @@
 // floating crystal over standing stones, a beam of light, orbiting shards),
 // supply crates, Rift Orbs, boulders, markers and your agent.
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Riftborn
@@ -141,6 +142,35 @@ namespace Riftborn
 
         /* ------------------ Rift ------------------ */
 
+        static Quaternion portalTurn = Quaternion.identity;
+
+        // An imported portal (see AssetLinks), standing on the ground, scaled
+        // to `height` metres and stripped of physics. Null if it has nothing to draw.
+        public static GameObject PortalModel(GameObject prefab, Transform parent, float height)
+        {
+            var go = Object.Instantiate(prefab);
+            go.name = "portal";
+            foreach (var c in go.GetComponentsInChildren<Collider>(true)) c.enabled = false;
+            foreach (var rb in go.GetComponentsInChildren<Rigidbody>(true)) Object.Destroy(rb);
+            foreach (var cam in go.GetComponentsInChildren<Camera>(true)) cam.enabled = false;
+            foreach (var l in go.GetComponentsInChildren<Light>(true)) l.shadows = LightShadows.None;
+            foreach (var a in go.GetComponentsInChildren<AudioSource>(true)) a.enabled = false;
+            foreach (var ps in go.GetComponentsInChildren<ParticleSystem>(true)) { var m = ps.main; m.scalingMode = ParticleSystemScalingMode.Hierarchy; }
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = Vector3.zero;
+            var rs = go.GetComponentsInChildren<Renderer>().Where((r) => !(r is ParticleSystemRenderer)).ToArray();
+            if (rs.Length == 0) rs = go.GetComponentsInChildren<Renderer>();
+            if (rs.Length == 0) { Object.Destroy(go); return null; }
+            Bounds Box() { var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); return b; }
+            var have = Box();
+            float k = height / Mathf.Max(0.01f, Mathf.Max(have.size.y, Mathf.Max(have.size.x, have.size.z) * 0.6f));
+            go.transform.localScale *= k;   // height is in world units
+            have = Box();
+            var bottom = parent.InverseTransformPoint(new Vector3(have.center.x, have.min.y, have.center.z));
+            go.transform.localPosition -= new Vector3(bottom.x, bottom.y, bottom.z);
+            return go;
+        }
+
         public class RiftProp
         {
             public GameObject root; GameObject crystal, glow, beam, ring, ready; readonly List<GameObject> shards = new List<GameObject>();
@@ -182,6 +212,18 @@ namespace Riftborn
                 pick = col;
             }
 
+            // An imported portal model takes the crystal's place, turned to
+            // face the camera.
+            GameObject portal;
+            public void SetPortal(GameObject prefab)
+            {
+                if (prefab == null || portal != null) return;
+                portal = PortalModel(prefab, root.transform, 17);
+                if (portal == null) return;
+                crystal.SetActive(false);
+                glow.transform.localScale = Vector3.one * 5;
+            }
+
             public void Set(RiftState st, Color color, bool canHack)
             {
                 bool held = st.faction != null;
@@ -199,6 +241,11 @@ namespace Riftborn
             public void Update(float dt)
             {
                 t += dt;
+                if (portal != null && Camera.main != null)
+                {
+                    var to = Camera.main.transform.position - root.transform.position; to.y = 0;
+                    if (to.sqrMagnitude > 1) portal.transform.rotation = Quaternion.LookRotation(to) * portalTurn;
+                }
                 crystal.transform.localPosition = new Vector3(0, 10 + Mathf.Sin(t * 1.4f) * 0.6f, 0);
                 crystal.transform.localRotation = Quaternion.Euler(0, t * 34, 0);
                 glow.transform.localPosition = crystal.transform.localPosition;

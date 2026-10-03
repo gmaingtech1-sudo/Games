@@ -236,6 +236,7 @@ namespace Riftborn
         public void LevelUp(int L)
         {
             Sfx.Play("win");
+            if (Game.I != null && Game.I.mode == Game.Mode.Map) Game.I.map.Effect(AssetLinks.I?.levelUp, Game.I.map.lat, Game.I.map.lng, Gold, 1.2f);
             var rw = GameState.LevelReward(L);
             string unlock = L % 2 == 0 && L <= 14 ? $"\nYou can now upgrade Rifts to level {GameState.MaxRiftLevel}." : "";
             Message($"Level {L}!", $"You're now a {GameState.Title(L)}.\nBonus supplies: {rw}.{unlock}", Gold);
@@ -764,6 +765,7 @@ namespace Riftborn
                 var res = GameState.OpenCache(c);
                 if (!res.ok) { Toast(res.why); return; }
                 Sfx.Play("loot");
+                Game.I.map.Effect(AssetLinks.I?.dartHit, c.lat, c.lng, new Color(1, 0.75f, 0.3f));
                 Toast($"Cache opened: {res.loot}{EggNote(res.egg)}", Good);
                 Up(res);
                 Close();
@@ -830,6 +832,7 @@ namespace Riftborn
                 var r = GameState.Hack(rift);
                 if (!r.ok) { Toast(r.why); return; }
                 Sfx.Play("hack");
+                Game.I.map.Effect(AssetLinks.I?.hack, rift.lat, rift.lng, GameState.Me.color);
                 Toast($"Hacked: {r.loot}{(r.key ? " · Key" : "")}{EggNote(r.egg)}", Good);
                 Up(r);
                 Game.I.Refresh();
@@ -840,6 +843,7 @@ namespace Riftborn
                 var r = GameState.Claim(rift);
                 if (!r.ok) { Toast(r.why, Bad); Sfx.Play("error"); return; }
                 Sfx.Play("caught");
+                Game.I.map.Effect(AssetLinks.I?.claim, rift.lat, rift.lng, GameState.Me.color, 1.5f);
                 Toast($"{rift.name} is now held by the {GameState.Me.name}!", Good);
                 Up(r);
                 Game.I.Refresh();
@@ -1527,6 +1531,13 @@ namespace Riftborn
                 Game.I.map.ApplySettings();
             }
             if (SheetButton($"AR camera: {(st.ar ? "on" : "off")}", Soft)) { st.ar = !st.ar; GameState.Save(); }
+            if (AssetLinks.I != null && SheetButton($"Imported dinosaurs, portals & effects: {(st.imported ? "on" : "off")}", Soft))
+            {
+                st.imported = !st.imported;
+                GameState.Save();
+                Game.I.map.Rebase();
+                Game.I.Refresh();
+            }
             string src = st.tiles == "esri" ? "Esri" : st.tiles == "osm" ? "OpenStreetMap" : $"automatic ({Game.I.map.SourceName})";
             if (SheetButton($"Map source: {(GMaps.Active ? "Google Maps" : src)}", Soft))
             {

@@ -113,6 +113,13 @@ namespace Riftborn
             ChangedStyle();
         }
 
+        // An imported effect on the map (hacks, claims, level ups).
+        public void Effect(GameObject prefab, double la, double ln, Color? tint = null, float size = 1)
+        {
+            float k = AssetLinks.I != null ? AssetLinks.I.mapEffectScale : 6;
+            Fx.Play(prefab, world.TransformPoint(ToV(la, ln) + Vector3.up * 2), k * size, tint, world);
+        }
+
         public void Show(bool on) { gameObject.SetActive(on); }
 
         Vector3 ToV(double la, double ln) { var (x, y) = World.ToXY(la, ln); return new Vector3((float)x, 0, (float)y); }
@@ -132,6 +139,7 @@ namespace Riftborn
                     o.root.transform.SetParent(world, false);
                     o.root.transform.localPosition = ToV(r.lat, r.lng);
                     o.root.AddComponent<Pickable>().target = r;
+                    o.SetPortal(AssetLinks.Portal(r.id));
                     rifts[r.id] = o;
                 }
                 var st = GameState.State(r);
