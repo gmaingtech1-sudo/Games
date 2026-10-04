@@ -1,7 +1,7 @@
 /* Frontline — offline support. Serves the cached game instantly and
    refreshes the cache in the background, so updates land on the next launch.
    Fonts come from Google and are left to the browser's own cache. */
-const CACHE = 'frontline-v3';
+const CACHE = 'frontline-v4';
 const SHELL = [
   './',
   'index.html',

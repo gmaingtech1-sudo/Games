@@ -534,6 +534,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
   border: 1px solid var(--line);
 }
 
+/* Battles are played sideways on phones. */
+.rotate { display: none; }
+@media (orientation: portrait) and (pointer: coarse) {
+  body[data-screen="game"] .rotate {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+    background: var(--bg);
+    font-family: var(--font-d); font-size: 20px; color: var(--khaki);
+  }
+}
+.rotate-phone {
+  width: 54px; height: 92px;
+  border: 4px solid var(--khaki); border-radius: 10px;
+  animation: turn 1.6s ease-in-out infinite;
+}
+@keyframes turn { 0%, 25% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+
 @media (prefers-reduced-motion: reduce) {
   .banner.pop, .tbtn.art.ready, .hp.low #hp-fill { animation: none; }
 }

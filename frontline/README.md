@@ -11,7 +11,7 @@ It's plain HTML, CSS and JavaScript. There's no build step and nothing to instal
 | Action | Touch | Keyboard / mouse |
 | --- | --- | --- |
 | Move | Put your left thumb down anywhere on the left side and drag | WASD or arrow keys |
-| Aim and fire | Put your right thumb down anywhere on the right side and push. The gun fires while the stick is pushed | Mouse to aim, click (or Space) to fire |
+| Aim and fire | Automatic with **auto-fire** (on by default). Or put your right thumb down anywhere on the right side and push: the gun fires while the stick is pushed | Automatic, or mouse to aim and click (or Space) to fire |
 | Grenade | Grenade button. It's thrown the way you're aiming and lands on the nearest enemy in that direction | G, or right-click exactly where you want it |
 | Reload | Reload button (also automatic when empty) | R |
 | Swap weapon | Swap button | Q, or 1 / 2 |
@@ -19,7 +19,9 @@ It's plain HTML, CSS and JavaScript. There's no build step and nothing to instal
 | Artillery strike | Radio button, once its bar is full | F |
 | Pause | Pause button | Esc or P |
 
-Turning the phone sideways gives the widest view, but portrait works too.
+**Auto-fire** (Settings or the pause menu) aims at the nearest enemy you have a clear shot at and shoots for you, so you only have to steer. Push the right stick, or click, whenever you want to aim yourself. It saves bazooka rockets for tanks and MG nests.
+
+Battles are played with the phone sideways. In a phone browser held upright, the game asks you to turn it.
 
 ### AFK mode
 

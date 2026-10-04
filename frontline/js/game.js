@@ -110,7 +110,7 @@
     nextObjective();
     hud.hint.hidden = false;
     hud.hint.textContent = input.touch || matchMedia('(pointer: coarse)').matches
-      ? 'Left thumb: move · Right thumb: aim and fire'
+      ? (FL.save.data.settings.autoFire ? 'Left thumb: move · You shoot automatically · Right thumb to aim yourself' : 'Left thumb: move · Right thumb: aim and fire')
       : 'WASD move · Mouse aim · Click fire · R reload · G / right-click grenade · Q swap · F artillery';
     G.hintT = 6;
     updateHud(true);
@@ -438,7 +438,7 @@
     // Shooting.
     if (input.firing) {
       // On a touchscreen, holding the stick keeps semi-automatics firing at their own pace.
-      const canPull = W.auto || !p.triggerHeld || input.touch || G.afk;
+      const canPull = W.auto || !p.triggerHeld || input.touch || G.afk || FL.save.data.settings.autoFire;
       if (p.fireT <= 0 && canPull) {
         if (W.shellReload && p.reloadT > 0 && w.mag > 0) p.reloadT = 0;
         if (p.reloadT <= 0) {
@@ -506,6 +506,37 @@
         }
       }
     }
+  }
+
+  // Auto-fire: when you aren't shooting yourself, aim at the nearest enemy
+  // you have a clear shot at and pull the trigger. You just steer.
+  function autoFire(dt) {
+    const p = G.player;
+    if (p.dead || G.ended) return;
+    const w = weapon();
+    const W = D.WEAPONS[w.id];
+    G.autoT = (G.autoT || 0) - dt;
+    if (G.autoT <= 0 || (G.autoTarget && G.autoTarget.dead)) {
+      G.autoT = 0.15;
+      G.autoTarget = null;
+      let bd = Infinity;
+      for (const e of G.enemies) {
+        if (e.dead || !e.canSee) continue;
+        // Rockets are kept for armour and nests, and never fired point-blank.
+        if (W.rocket && !(e.def.tank || e.def.static)) continue;
+        const d = dist(p.x, p.y, e.x, e.y);
+        if (d > W.range * 0.95 || (W.rocket && d < 150)) continue;
+        if (d < bd && G.world.clearShot(p.x, p.y, e.x, e.y)) { bd = d; G.autoTarget = e; }
+      }
+    }
+    const t = G.autoTarget;
+    if (!t) return;
+    const a = angleTo(p.x, p.y, t.x, t.y);
+    input.aimAngle = a;
+    input.aimActive = true;
+    // Only fire once the gun is actually pointing there.
+    if (Math.abs(angleDiff(p.a, a)) < 0.2) input.firing = true;
+    G.autoFiring = true;
   }
 
   function startReload() {
@@ -1328,6 +1359,7 @@
     // AFK mode drives whenever you aren't touching the controls yourself.
     G.afk = !!FL.save.data.settings.afk && !input.sticks.left && !input.sticks.right && !input.move.x && !input.move.y && !input.mouse.down;
     if (G.afk) FL.afk.control(G, input, dt);
+    else if (FL.save.data.settings.autoFire && !input.firing) autoFire(dt);
     if (!G.ended) G.stats.time += dt;
     updatePlayer(dt);
     updateEnemies(dt);

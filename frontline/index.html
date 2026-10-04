@@ -141,6 +141,7 @@
       <div class="card">
         <h2>Paused</h2>
         <label class="switch"><input type="checkbox" data-setting="sound"><span></span>Sound</label>
+        <label class="switch"><input type="checkbox" data-setting="autoFire"><span></span>Auto-fire</label>
         <label class="switch"><input type="checkbox" data-setting="afk"><span></span>AFK mode</label>
         <button id="btn-resume" class="btn primary" type="button">Resume</button>
         <button id="btn-restart" class="btn" type="button">Restart mission</button>
@@ -169,6 +170,7 @@
     <label class="switch"><input type="checkbox" data-setting="sound"><span></span>Sound</label>
     <label class="switch"><input type="checkbox" data-setting="vibe"><span></span>Vibration</label>
     <label class="switch"><input type="checkbox" data-setting="shake"><span></span>Screen shake</label>
+    <label class="switch"><input type="checkbox" data-setting="autoFire"><span></span>Auto-fire: shoot at enemies by itself</label>
     <label class="switch"><input type="checkbox" data-setting="aimAssist"><span></span>Aim assist (touch)</label>
     <label class="switch"><input type="checkbox" data-setting="afk"><span></span>AFK mode: auto-play, and carry on to the next mission</label>
     <div class="set-row"><span>Difficulty</span><div id="set-diff" class="chips"></div></div>
@@ -181,7 +183,7 @@
     <table class="help">
       <tr><th></th><th>Touch</th><th>Keyboard &amp; mouse</th></tr>
       <tr><td>Move</td><td>Left thumb anywhere on the left side</td><td>WASD / arrows</td></tr>
-      <tr><td>Aim &amp; fire</td><td>Right thumb: push to fire</td><td>Mouse, click to fire</td></tr>
+      <tr><td>Aim &amp; fire</td><td>Automatic (auto-fire), or right thumb: push to fire</td><td>Automatic, or mouse and click</td></tr>
       <tr><td>Grenade</td><td>Grenade button</td><td>G, or right-click where you want it</td></tr>
       <tr><td>Reload</td><td>Reload button</td><td>R</td></tr>
       <tr><td>Swap weapon</td><td>Swap button</td><td>Q, 1, 2</td></tr>
@@ -201,6 +203,7 @@
   </div>
 
   <div id="toast" class="toast" hidden></div>
+  <div class="rotate" aria-hidden="true"><div class="rotate-phone"></div><div>Turn your phone sideways</div></div>
 </div>
 
 <script src="js/core.js"></script>

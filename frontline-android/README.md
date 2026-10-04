@@ -2,7 +2,7 @@
 
 The Frontline 1944 shooter as a regular Android app. Download the APK, install it, and it gets its own icon on your home screen. No app store needed.
 
-**Download:** [`dist/frontline.apk`](dist/frontline.apk) (about 380 KB, version 1.0.0)
+**Download:** [`dist/frontline.apk`](dist/frontline.apk) (about 380 KB, version 1.1.0)
 
 ## Installing it
 
@@ -21,7 +21,7 @@ It's the same game as the web version in [`../frontline`](../frontline), package
 
 - The game files are inside the APK. The app serves them to its WebView from a private `https://appassets.androidplatform.net/` address, so it plays offline. Only the fonts come from Google Fonts, and it falls back to the phone's own font without a connection.
 - It runs full screen: the status and navigation bars hide, and a swipe in from the edge brings them back for a moment.
-- It turns whichever way you hold the phone. Sideways gives the widest view.
+- It always plays sideways (landscape), either way round.
 - The screen stays on while you play.
 - Getting hit makes the phone buzz (turn it off under Settings → Vibration).
 - **Back** closes a sheet, leaves the briefing, or pauses and resumes a battle. On the main menu it leaves the app.
@@ -31,7 +31,7 @@ It's the same game as the web version in [`../frontline`](../frontline), package
 | File | What it does |
 | --- | --- |
 | `src/app/frontline/game/MainActivity.java` | The native side: WebView setup, serving the game files, full screen, keep-screen-on, vibration, back button, pause/resume |
-| `AndroidManifest.xml` | App name, icon, permissions (internet for the fonts, vibration), free rotation |
+| `AndroidManifest.xml` | App name, icon, permissions (internet for the fonts, vibration), landscape screen |
 | `res/` | Launcher icons (including the Android 8+ adaptive icon and the Android 13+ themed icon) and the dark theme |
 | `build.sh` | Builds `dist/frontline.apk` |
 | `signing.keystore` | The key the APK is signed with |
