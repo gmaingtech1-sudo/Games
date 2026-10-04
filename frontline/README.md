@@ -21,6 +21,14 @@ It's plain HTML, CSS and JavaScript. There's no build step and nothing to instal
 
 Turning the phone sideways gives the widest view, but portrait works too.
 
+### AFK mode
+
+Tap **AFK** at the top right (or press K, or turn it on in Settings) and your soldier plays by himself. He follows the objective around walls and shoots anything he has a clear shot at. He grenades MG nests and tanks, switches to the bazooka for armour, and calls in artillery when it's charged. He also sidesteps grenades and tank shells, falls back to heal when hurt, and picks up ammo, medkits and the bazooka.
+
+When a mission ends, the debrief moves on by itself after 6 seconds: to the next mission if he won, or a retry if he didn't. Tap the debrief to stop it. Touch a stick or press a movement key and you're in control for as long as you keep doing it. Let go and he takes over again. While AFK is on, switching to another app doesn't open the pause menu, so it carries on when you come back.
+
+He wins most missions on Regular by himself, but not every time.
+
 ### How the fighting works
 
 - **Cover.** Walls, buildings, hedgerows, trees, wrecks and concrete stop bullets. **Sandbags** stop them too, unless the shooter is crouched right behind them. So you can fire over your own sandbags but can't hit someone tucked behind theirs from a distance. Get close, go round, or use a grenade.
@@ -92,6 +100,7 @@ Then open <http://localhost:8000>. To try it on your phone, connect it to the sa
 | `js/art.js` | Draws soldiers, tanks, MG nests, sandbags, buildings, hedgerows, trees, wire and pickups |
 | `js/missions.js` | The five campaign maps and Last Stand, built with a small map builder, plus their objectives |
 | `js/input.js` | Twin thumbsticks, keyboard and mouse |
+| `js/afk.js` | AFK mode: the soldier's own brain (targeting, pathing to the objective, grenades, dodging, healing, supplies) |
 | `js/game.js` | The battle: player, enemy AI, tanks, bullets, grenades, rockets, artillery, explosions, objectives, camera, HUD, minimap and drawing |
 | `js/main.js` | Menu, briefing and loadout, settings, debrief and stars, and the main loop |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Installable app + offline support |

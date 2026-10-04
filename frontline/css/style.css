@@ -327,6 +327,19 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 .hud-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .score-row { display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+.afk-btn {
+  height: 30px;
+  padding: 0 10px;
+  border: 2px solid var(--line);
+  border-radius: 15px;
+  background: rgba(30, 33, 22, 0.75);
+  color: var(--muted);
+  font-family: var(--font-d);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+.afk-btn.on { border-color: var(--gold); color: var(--gold); }
+.afk-btn.driving { background: rgba(90, 80, 20, 0.85); animation: pulse 1.2s infinite alternate; }
 .score { font-family: var(--font-d); font-size: 18px; color: var(--khaki); text-shadow: 0 2px 2px #000; }
 .minimap {
   max-width: clamp(84px, 24vw, 130px);

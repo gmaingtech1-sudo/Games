@@ -14,6 +14,9 @@
   let sheet = null;
   let resetArmed = 0;
   let toastT = 0;
+  let autoT = 0;        // AFK: seconds until the debrief moves on by itself
+  let autoBtn = null;
+  let autoLabel = '';
 
   save.load();
   FL.game.init();
@@ -197,6 +200,12 @@
     $('btn-next').textContent = next ? 'Next: ' + next.name : '';
     $('btn-retry').textContent = m.survival ? 'Play again' : r.win ? 'Replay' : 'Try again';
     $('debrief').hidden = false;
+    // AFK: carry on by ourselves after a few seconds.
+    if (save.data.settings.afk) {
+      autoBtn = next ? $('btn-next') : $('btn-retry');
+      autoLabel = autoBtn.textContent;
+      autoT = 6;
+    }
   }
 
   /* ---------- Pause ---------- */
@@ -294,7 +303,8 @@
     brief(M.MISSIONS[idx + 1]);
   });
   document.addEventListener('pointerdown', () => A.unlock(), { once: true });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && !save.data.settings.afk) pause(); });
+  $('debrief').addEventListener('pointerdown', () => { if (autoT > 0) { autoT = 0; autoBtn.textContent = autoLabel; } }, true);
   window.addEventListener('keydown', (e) => {
     if ((e.key === 'Escape' || e.key === 'p') && !$('pause').hidden) resume();
     else if (e.key === 'Escape' && sheet) closeSheet();
@@ -311,6 +321,20 @@
     if (FL.game.active) {
       if (!FL.game.paused) FL.game.update(dt);
       if (FL.game.active) FL.game.render();
+    }
+    if (autoT > 0) {
+      if ($('debrief').hidden || !save.data.settings.afk) {
+        autoT = 0;
+        if (autoBtn) autoBtn.textContent = autoLabel;
+      } else {
+        autoT -= dt;
+        autoBtn.textContent = autoLabel + ' (' + Math.ceil(Math.max(0, autoT)) + ')';
+        if (autoT <= 0) {
+          autoBtn.textContent = autoLabel;
+          if (autoBtn === $('btn-next')) { FL.game.stop(); play(M.MISSIONS[M.MISSIONS.indexOf(current) + 1]); }
+          else autoBtn.click();
+        }
+      }
     }
     if (toastT > 0) {
       toastT -= dt;

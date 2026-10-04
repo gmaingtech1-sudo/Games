@@ -245,17 +245,26 @@
       }
       this.navDirty = false;
       this.flowTarget = -1;
+      this.navV = (this.navV || 0) + 1;
     }
 
-    // Breadth-first distances from (tx, ty) to every open cell.
-    updateFlow(tx, ty) {
+    // A separate field to follow somewhere other than the player (used by AFK mode).
+    makeField() {
+      return { flow: new Int32Array(this.ncols * this.nrows), flowTarget: -1, navV: -1 };
+    }
+
+    // Breadth-first distances from (tx, ty) to every open cell, into `field`
+    // (the enemies' shared field when omitted).
+    updateFlow(tx, ty, field) {
       if (this.navDirty) this.buildNav();
+      const F = field || this;
       const cols = this.ncols;
       const rows = this.nrows;
       let start = U.clamp(Math.floor(ty / NAV), 0, rows - 1) * cols + U.clamp(Math.floor(tx / NAV), 0, cols - 1);
-      if (start === this.flowTarget) return;
-      this.flowTarget = start;
-      const f = this.flow;
+      if (start === F.flowTarget && F.navV === this.navV) return;
+      F.flowTarget = start;
+      F.navV = this.navV;
+      const f = F.flow;
       f.fill(-1);
       const q = this._q || (this._q = new Int32Array(cols * rows));
       let head = 0;
@@ -277,11 +286,11 @@
     }
 
     // Direction (angle) to walk from (x, y) to follow the flow field, or null.
-    flowDir(x, y) {
+    flowDir(x, y, field) {
       const cols = this.ncols;
       const c = U.clamp(Math.floor(x / NAV), 0, cols - 1);
       const r = U.clamp(Math.floor(y / NAV), 0, this.nrows - 1);
-      const f = this.flow;
+      const f = (field || this).flow;
       const here = f[r * cols + c];
       let best = here >= 0 ? here : 1e9;
       let bx = -1;

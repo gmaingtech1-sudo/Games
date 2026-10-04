@@ -67,6 +67,7 @@
       if (k === '2') input.actions.add('slot1');
       if (k === 'e') input.actions.add('take');
       if (k === 'f') input.actions.add('artillery');
+      if (k === 'k') input.actions.add('afk');
       if (k === 'escape' || k === 'p') input.actions.add('pause');
     });
     window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));

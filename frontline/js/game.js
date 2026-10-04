@@ -35,7 +35,11 @@
     mctx = mini.getContext('2d');
     for (const id of ['hp-fill', 'hp-box', 'obj-text', 'obj-sub', 'obj-bar', 'obj-fill', 'weapon-name', 'ammo-mag', 'ammo-res',
       'reload-bar', 'reload-fill', 'gren-count', 'score', 'b-swap', 'swap-label', 'b-art', 'art-fill', 'b-take', 'take-label',
-      'banner', 'banner-t', 'banner-s', 'vignette', 'b-gren', 'b-reload', 'hint']) hud[id] = $(id);
+      'banner', 'banner-t', 'banner-s', 'vignette', 'b-gren', 'b-reload', 'hint', 'b-afk']) hud[id] = $(id);
+    const afkBtn = $('b-afk');
+    const afkTap = (e) => { e.preventDefault(); e.stopPropagation(); if (G) toggleAfk(); };
+    afkBtn.addEventListener('touchstart', afkTap, { passive: false });
+    afkBtn.addEventListener('mousedown', afkTap);
     input.bind($('touch'), canvas);
     for (const [id, act] of [['b-gren', 'grenade'], ['b-reload', 'reload'], ['b-swap', 'swap'], ['b-art', 'artillery'], ['b-take', 'take']]) {
       const el = $(id);
@@ -102,6 +106,7 @@
     input.reset();
     input.enabled = true;
     input.aimAngle = out.start.a;
+    FL.afk.reset();
     nextObjective();
     hud.hint.hidden = false;
     hud.hint.textContent = input.touch || matchMedia('(pointer: coarse)').matches
@@ -425,6 +430,7 @@
       else if (act === 'artillery') callArtillery();
       else if (act === 'take') takeWeapon();
       else if (act === 'pause') FL.app.pause();
+      else if (act === 'afk') toggleAfk();
     }
     input.actions.clear();
     input.grenadeTarget = null;
@@ -432,7 +438,7 @@
     // Shooting.
     if (input.firing) {
       // On a touchscreen, holding the stick keeps semi-automatics firing at their own pace.
-      const canPull = W.auto || !p.triggerHeld || input.touch;
+      const canPull = W.auto || !p.triggerHeld || input.touch || G.afk;
       if (p.fireT <= 0 && canPull) {
         if (W.shellReload && p.reloadT > 0 && w.mag > 0) p.reloadT = 0;
         if (p.reloadT <= 0) {
@@ -543,7 +549,7 @@
     p.fireT = W.rate;
     w.mag--;
     p.flash = 0.06;
-    G.stats.shots++;
+    G.stats.shots += W.pellets || 1;
     const mx = p.x + Math.cos(p.a) * 22;
     const my = p.y + Math.sin(p.a) * 22;
     if (W.rocket) {
@@ -1315,6 +1321,9 @@
     G.t += dt;
     const p = G.player;
     input.update(worldToScreen(p.x, p.y));
+    // AFK mode drives whenever you aren't touching the controls yourself.
+    G.afk = !!FL.save.data.settings.afk && !input.sticks.left && !input.sticks.right && !input.move.x && !input.move.y && !input.mouse.down;
+    if (G.afk) FL.afk.control(G, input, dt);
     if (!G.ended) G.stats.time += dt;
     updatePlayer(dt);
     updateEnemies(dt);
@@ -1865,6 +1874,7 @@
     set('b-take', 'hidden', !G.nearWeapon);
     if (G.nearWeapon) set('take-label', 'text', 'Take ' + D.WEAPONS[G.nearWeapon.weapon].name);
     set('score', 'text', G.stats.score.toLocaleString('en-US'));
+    set('b-afk', 'cls', 'afk-btn' + (FL.save.data.settings.afk ? ' on' : '') + (G.afk ? ' driving' : ''));
 
     const o = objective();
     if (o) {
@@ -1892,6 +1902,15 @@
       set('obj-bar', 'hidden', bar == null);
       if (bar != null) hud['obj-fill'].style.width = (clamp(bar, 0, 1) * 100).toFixed(1) + '%';
     }
+  }
+
+  function toggleAfk() {
+    const s = FL.save.data.settings;
+    s.afk = !s.afk;
+    FL.save.write();
+    FL.afk.reset();
+    banner(s.afk ? 'AFK mode on' : 'AFK mode off', s.afk ? 'Your soldier fights on his own. Touch the controls to take over.' : '');
+    A.play('click');
   }
 
   function banner(t, s) {

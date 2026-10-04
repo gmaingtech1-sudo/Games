@@ -98,6 +98,7 @@
       </div>
       <div class="hud-right">
         <div class="score-row"><span id="score" class="score">0</span>
+          <button id="b-afk" class="afk-btn" type="button" aria-label="AFK mode: let your soldier play by himself">AFK</button>
           <button id="btn-pause" class="icon-btn small" type="button" aria-label="Pause">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>
           </button>
@@ -140,6 +141,7 @@
       <div class="card">
         <h2>Paused</h2>
         <label class="switch"><input type="checkbox" data-setting="sound"><span></span>Sound</label>
+        <label class="switch"><input type="checkbox" data-setting="afk"><span></span>AFK mode</label>
         <button id="btn-resume" class="btn primary" type="button">Resume</button>
         <button id="btn-restart" class="btn" type="button">Restart mission</button>
         <button id="btn-quit" class="btn" type="button">Quit to menu</button>
@@ -168,6 +170,7 @@
     <label class="switch"><input type="checkbox" data-setting="vibe"><span></span>Vibration</label>
     <label class="switch"><input type="checkbox" data-setting="shake"><span></span>Screen shake</label>
     <label class="switch"><input type="checkbox" data-setting="aimAssist"><span></span>Aim assist (touch)</label>
+    <label class="switch"><input type="checkbox" data-setting="afk"><span></span>AFK mode: auto-play, and carry on to the next mission</label>
     <div class="set-row"><span>Difficulty</span><div id="set-diff" class="chips"></div></div>
     <button id="btn-reset" class="btn danger" type="button">Reset progress</button>
     <button class="btn sheet-close" type="button">Done</button>
@@ -184,6 +187,7 @@
       <tr><td>Swap weapon</td><td>Swap button</td><td>Q, 1, 2</td></tr>
       <tr><td>Pick up a gun</td><td>Take button</td><td>E</td></tr>
       <tr><td>Artillery</td><td>Radio button when full</td><td>F</td></tr>
+      <tr><td>AFK mode</td><td>AFK button (top right)</td><td>K</td></tr>
     </table>
     <ul class="tips">
       <li>Sandbags stop bullets, but someone crouched right behind them can still shoot over. Get close, flank, or throw a grenade.</li>
@@ -206,6 +210,7 @@
 <script src="js/art.js"></script>
 <script src="js/missions.js"></script>
 <script src="js/input.js"></script>
+<script src="js/afk.js"></script>
 <script src="js/game.js"></script>
 <script src="js/main.js"></script>
 </body>

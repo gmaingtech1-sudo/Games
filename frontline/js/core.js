@@ -51,7 +51,7 @@ window.FL = window.FL || {};
       kills: 0,
       survivalBest: 0,
       loadout: { primary: 'garand', secondary: 'pistol' },
-      settings: { sound: true, vibe: true, shake: true, difficulty: 'regular', aimAssist: true },
+      settings: { sound: true, vibe: true, shake: true, difficulty: 'regular', aimAssist: true, afk: false },
     };
   }
 
