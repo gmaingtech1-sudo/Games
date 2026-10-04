@@ -310,7 +310,27 @@
     else if (e.key === 'Escape' && sheet) closeSheet();
   });
 
-  FL.app = { pause };
+  // Android's back button (see ../frontline-android). Returns true if it was
+  // used up here, false to let the app close.
+  function back() {
+    if (sheet) { closeSheet(); return true; }
+    const scr = document.body.dataset.screen;
+    if (scr === 'brief') { renderMenu(); show('menu'); return true; }
+    if (scr === 'game') {
+      if (!$('debrief').hidden) quit();
+      else if (!$('pause').hidden) resume();
+      else pause();
+      return true;
+    }
+    return false;
+  }
+
+  // The Android app was switched away from (the WebView may not report it as hidden).
+  function hostPause() {
+    if (!save.data.settings.afk) pause();
+  }
+
+  FL.app = { pause, back, hostPause };
 
   /* ---------- Main loop ---------- */
 
@@ -348,7 +368,8 @@
   show('menu');
   requestAnimationFrame(frame);
 
-  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  // The Android app already has every file inside it, so it skips the service worker.
+  if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.AndroidHost) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 })(window.FL);

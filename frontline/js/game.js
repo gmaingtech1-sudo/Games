@@ -646,7 +646,11 @@
     p.lowHp = Math.min(p.lowHp, p.hp);
     if (fromX != null) G.hits.push({ a: angleTo(p.x, p.y, fromX, fromY), t: 1 });
     A.play('hurt', 0.5);
-    if (FL.save.data.settings.vibe && navigator.vibrate) navigator.vibrate(dmg > 30 ? 60 : 20);
+    if (FL.save.data.settings.vibe) {
+      const ms = dmg > 30 ? 60 : 20;
+      if (window.AndroidHost) window.AndroidHost.vibrate(ms);
+      else if (navigator.vibrate) navigator.vibrate(ms);
+    }
     if (p.hp <= 0) {
       p.hp = 0;
       p.dead = true;

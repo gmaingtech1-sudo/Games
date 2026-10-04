@@ -69,6 +69,8 @@ Difficulty (Recruit, Regular or Veteran) changes how hard enemies hit, how well 
 
 ## Putting it on your phone
 
+On Android, the easiest way is the app: [download the APK](../frontline-android/dist/frontline.apk) (see [`../frontline-android`](../frontline-android)). Otherwise, install it from the web:
+
 The game has to be served over HTTPS for offline play and "Add to Home Screen" to work. The simplest way is GitHub Pages:
 
 1. In the repository on GitHub, open **Settings → Pages**.
