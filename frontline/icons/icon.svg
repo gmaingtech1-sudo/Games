@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="75%">
+      <stop offset="0" stop-color="#5A6234"/>
+      <stop offset="0.65" stop-color="#2C3119"/>
+      <stop offset="1" stop-color="#1A1D10"/>
+    </radialGradient>
+    <radialGradient id="dome" cx="40%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#8A9658"/>
+      <stop offset="0.7" stop-color="#5E6B3A"/>
+      <stop offset="1" stop-color="#434C28"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- Crossed rifles -->
+  <g stroke-linecap="round">
+    <g transform="rotate(-38 256 280)">
+      <rect x="70" y="268" width="250" height="20" rx="6" fill="#7A5230"/>
+      <rect x="250" y="271" width="200" height="12" rx="4" fill="#2A2721"/>
+      <rect x="300" y="283" width="22" height="20" rx="3" fill="#2A2721"/>
+    </g>
+    <g transform="rotate(38 256 280)">
+      <rect x="192" y="268" width="250" height="20" rx="6" fill="#7A5230"/>
+      <rect x="62" y="271" width="200" height="12" rx="4" fill="#2A2721"/>
+      <rect x="190" y="283" width="22" height="20" rx="3" fill="#2A2721"/>
+    </g>
+  </g>
+  <!-- M1 helmet -->
+  <ellipse cx="256" cy="318" rx="168" ry="40" fill="#3B4424"/>
+  <path d="M110 316c0-96 66-176 146-176s146 80 146 176z" fill="url(#dome)"/>
+  <path d="M110 316c0-96 66-176 146-176s146 80 146 176" fill="none" stroke="#2E3519" stroke-width="6"/>
+  <ellipse cx="200" cy="200" rx="34" ry="20" fill="#FFFFFF" opacity="0.12" transform="rotate(-25 200 200)"/>
+  <path d="M150 316c40 30 172 30 212 0" fill="none" stroke="#8C7A50" stroke-width="10" stroke-linecap="round"/>
+  <text x="256" y="452" text-anchor="middle" font-family="Impact, Arial Black, sans-serif" font-size="64" fill="#D8CBA0" letter-spacing="4">1944</text>
+</svg>
