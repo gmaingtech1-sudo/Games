@@ -309,6 +309,68 @@
         g.beginPath(); g.arc(cx + 3, cy - 3, 2.5, 0, TAU); g.fill();
         break;
       }
+      case 'emplacement': {
+        // A ring of sandbags around a gun.
+        const cx = o.x + o.w / 2;
+        const cy = o.y + o.h / 2;
+        const R = o.w / 2;
+        g.fillStyle = 'rgba(0,0,0,0.25)';
+        g.beginPath(); g.arc(cx + 3, cy + 4, R, 0, TAU); g.fill();
+        g.fillStyle = '#6E6248';
+        g.beginPath(); g.arc(cx, cy, R - 6, 0, TAU); g.fill();
+        const n = 10;
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * TAU;
+          g.save();
+          g.translate(cx + Math.cos(a) * (R - 5), cy + Math.sin(a) * (R - 5));
+          g.rotate(a + Math.PI / 2);
+          g.fillStyle = i % 2 ? '#B39D6E' : '#A8925F';
+          roundRect(g, -7, -5, 14, 10, 4);
+          g.fill();
+          g.strokeStyle = 'rgba(70,58,35,0.6)';
+          g.lineWidth = 1;
+          g.stroke();
+          g.restore();
+        }
+        break;
+      }
+      case 'tent': {
+        g.fillStyle = 'rgba(0,0,0,0.3)';
+        g.fillRect(o.x + 5, o.y + 6, o.w, o.h);
+        g.fillStyle = '#7D8452';
+        g.fillRect(o.x, o.y, o.w, o.h);
+        g.fillStyle = '#687044';
+        if (o.w >= o.h) g.fillRect(o.x, o.y + o.h / 2, o.w, o.h / 2);
+        else g.fillRect(o.x + o.w / 2, o.y, o.w / 2, o.h);
+        g.strokeStyle = '#4E5432';
+        g.lineWidth = 2;
+        g.strokeRect(o.x + 1, o.y + 1, o.w - 2, o.h - 2);
+        const cx = o.x + o.w / 2;
+        const cy = o.y + o.h / 2;
+        g.fillStyle = '#F2EEE2';
+        g.beginPath(); g.arc(cx, cy, 10, 0, TAU); g.fill();
+        g.fillStyle = '#C0392B';
+        g.fillRect(cx - 2.5, cy - 7, 5, 14);
+        g.fillRect(cx - 7, cy - 2.5, 14, 5);
+        break;
+      }
+      case 'depot': {
+        g.fillStyle = 'rgba(0,0,0,0.3)';
+        g.fillRect(o.x + 4, o.y + 5, o.w, o.h);
+        const s = o.w / 2;
+        for (let i = 0; i < 4; i++) {
+          const bx = o.x + (i % 2) * s;
+          const by = o.y + Math.floor(i / 2) * (o.h / 2);
+          g.fillStyle = i % 3 ? '#5A6236' : '#4E5530';
+          g.fillRect(bx + 1, by + 1, s - 2, o.h / 2 - 2);
+          g.fillStyle = '#C9A44A';
+          g.fillRect(bx + 5, by + o.h / 4 - 2, s - 10, 4);
+        }
+        g.strokeStyle = '#2E3420';
+        g.lineWidth = 2;
+        g.strokeRect(o.x + 1, o.y + 1, o.w - 2, o.h - 2);
+        break;
+      }
       case 'wall': {
         g.fillStyle = 'rgba(0,0,0,0.3)';
         g.fillRect(o.x + 4, o.y + 5, o.w, o.h);
@@ -559,6 +621,17 @@
       g.fillStyle = '#C0392B';
       g.fillRect(-2.5, -6, 5, 12);
       g.fillRect(-6, -2.5, 12, 5);
+    } else if (p.kind === 'supply') {
+      g.fillStyle = '#8C6A3E';
+      g.fillRect(-12, -10, 24, 20);
+      g.strokeStyle = '#5E4526';
+      g.lineWidth = 2;
+      g.strokeRect(-12, -10, 24, 20);
+      g.beginPath(); g.moveTo(-12, -3); g.lineTo(12, -3); g.moveTo(-12, 4); g.lineTo(12, 4); g.stroke();
+      g.fillStyle = '#F2E9C9';
+      g.font = 'bold 10px sans-serif';
+      g.textAlign = 'center';
+      g.fillText('★', 0, 4);
     } else if (p.kind === 'grenade') {
       grenadeIcon(g, 0, 0, 1.2);
       grenadeIcon(g, 8, 4, 1.0);

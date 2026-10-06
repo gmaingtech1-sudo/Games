@@ -68,6 +68,7 @@
       list.appendChild(b);
     });
     $('survival-best').textContent = save.data.survivalBest ? 'Best: wave ' + save.data.survivalBest : '';
+    $('outpost-best').textContent = save.data.outpostBest ? 'Best: wave ' + save.data.outpostBest : '';
   }
 
   /* ---------- Briefing ---------- */
@@ -166,8 +167,11 @@
     save.data.kills += r.kills;
     let stars = 0;
     let unlockMsg = '';
+    const prevBest = m.base ? save.data.outpostBest || 0 : save.data.survivalBest;
     if (m.survival) {
       if (r.wave > save.data.survivalBest) save.data.survivalBest = r.wave;
+    } else if (m.base) {
+      if (r.wave > prevBest) save.data.outpostBest = r.wave;
     } else if (r.win) {
       stars = 1 + (r.time <= m.par ? 1 : 0) + (r.accuracy >= 0.35 ? 1 : 0);
       const rec = save.data.missions[m.id] || { done: false, stars: 0, bestTime: null };
@@ -179,9 +183,9 @@
     }
     save.write();
 
-    $('d-title').textContent = m.survival ? 'Overrun at wave ' + r.wave : r.win ? 'Mission complete' : 'Killed in action';
+    $('d-title').textContent = m.survival ? 'Overrun at wave ' + r.wave : m.base ? 'Outpost fell on wave ' + r.wave : r.win ? 'Mission complete' : 'Killed in action';
     const st = $('d-stars');
-    st.hidden = !!m.survival || !r.win;
+    st.hidden = !!(m.survival || m.base) || !r.win;
     st.innerHTML = [0, 1, 2].map((k) => '<i class="' + (k < stars ? 'on' : '') + '">★</i>').join('');
     const rows = [
       ['Time', FL.util.fmtTime(r.time) + (m.par && r.win ? '  (par ' + FL.util.fmtTime(m.par) + ')' : '')],
@@ -190,7 +194,8 @@
       ['Score', r.score.toLocaleString('en-US')],
     ];
     if (m.survival) rows.unshift(['Waves survived', Math.max(0, r.wave - 1) + (r.wave >= save.data.survivalBest ? '  (best!)' : '')]);
-    if (!m.survival && r.win) rows.push(['Stars', 'Complete ★ · Under par ' + (r.time <= m.par ? '★' : '☆') + ' · 35% accuracy ' + (r.accuracy >= 0.35 ? '★' : '☆')]);
+    if (m.base) rows.unshift(['Waves held', Math.max(0, r.wave - 1) + (r.wave > prevBest ? '  (best!)' : '')]);
+    if (!m.survival && !m.base && r.win) rows.push(['Stars', 'Complete ★ · Under par ' + (r.time <= m.par ? '★' : '☆') + ' · 35% accuracy ' + (r.accuracy >= 0.35 ? '★' : '☆')]);
     $('d-stats').innerHTML = rows.map((x) => '<tr><th>' + x[0] + '</th><td>' + x[1] + '</td></tr>').join('');
     $('d-unlock').hidden = !unlockMsg;
     $('d-unlock').textContent = unlockMsg;
@@ -198,7 +203,7 @@
     const next = r.win && idx >= 0 ? M.MISSIONS[idx + 1] : null;
     $('btn-next').hidden = !next;
     $('btn-next').textContent = next ? 'Next: ' + next.name : '';
-    $('btn-retry').textContent = m.survival ? 'Play again' : r.win ? 'Replay' : 'Try again';
+    $('btn-retry').textContent = m.survival || m.base ? 'Play again' : r.win ? 'Replay' : 'Try again';
     $('debrief').hidden = false;
     // AFK: carry on by ourselves after a few seconds.
     if (save.data.settings.afk) {
@@ -288,6 +293,7 @@
     toast('Progress reset');
   });
   $('btn-survival').addEventListener('click', () => { A.unlock(); A.play('click'); brief(M.SURVIVAL); });
+  $('btn-outpost').addEventListener('click', () => { A.unlock(); A.play('click'); brief(M.OUTPOST); });
   $('btn-back').addEventListener('click', () => { A.play('click'); renderMenu(); show('menu'); });
   $('btn-deploy').addEventListener('click', () => { A.unlock(); A.play('click'); deploy(); });
   $('btn-pause').addEventListener('click', () => { A.play('click'); pause(); });

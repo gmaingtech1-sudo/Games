@@ -2,7 +2,7 @@
 
 The Frontline 1944 shooter as a regular Android app. Download the APK, install it, and it gets its own icon on your home screen. No app store needed.
 
-**Download:** [`dist/frontline.apk`](dist/frontline.apk) (about 380 KB, version 1.1.0)
+**Download:** [`dist/frontline.apk`](dist/frontline.apk) (about 390 KB, version 1.2.0)
 
 ## Installing it
 

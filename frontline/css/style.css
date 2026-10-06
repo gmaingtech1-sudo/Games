@@ -373,13 +373,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
   bottom: calc(12px + var(--safe-b));
   display: grid;
   grid-template-columns: auto auto;
-  grid-template-areas: "take take" "art swap" "reload gren";
+  grid-template-areas: "build take" "art swap" "reload gren";
   align-items: center;
   justify-items: center;
   gap: 10px 12px;
   pointer-events: none;
 }
 #b-take { grid-area: take; justify-self: end; }
+#b-build { grid-area: build; }
 #b-art { grid-area: art; }
 #b-swap { grid-area: swap; }
 #b-reload { grid-area: reload; }
@@ -550,6 +551,69 @@ button { font: inherit; color: inherit; cursor: pointer; }
   animation: turn 1.6s ease-in-out infinite;
 }
 @keyframes turn { 0%, 25% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+
+/* ---------- Outpost (base building) ---------- */
+
+.mission.outpost { background: linear-gradient(100deg, #4F5A22, #3A4219); color: var(--text); border-color: #6B7A2E; }
+.supplies {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px 3px 5px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.5);
+  font-family: var(--font-d); font-size: 16px; color: #C9E27A;
+}
+.supplies i { width: 16px; height: 14px; background: #8C6A3E; border: 2px solid #5E4526; border-radius: 2px; }
+.wave-btn {
+  margin-top: 6px;
+  padding: 6px 12px;
+  border: 2px solid var(--gold);
+  border-radius: 16px;
+  background: rgba(60, 50, 10, 0.85);
+  color: var(--gold);
+  font-family: var(--font-d); font-size: 13px;
+  pointer-events: auto;
+}
+.tbtn.build { border-color: #C9E27A; }
+.game.building .tbtn.build { background: rgba(110, 130, 40, 0.85); }
+.game.building .hud-bottom { display: none; }
+.buildbar {
+  position: absolute;
+  left: calc(8px + var(--safe-l));
+  right: calc(150px + var(--safe-r));
+  bottom: calc(8px + var(--safe-b));
+  padding: 6px 8px 8px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: rgba(28, 31, 20, 0.88);
+}
+.bb-desc { font-size: 12px; color: var(--muted); margin: 0 2px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bb-row { display: flex; gap: 8px; align-items: stretch; }
+.bb-items { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x; }
+.bb-items::-webkit-scrollbar { display: none; }
+.bb-item {
+  flex: none;
+  display: flex; flex-direction: column; align-items: center;
+  width: 64px; padding: 3px 2px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.bb-item canvas { width: 40px; height: 40px; }
+.bb-item.on { border-color: #C9E27A; background: rgba(110, 130, 40, 0.35); }
+.bb-item.poor { opacity: 0.45; }
+.bb-name { font-size: 10px; line-height: 1.1; text-align: center; }
+.bb-cost { font-family: var(--font-d); font-size: 12px; color: #C9E27A; }
+.bb-actions { display: grid; grid-template-columns: auto auto; gap: 5px; }
+.bb-btn {
+  padding: 5px 10px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-family: var(--font-d); font-size: 12px;
+}
+.bb-btn.place { background: #6B7A2E; border-color: #9AAA4A; color: #FFFBEA; }
+.bb-btn.place.bad { background: #5A3A30; border-color: #8E4A38; }
+.bb-btn.close { padding: 5px 8px; }
 
 @media (prefers-reduced-motion: reduce) {
   .banner.pop, .tbtn.art.ready, .hp.low #hp-fill { animation: none; }

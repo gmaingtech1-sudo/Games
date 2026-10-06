@@ -52,6 +52,7 @@
     if (o.type === 'reach' || o.type === 'hold') return G.zones[o.zone];
     const alive = G.enemies.filter((e) => !e.dead && (o.type !== 'destroy' || e.tag === o.tag));
     if (o.type === 'survive' && !alive.length) return { x: 1000, y: 1000 };
+    if (o.type === 'base' && !alive.length) return { x: G.base.hqX, y: G.base.hq.y + G.base.hq.h + 30 };
     return nearest(alive, p.x, p.y);
   }
 

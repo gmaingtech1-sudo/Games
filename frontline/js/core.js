@@ -50,6 +50,7 @@ window.FL = window.FL || {};
       missions: {},          // id → { done, stars, bestTime }
       kills: 0,
       survivalBest: 0,
+      outpostBest: 0,
       loadout: { primary: 'garand', secondary: 'pistol' },
       settings: { sound: true, vibe: true, shake: true, difficulty: 'regular', aimAssist: true, afk: false, autoFire: true },
     };

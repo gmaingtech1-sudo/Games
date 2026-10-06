@@ -102,6 +102,7 @@
     };
     for (const e of out.enemies) spawnEnemy(e.type, e.x, e.y, e);
     for (const p of out.pickups) addPickup(p.kind, p.x, p.y, p);
+    if (mission.base) FL.base.start(G, api);
     G.miniBg = renderMiniBg();
     input.reset();
     input.enabled = true;
@@ -111,7 +112,7 @@
     hud.hint.hidden = false;
     hud.hint.textContent = input.touch || matchMedia('(pointer: coarse)').matches
       ? (FL.save.data.settings.autoFire ? 'Left thumb: move · You shoot automatically · Right thumb to aim yourself' : 'Left thumb: move · Right thumb: aim and fire')
-      : 'WASD move · Mouse aim · Click fire · R reload · G / right-click grenade · Q swap · F artillery';
+      : 'WASD move · Mouse aim · Click fire · R reload · G / right-click grenade · Q swap · F artillery' + (mission.base ? ' · B build · T rotate · N next wave' : '');
     G.hintT = 6;
     updateHud(true);
   }
@@ -181,6 +182,25 @@
       e.react = 0.5;
     }
   }
+
+  // Which way an enemy walks to close in: the flow field (to you, or to the HQ
+  // in Outpost); if your walls have sealed every way in, the field that
+  // ignores them, which walks them up to a wall to break through.
+  function pathDir(e, fallback) {
+    const W = G.world;
+    let a = W.flowDir(e.x, e.y);
+    if (a == null && G.base) a = W.flowDir(e.x, e.y, G.base.soft);
+    if (a == null) a = G.base ? angleTo(e.x, e.y, G.base.hqX, G.base.hqY) : fallback;
+    return a;
+  }
+
+  // What Outpost (base.js) is allowed to call back into.
+  const api = {
+    spawnEnemy: (...a) => spawnEnemy(...a), spawnSquad: (...a) => spawnSquad(...a), spawnPoint: () => spawnPoint(),
+    freeSpot: (...a) => freeSpot(...a), addPickup: (...a) => addPickup(...a), explode: (...a) => explode(...a),
+    later: (...a) => later(...a), text: (...a) => text(...a), banner: (...a) => banner(...a), puff: (...a) => puff(...a),
+    destroyObstacle: (o) => destroyObstacle(o), finish: (...a) => finish(...a), screenToWorld: (x, y) => screenToWorld(x, y),
+  };
 
   /* ===================== Objectives ===================== */
 
@@ -265,6 +285,8 @@
       }
     } else if (o.type === 'survive') {
       updateSurvival(dt);
+    } else if (o.type === 'base') {
+      FL.base.update(dt);
     }
   }
 
@@ -323,13 +345,16 @@
     }
   }
 
-  function finish(win) {
+  function finish(win, title, sub) {
     if (G.ended) return;
     G.ended = true;
     G.endT = win ? 2.2 : 2.6;
     G.result = { win, time: G.stats.time, kills: G.stats.kills, score: G.stats.score,
-      accuracy: G.stats.shots ? G.stats.hits / G.stats.shots : 0, wave: G.survival ? G.survival.wave : 0 };
-    if (win) {
+      accuracy: G.stats.shots ? G.stats.hits / G.stats.shots : 0, wave: G.survival ? G.survival.wave : G.base ? G.base.wave : 0 };
+    if (title) {
+      banner(title, sub);
+      A.play(win ? 'win' : 'lose');
+    } else if (win) {
       banner('Mission complete', G.mission.name + ' is ours');
       A.play('win');
     } else {
@@ -490,6 +515,8 @@
           text(p.x, p.y - 20, '+ammo', '#FFE08A');
           A.play('pickup');
         }
+      } else if (k.kind === 'supply') {
+        if (G.base && FL.base.onPickup(k)) G.pickups.splice(i, 1);
       } else if (k.kind === 'medkit') {
         if (p.hp < 100) {
           p.hp = Math.min(100, p.hp + 60);
@@ -686,7 +713,8 @@
       p.hp = 0;
       p.dead = true;
       G.corpses.push({ x: p.x, y: p.y, a: p.a, side: 'us', t: 0 });
-      finish(false);
+      if (G.base) FL.base.onPlayerDown();
+      else finish(false);
     }
   }
 
@@ -713,7 +741,12 @@
     G.flowT -= dt;
     if (G.flowT <= 0 || W.navDirty) {
       G.flowT = 0.3;
-      W.updateFlow(p.x, p.y);
+      // In Outpost they march on the HQ; the soft field ignores what you built,
+      // for when your walls leave no way round (so they come and break through).
+      if (G.base) {
+        W.updateFlow(G.base.hqX, G.base.hqY);
+        W.updateFlow(G.base.hqX, G.base.hqY, G.base.soft);
+      } else W.updateFlow(p.x, p.y);
     }
     for (const e of G.enemies) {
       if (e.dead) continue;
@@ -735,6 +768,10 @@
           e.canHit = e.canSee && W.clearShot(e.x, e.y, p.x, p.y);
         }
         if (!e.alert && ((e.canSee && d < (def.tank ? 800 : 640)) || d < 240)) wake(e);
+        if (G.base) {
+          const busy = e.canHit && d < def.range;
+          e.siege = busy || e.type === 'sniper' ? null : FL.base.siegeTarget(e, def.tank ? def.range : def.range * 0.9, !!def.tank);
+        }
       }
       if (!e.alert) {
         // Idle: look around a little.
@@ -762,22 +799,27 @@
         let mvA = null;
         let spd = def.speed;
         if (!e.canSee || d > def.range * 0.92 || (!e.canHit && d > 110)) {
-          mvA = W.flowDir(e.x, e.y);
-          if (mvA == null) mvA = toP;
+          mvA = pathDir(e, toP);
           if (e.canSee && !e.canHit) spd *= 0.8;
         } else if (d < def.keep[0]) {
           mvA = toP + Math.PI;
           spd *= 0.8;
         } else if (d > def.keep[1]) {
-          mvA = W.flowDir(e.x, e.y);
-          if (mvA == null) mvA = toP;
+          mvA = pathDir(e, toP);
         } else {
           e.strafeT -= dt;
           if (e.strafeT <= 0) { e.strafeT = rand(1.2, 3); e.strafe = chance(0.3) ? 0 : chance(0.5) ? 1 : -1; }
           if (e.strafe) { mvA = toP + (Math.PI / 2) * e.strafe; spd *= 0.45; }
         }
-        // Officers bark orders and charge less; snipers barely move once set.
+        // Snipers barely move once set.
         if (e.type === 'sniper' && e.canSee && d < def.range) mvA = null;
+        // Outpost: something of yours in range and nothing better to do: stand and shoot it.
+        if (e.siege && !(e.canSee && d < def.range)) {
+          const sx = e.siege.x + e.siege.w / 2;
+          const sy = e.siege.y + e.siege.h / 2;
+          if (dist(e.x, e.y, sx, sy) < def.range * 0.7) mvA = null;
+          e.a = turnTo(e.a, angleTo(e.x, e.y, sx, sy), 6 * dt);
+        }
         // Don't wander into the grenade at your feet.
         for (const gr of G.grenades) {
           if (gr.owner === 'p' && dist(gr.x, gr.y, e.x, e.y) < GRENADE_R) { mvA = angleTo(gr.x, gr.y, e.x, e.y); spd = def.speed * 1.3; }
@@ -808,10 +850,10 @@
       }
 
       // Shooting.
-      if (e.react > 0 || p.dead) continue;
+      if (e.react > 0 || (p.dead && !e.siege)) continue;
       e.fireCd -= dt;
       e.grenCd -= dt;
-      if (e.canSee && d < def.range) e.aimT += dt; else e.aimT = 0;
+      if ((e.canSee && d < def.range) || e.siege) e.aimT += dt; else e.aimT = 0;
 
       if (e.burst > 0) {
         e.burstT -= dt;
@@ -835,6 +877,23 @@
         e.burst = def.burst;
         e.burstT = 0;
         e.fireCd = rand(def.cd[0], def.cd[1]);
+        e.shootAt = null;
+      } else if (e.fireCd <= 0 && e.siege && e.aimT > 0.35) {
+        e.burst = def.burst;
+        e.burstT = 0;
+        e.fireCd = rand(def.cd[0], def.cd[1]);
+        e.shootAt = e.siege;
+      }
+      // Grenadiers lob them at your defences too.
+      if (e.siege && e.type === 'grenadier' && e.grenCd <= 0) {
+        const sx = e.siege.x + e.siege.w / 2;
+        const sy = e.siege.y + e.siege.h / 2;
+        const sd = dist(e.x, e.y, sx, sy);
+        if (sd > 110 && sd < 400) {
+          e.grenCd = rand(def.grenade[0], def.grenade[1]);
+          launchGrenade(e.x, e.y, sx + rand(-20, 20), sy + rand(-20, 20), 'e', 2.6);
+          A.play('throw', 0.6);
+        }
       }
 
       // Grenades: grenadiers love them; the rest use them to flush you out of cover.
@@ -851,6 +910,20 @@
     const p = G.player;
     const def = e.def;
     const S = def.shot;
+    if (e.shootAt) {
+      // Shooting at something you built.
+      const o = e.shootAt;
+      if (o.dead) { e.burst = 0; e.shootAt = null; return; }
+      const fa = (def.tank ? e.ta : angleTo(e.x, e.y, o.x + o.w / 2, o.y + o.h / 2)) + rand(-S.spread, S.spread);
+      if (!def.tank) e.a = fa;
+      const ox = e.x + Math.cos(fa) * 14;
+      const oy = e.y + Math.sin(fa) * 14;
+      G.bullets.push({ x: ox, y: oy, ox, oy, vx: Math.cos(fa) * S.speed, vy: Math.sin(fa) * S.speed, travel: 0,
+        range: def.range * 1.15, dmg: S.dmg * G.diff.dmg, owner: 'e', pierce: 0, src: e.type });
+      e.flash = 0.06;
+      A.play(def.sound === 'bolt' ? 'rifle' : def.sound, clamp(1 - dist(e.x, e.y, p.x, p.y) / 1300, 0.08, 0.6));
+      return;
+    }
     // Lead the target a bit and miss a bit, depending on difficulty and how fast you're moving.
     const lead = rand(0.3, 0.8);
     const t = d / S.speed;
@@ -887,17 +960,21 @@
     const def = e.def;
     const W = G.world;
     const toP = angleTo(e.x, e.y, p.x, p.y);
+    const sieging = e.siege && !(e.canSee && d < def.range);
+    const sx = e.siege ? e.siege.x + e.siege.w / 2 : 0;
+    const sy = e.siege ? e.siege.y + e.siege.h / 2 : 0;
+    const toS = sieging ? angleTo(e.x, e.y, sx, sy) : 0;
     // Turret tracks you whether or not the hull is moving.
-    e.ta = turnTo(e.ta, e.canSee ? toP : e.a, 1.0 * dt);
+    e.ta = turnTo(e.ta, sieging ? toS : e.canSee ? toP : e.a, 1.0 * dt);
 
     // Hull: drive into range, then hold.
     let want = null;
     if (!e.canSee || d > def.keep[1]) {
-      want = W.flowDir(e.x, e.y);
-      if (want == null) want = toP;
+      want = pathDir(e, toP);
     } else if (d < def.keep[0]) {
       want = toP + Math.PI;
     }
+    if (sieging && dist(e.x, e.y, sx, sy) < def.range * 0.75) want = null;
     if (want != null) {
       const back = Math.abs(angleDiff(e.a, want)) > 2.2 && d < def.keep[0];
       const target = back ? want + Math.PI : want;
@@ -908,7 +985,8 @@
         const by = e.y;
         // Tanks flatten crates and barrels in their way.
         W.query(e.x - e.r - 10, e.y - e.r - 10, e.x + e.r + 10, e.y + e.r + 10, (o) => {
-          if ((o.kind === 'crate' || o.kind === 'barrel' || o.kind === 'hedgehog') && !o.dead) {
+          // ...and sandbags you built, but your tank traps stop them.
+          if ((o.kind === 'crate' || o.kind === 'barrel' || (o.kind === 'hedgehog' && !o.built) || (o.kind === 'sandbag' && o.built)) && !o.dead) {
             const cx = clamp(e.x, o.x, o.x + o.w);
             const cy = clamp(e.y, o.y, o.y + o.h);
             if (dist(e.x, e.y, cx, cy) < e.r + 4) destroyObstacle(o);
@@ -916,6 +994,7 @@
         });
         W.move(e, Math.cos(e.a) * sp * dt, Math.sin(e.a) * sp * dt, e.r);
         const moved = dist(bx, by, e.x, e.y);
+        if (G.base) W.wires = W.wires.filter((w) => !(w.built && e.x > w.x - e.r && e.x < w.x + w.w + e.r && e.y > w.y - e.r && e.y < w.y + w.h + e.r));
         e.tread += moved * (back ? -1 : 1);
         e.trackD = (e.trackD || 0) + moved;
         if (e.trackD > 14) {
@@ -936,7 +1015,7 @@
       p.y = e.y + ((p.y - e.y) / pd) * (e.r + p.r + 4);
     }
 
-    if (e.react > 0 || p.dead) return;
+    if (e.react > 0 || (p.dead && !sieging)) return;
     // Main gun: a red line shows where it's about to fire.
     e.cannonCd -= dt;
     if (e.cannonTele > 0) {
@@ -953,6 +1032,9 @@
         G.cam.shake = Math.max(G.cam.shake, 6 * clamp(1 - d / 900, 0, 1));
         for (let i = 0; i < 10; i++) puff(bx, by, 'rgba(200,195,185,0.7)', 10, 1.2, 80, e.ta + rand(-0.8, 0.8));
       }
+    } else if (e.cannonCd <= 0 && sieging && Math.abs(angleDiff(e.ta, toS)) < 0.1) {
+      e.cannonTele = def.cannon.telegraph;
+      e.teleTarget = { x: sx, y: sy };
     } else if (e.cannonCd <= 0 && e.canSee && d < def.range && Math.abs(angleDiff(e.ta, toP)) < 0.1) {
       e.cannonTele = def.cannon.telegraph;
       const lead = rand(0.2, 0.6);
@@ -993,6 +1075,7 @@
     G.stats.score += def.score;
     G.player.art = Math.min(1, G.player.art + (def.tank ? 0.5 : 0.12));
     text(e.x, e.y - 22, '+' + def.score, def.tank ? '#FFB347' : '#FFE08A');
+    if (G.base) FL.base.onKill(e);
     if (def.tank) {
       explode(e.x, e.y, 120, 60, 'x');
       const L = def.big ? 88 : 76;
@@ -1043,7 +1126,7 @@
       const hit = W.segHit(b.x, b.y, nx, ny, 'shot', Math.max(0, LOW_SKIP - b.travel));
       let tHit = hit ? hit.t : 2;
       let unit = null;
-      if (b.owner === 'p') {
+      if (b.owner !== 'e') {
         for (const e of G.enemies) {
           if (e.dead || (b.hitSet && b.hitSet.includes(e))) continue;
           const t = segCircle(b.x, b.y, nx, ny, e.x, e.y, e.r + 3);
@@ -1063,8 +1146,10 @@
           G.bullets.splice(i, 1);
           continue;
         }
-        G.stats.hits++;
-        G.hitMarker = 0.12;
+        if (b.owner === 'p') {
+          G.stats.hits++;
+          G.hitMarker = 0.12;
+        }
         damageEnemy(unit, b.dmg * (b.travel > b.range * 0.75 ? 0.8 : 1), false, b.ox, b.oy);
         if (unit.def.tank || unit.def.static) sparks(hx, hy, 4);
         else puff(hx, hy, 'rgba(120,30,25,0.7)', 3, 0.35, 50, Math.atan2(b.vy, b.vx));
@@ -1085,7 +1170,9 @@
         const color = o.kind === 'sandbag' ? 'rgba(190,170,120,0.8)' : o.kind === 'hedge' || o.kind === 'tree' ? 'rgba(80,110,50,0.8)' : 'rgba(170,160,145,0.8)';
         puff(hx, hy, color, 3, 0.4, 40, Math.atan2(hit.ny, hit.nx) + rand(-0.6, 0.6));
         if (o.kind === 'wreck' || o.kind === 'concrete') sparks(hx, hy, 2);
-        if (o.hp && b.owner === 'p') {
+        if (o.built) {
+          if (b.owner === 'e') FL.base.damage(o, b.dmg);
+        } else if (o.hp && b.owner === 'p') {
           o.hp -= b.dmg;
           if (o.hp <= 0) destroyObstacle(o);
         }
@@ -1121,15 +1208,15 @@
         const hx = r.x + (nx - r.x) * t - Math.cos(r.a) * 4;
         const hy = r.y + (ny - r.y) * t - Math.sin(r.a) * 4;
         G.rockets.splice(i, 1);
-        G.stats.hits++;
-        explode(hx, hy, r.splash, r.dmg, 'p');
+        if (r.owner === 'p') G.stats.hits++;
+        explode(hx, hy, r.splash, r.dmg, r.owner);
         continue;
       }
       r.x = nx;
       r.y = ny;
-      r.speed = Math.min(900, r.speed + 500 * dt);
-      G.particles.push({ x: r.x - Math.cos(r.a) * 10, y: r.y - Math.sin(r.a) * 10, vx: rand(-15, 15), vy: rand(-15, 15), life: 0.7, max: 0.7, size: 5, grow: 14, color: 'rgba(210,205,195,0.55)', type: 'smoke', drag: 1 });
-      if (travel > 950) { G.rockets.splice(i, 1); explode(r.x, r.y, r.splash, r.dmg, 'p'); }
+      if (!r.shell) r.speed = Math.min(900, r.speed + 500 * dt);
+      if (!r.shell) G.particles.push({ x: r.x - Math.cos(r.a) * 10, y: r.y - Math.sin(r.a) * 10, vx: rand(-15, 15), vy: rand(-15, 15), life: 0.7, max: 0.7, size: 5, grow: 14, color: 'rgba(210,205,195,0.55)', type: 'smoke', drag: 1 });
+      if (travel > 950) { G.rockets.splice(i, 1); explode(r.x, r.y, r.splash, r.dmg, r.owner); }
     }
   }
 
@@ -1231,16 +1318,19 @@
       const d = dist(x, y, p.x, p.y) - p.r;
       if (d < radius && W.sight(x, y, p.x, p.y)) {
         const k = 1 - Math.max(0, d) / radius;
-        const f = owner === 'e' ? 1 : owner === 'p' ? 0.35 : owner === 'x' ? 0.6 : 0.3;
-        hurtPlayer(dmg * (0.3 + 0.7 * k) * f, x, y, 'boom-' + owner);
+        const f = owner === 'e' ? 1 : owner === 'p' ? 0.35 : owner === 'x' ? 0.6 : owner === 't' ? 0 : 0.3;
+        if (f) hurtPlayer(dmg * (0.3 + 0.7 * k) * f, x, y, 'boom-' + owner);
       }
     }
     // Crates splinter, barrels go up.
     W.query(x - radius, y - radius, x + radius, y + radius, (o) => {
       if (!o.hp || o.dead) return;
+      // Your own explosives don't wreck your own outpost.
+      if (o.built && owner !== 'e') return;
       const cx = clamp(x, o.x, o.x + o.w);
       const cy = clamp(y, o.y, o.y + o.h);
       if (dist(x, y, cx, cy) < radius * 0.8) {
+        if (o.built) { FL.base.damage(o, dmg * 0.8); return; }
         o.hp -= dmg;
         if (o.hp <= 0) later(o.explodes ? 0.15 : 0, () => destroyObstacle(o));
       }
@@ -1284,6 +1374,11 @@
       G.particles.push({ x: cx, y: cy, vx: Math.cos(a) * rand(40, 160), vy: Math.sin(a) * rand(40, 160), life: 0.6, max: 0.6, size: rand(2, 5), color: '#7A5A36', type: 'debris', drag: 4 });
     }
     G.world.decal({ t: 'rubble', x: cx, y: cy, r: 30, color: 'rgba(110,85,55,0.8)' });
+    if (o.built) {
+      A.play('hit', 0.6);
+      FL.base.destroyed(o);
+      return;
+    }
     if (o.ammo) addPickup('ammo', cx, cy);
     else if (chance(0.25)) addPickup(chance(0.5) ? 'ammo' : 'grenade', cx, cy);
     A.play('hit', 0.6);
@@ -1356,6 +1451,7 @@
     G.t += dt;
     const p = G.player;
     input.update(worldToScreen(p.x, p.y));
+    if (G.base) FL.base.handleInput(input);
     // AFK mode drives whenever you aren't touching the controls yourself.
     G.afk = !!FL.save.data.settings.afk && !input.sticks.left && !input.sticks.right && !input.move.x && !input.move.y && !input.mouse.down;
     if (G.afk) FL.afk.control(G, input, dt);
@@ -1493,6 +1589,7 @@
     const vis = [];
     W.query(vx, vy, vx + vw, vy + vh, (ob) => { if (!ob.dead && ob.kind !== 'water') vis.push(ob); });
     for (const ob of vis) art.cover(g, ob, W.themeName);
+    if (G.base) FL.base.draw(g);
 
     for (const k of G.pickups) if (k.x > vx && k.x < vx + vw && k.y > vy && k.y < vy + vh) art.pickup(g, k, G.t);
     for (const cp of G.corpses) art.soldier(g, cp.x, cp.y, cp.a, { dead: true, side: cp.side });
@@ -1575,7 +1672,7 @@
     for (const b of G.bullets) {
       const sp = Math.hypot(b.vx, b.vy);
       const L = Math.min(b.travel + 1, b.sniper ? 60 : 26);
-      g.strokeStyle = b.owner === 'p' ? 'rgba(255,236,150,0.95)' : b.sniper ? 'rgba(255,255,255,0.95)' : 'rgba(255,140,90,0.95)';
+      g.strokeStyle = b.owner !== 'e' ? 'rgba(255,236,150,0.95)' : b.sniper ? 'rgba(255,255,255,0.95)' : 'rgba(255,140,90,0.95)';
       g.lineWidth = b.owner === 'p' ? 2 : 2.2;
       g.beginPath();
       g.moveTo(b.x - (b.vx / sp) * L, b.y - (b.vy / sp) * L);
@@ -1583,6 +1680,11 @@
       g.stroke();
     }
     for (const r of G.rockets) {
+      if (r.shell) {
+        g.fillStyle = '#FFE6A0';
+        g.beginPath(); g.arc(r.x, r.y, 4, 0, TAU); g.fill();
+        continue;
+      }
       g.save();
       g.translate(r.x, r.y);
       g.rotate(r.a);
@@ -1788,6 +1890,7 @@
     if (!o) return null;
     const p = G.player;
     if (o.type === 'reach' || o.type === 'hold') return G.zones[o.zone];
+    if (o.type === 'base') return dist(p.x, p.y, G.base.hqX, G.base.hqY) > 650 ? { x: G.base.hqX, y: G.base.hqY } : null;
     let list = null;
     if (o.type === 'destroy') list = G.enemies.filter((e) => !e.dead && e.tag === o.tag);
     else if (o.type === 'clear') {
@@ -1847,6 +1950,7 @@
     const k = bg.k * 2;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.drawImage(bg, 0, 0, mini.width, mini.height);
+    if (G.base) FL.base.drawMini(g, k);
     const o = objective();
     const showAll = o && o.type === 'clear' && G.enemies.filter((e) => !e.dead).length <= 4;
     for (const e of G.enemies) {
@@ -1927,6 +2031,14 @@
       } else if (o.type === 'hold') {
         bar = G.holdT / o.time;
         sub = G.objOutside ? 'Get back to the ' + G.zones[o.zone].label.toLowerCase() + '!' : U.fmtTime(o.time - G.holdT) + ' to go';
+      } else if (o.type === 'base') {
+        const st = FL.base.status();
+        set('obj-text', 'text', st.text);
+        set('obj-sub', 'text', st.sub);
+        set('obj-sub', 'cls', 'obj-sub' + (st.warn ? ' warn' : ''));
+        set('obj-bar', 'hidden', false);
+        hud['obj-fill'].style.width = (clamp(st.bar, 0, 1) * 100).toFixed(1) + '%';
+        return;
       } else if (o.type === 'survive') {
         const S = G.survival;
         const alive = G.enemies.filter((e) => !e.dead).length;
@@ -1966,6 +2078,7 @@
   }
 
   function stop() {
+    if (FL.base.active) FL.base.stop();
     input.enabled = false;
     input.reset();
     G = null;

@@ -53,6 +53,27 @@ He wins most missions on Regular by himself, but not every time.
 
 Each mission gives up to three stars: one for finishing, one for beating the par time, and one for 35% accuracy or better. Every enemy you kill counts towards your rank, from Private up to Colonel.
 
+### Outpost (base building)
+
+Build a base, then hold it. You start with a field HQ in the middle of open country, a few sandbags, one MG nest and 220 supplies. Waves march on the HQ, and when it falls the game is over. If **you** fall, you're back on your feet at the HQ six seconds later, while your defences keep fighting.
+
+- **Supplies** come from kills (6 per soldier, 60 per tank, 150 for a Tiger), a bonus for beating each wave, and the **supply crates** (★) that keep turning up around the map. Starting a wave early with **Start wave now** gives you a bonus for the time you skipped.
+- **Building:** tap the hammer button (or B). Pick something from the bar. A see-through outline shows where it goes: in front of you on a phone (walk and turn to move it), or under the mouse on a computer. It's green if it fits and red if it doesn't. Tap **Build** (or click) to place it, and **Rotate** (or T) to turn it. **Repair** fixes everything for supplies. Keys 1–9 pick items, and N starts the next wave.
+
+| Build | Cost | What it does |
+| --- | --- | --- |
+| Sandbags | 15 | Low cover. Stops bullets but you can fire over it. Tanks drive over it |
+| Wall | 30 | Tall wall. Blocks shots and the way through |
+| Barbed wire | 10 | Slows infantry right down. Tanks flatten it |
+| Tank trap | 20 | Stops tanks and men, but not bullets |
+| MG nest | 100 | Machine gun that shreds infantry (range 520) |
+| Mortar pit | 150 | Lobs shells on groups far away (range 240–850) |
+| AT gun | 200 | Anti-tank gun that goes for armour first (range 720) |
+| Medic tent | 90 | Heals you quickly while you stand near it |
+| Ammo depot | 70 | Tops up your ammo and grenades nearby |
+
+**How the enemy attacks.** They head for the HQ by the shortest way round your walls, so you can funnel them into kill zones. They shoot you if they can. Otherwise they shoot whatever you've built in their path, turrets first. Grenadiers lob grenades at your walls, and tanks shell them. If you wall the HQ in completely, they walk straight up to the walls and break through. From wave 4 tanks come every third wave, and every tenth wave brings a Tiger.
+
 **Last Stand** is an endless survival mode at a ruined crossroads. Each wave is bigger than the last, every fifth wave brings tanks, and supplies are dropped between waves.
 
 ### Weapons
@@ -104,6 +125,7 @@ Then open <http://localhost:8000>. To try it on your phone, connect it to the sa
 | `js/art.js` | Draws soldiers, tanks, MG nests, sandbags, buildings, hedgerows, trees, wire and pickups |
 | `js/missions.js` | The five campaign maps and Last Stand, built with a small map builder, plus their objectives |
 | `js/input.js` | Twin thumbsticks, keyboard and mouse |
+| `js/base.js` | Outpost: the build catalogue, placing and repairing, turrets, supply crates, the wave cycle, the HQ and respawning |
 | `js/afk.js` | AFK mode: the soldier's own brain (targeting, pathing to the objective, grenades, dodging, healing, supplies) |
 | `js/game.js` | The battle: player, enemy AI, tanks, bullets, grenades, rockets, artillery, explosions, objectives, camera, HUD, minimap and drawing |
 | `js/main.js` | Menu, briefing and loadout, settings, debrief and stars, and the main loop |

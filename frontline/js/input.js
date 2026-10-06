@@ -68,6 +68,10 @@
       if (k === 'e') input.actions.add('take');
       if (k === 'f') input.actions.add('artillery');
       if (k === 'k') input.actions.add('afk');
+      if (k === 'b') input.actions.add('build');
+      if (k === 't') input.actions.add('rotate');
+      if (k === 'n') input.actions.add('nextwave');
+      if (k >= '1' && k <= '9') input.actions.add('num' + k);
       if (k === 'escape' || k === 'p') input.actions.add('pause');
     });
     window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));

@@ -466,5 +466,41 @@
     },
   };
 
-  FL.missions = { MISSIONS, SURVIVAL, builder, byId: (id) => (id === 'survival' ? SURVIVAL : MISSIONS.find((m) => m.id === id)) };
+  // Outpost: an open field to fortify around your HQ (see base.js).
+  const OUTPOST = {
+    id: 'outpost', name: 'Outpost', place: 'Open country, Normandy', date: 'Endless', theme: 'grass',
+    w: 2400, h: 2400, seed: 4242, base: true,
+    brief: 'Command has given you a field HQ and a pile of sandbags. Spend supplies on walls, wire, tank traps, machine guns, mortars and anti-tank guns, then hold the HQ against wave after wave. Kills and supply crates earn more. If they can\'t find a way round your walls, they will blast through them.',
+    objectives: [{ type: 'base', text: 'Hold the outpost' }],
+    build(B) {
+      const road = '#9C8A66';
+      B.ground({ t: 'road', pts: [[1200, 0], [1180, 700], [1200, 1150]], width: 50, color: road, ruts: true });
+      B.ground({ t: 'road', pts: [[1200, 1250], [1230, 1800], [1200, 2400]], width: 50, color: road, ruts: true });
+      B.ground({ t: 'road', pts: [[0, 1220], [700, 1180], [1140, 1200]], width: 46, color: road, ruts: true });
+      B.ground({ t: 'road', pts: [[1260, 1200], [1800, 1240], [2400, 1200]], width: 46, color: road, ruts: true });
+      B.ground({ t: 'circle', x: 1200, y: 1200, r: 260, color: '#7E8A4A' });
+      for (const [fx, fy] of [[300, 300], [1700, 260], [260, 1700], [1720, 1720]]) B.ground({ t: 'field', x: fx, y: fy, w: 420, h: 380, color: '#86904F' });
+      B.house(1140, 1150, 120, 100, '#5A6234', { hq: true });
+      const avoid = [[1200, 1200, 520]];
+      B.forest(0, 0, 2400, 2400, 70, null, avoid);
+      for (let i = 0; i < 12; i++) {
+        const x = B.r(80, 2320);
+        const y = B.r(80, 2320);
+        if (Math.hypot(x - 1200, y - 1200) > 560) B.rect('rock', x, y, B.r(30, 60), B.r(24, 44));
+      }
+      B.ruin(1900, 600, 220, 180, ['s', 'w']);
+      B.ruin(300, 1950, 200, 160, ['n', 'e']);
+      B.house(380, 560, 160, 100, '#8A4B38');
+      B.rect('wreck', 1860, 1500, 76, 52, { angle: 0.1 });
+      B.craters(0, 0, 2400, 2400, 26);
+      B.pickup('supply', 1000, 1000); B.pickup('supply', 1420, 1380); B.pickup('ammo', 1270, 1290);
+      B.spawns([[1200, 40], [1200, 2360], [40, 1200], [2360, 1200], [80, 80], [2320, 80], [80, 2320], [2320, 2320]]);
+      B.start(1200, 1276, Math.PI / 2);
+    },
+  };
+
+  FL.missions = {
+    MISSIONS, SURVIVAL, OUTPOST, builder,
+    byId: (id) => (id === 'survival' ? SURVIVAL : id === 'outpost' ? OUTPOST : MISSIONS.find((m) => m.id === id)),
+  };
 })(window.FL);

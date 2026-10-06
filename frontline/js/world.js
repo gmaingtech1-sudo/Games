@@ -28,6 +28,9 @@
     rock: { block: true, tall: true },
     wreck: { block: true, tall: true },
     water: { block: true },
+    emplacement: { block: true, low: true },
+    tent: { block: true, tall: true },
+    depot: { block: true, tall: true },
   };
 
   const THEMES = {
@@ -58,6 +61,7 @@
       this.ncols = Math.ceil(w / NAV);
       this.nrows = Math.ceil(h / NAV);
       this.blocked = new Uint8Array(this.ncols * this.nrows);
+      this.blockedHard = new Uint8Array(this.ncols * this.nrows); // ignoring what the player built
       this.flow = new Int32Array(this.ncols * this.nrows);
       this.flowTarget = -1;
       this.navDirty = true;
@@ -228,6 +232,7 @@
 
     buildNav() {
       this.blocked.fill(0);
+      this.blockedHard.fill(0);
       const pad = 12;
       for (const o of this.obstacles) {
         if (o.dead || !o.block) continue;
@@ -239,7 +244,10 @@
           for (let c = c0; c <= c1; c++) {
             const cx = c * NAV + NAV / 2;
             const cy = r * NAV + NAV / 2;
-            if (cx > o.x - pad && cx < o.x + o.w + pad && cy > o.y - pad && cy < o.y + o.h + pad) this.blocked[r * this.ncols + c] = 1;
+            if (cx > o.x - pad && cx < o.x + o.w + pad && cy > o.y - pad && cy < o.y + o.h + pad) {
+              this.blocked[r * this.ncols + c] = 1;
+              if (!o.built) this.blockedHard[r * this.ncols + c] = 1;
+            }
           }
         }
       }
@@ -265,6 +273,7 @@
       F.flowTarget = start;
       F.navV = this.navV;
       const f = F.flow;
+      const blocked = F.soft ? this.blockedHard : this.blocked;
       f.fill(-1);
       const q = this._q || (this._q = new Int32Array(cols * rows));
       let head = 0;
@@ -278,7 +287,7 @@
         const n = [c > 0 ? i - 1 : -1, c < cols - 1 ? i + 1 : -1, i - cols, i + cols];
         for (let k = 0; k < 4; k++) {
           const j = n[k];
-          if (j < 0 || j >= f.length || f[j] !== -1 || this.blocked[j]) continue;
+          if (j < 0 || j >= f.length || f[j] !== -1 || blocked[j]) continue;
           f[j] = d;
           q[tail++] = j;
         }
@@ -291,6 +300,7 @@
       const c = U.clamp(Math.floor(x / NAV), 0, cols - 1);
       const r = U.clamp(Math.floor(y / NAV), 0, this.nrows - 1);
       const f = (field || this).flow;
+      const blocked = field && field.soft ? this.blockedHard : this.blocked;
       const here = f[r * cols + c];
       let best = here >= 0 ? here : 1e9;
       let bx = -1;
@@ -304,7 +314,7 @@
           const v = f[nr * cols + nc];
           if (v < 0) continue;
           // No cutting corners past a blocked cell.
-          if (dx && dy && (this.blocked[r * cols + nc] || this.blocked[nr * cols + c])) continue;
+          if (dx && dy && (blocked[r * cols + nc] || blocked[nr * cols + c])) continue;
           const cost = v + (dx && dy ? 0.4 : 0);
           if (cost < best) { best = cost; bx = nc; by = nr; }
         }

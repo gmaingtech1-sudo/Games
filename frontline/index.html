@@ -56,6 +56,14 @@
       </span>
       <span class="m-best" id="survival-best"></span>
     </button>
+    <button id="btn-outpost" class="mission outpost" type="button">
+      <span class="m-num">⚒</span>
+      <span class="m-info">
+        <span class="m-name">Outpost</span>
+        <span class="m-place">Build a base, then hold it against every wave</span>
+      </span>
+      <span class="m-best" id="outpost-best"></span>
+    </button>
     <p class="m-foot">Turn your phone sideways for the widest view.</p>
   </section>
 
@@ -95,9 +103,10 @@
           <div id="obj-sub" class="obj-sub"></div>
           <div id="obj-bar" class="obj-bar" hidden><div id="obj-fill"></div></div>
         </div>
+        <button id="b-wave" class="wave-btn" type="button" hidden>Start wave now ▶</button>
       </div>
       <div class="hud-right">
-        <div class="score-row"><span id="score" class="score">0</span>
+        <div class="score-row"><span id="supplies" class="supplies" hidden aria-label="Supplies"><i aria-hidden="true"></i><span id="supplies-n">0</span></span><span id="score" class="score">0</span>
           <button id="b-afk" class="afk-btn" type="button" aria-label="AFK mode: let your soldier play by himself">AFK</button>
           <button id="btn-pause" class="icon-btn small" type="button" aria-label="Pause">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>
@@ -115,7 +124,23 @@
       </div>
     </div>
 
+    <div id="buildbar" class="buildbar" hidden>
+      <div id="bb-desc" class="bb-desc"></div>
+      <div class="bb-row">
+        <div id="bb-items" class="bb-items"></div>
+        <div class="bb-actions">
+          <button id="bb-place" class="bb-btn place" type="button">Build</button>
+          <button id="bb-rot" class="bb-btn" type="button">Rotate</button>
+          <button id="bb-repair" class="bb-btn" type="button">Repair</button>
+          <button id="bb-close" class="bb-btn close" type="button" aria-label="Close build menu">✕</button>
+        </div>
+      </div>
+    </div>
+
     <div class="tbtns">
+      <button id="b-build" class="tbtn build" type="button" aria-label="Build" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6-3 3-6-6z"/><path d="M11 7L4 14v3h3l7-7"/><path d="M4 20h16"/></svg>
+      </button>
       <button id="b-take" class="tbtn take" type="button" hidden><span id="take-label">Take</span></button>
       <button id="b-art" class="tbtn art" type="button" aria-label="Call in artillery">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20l3-9h6l3 9M9 11V6a3 3 0 0 1 6 0v5M12 3v-1"/></svg>
@@ -190,6 +215,7 @@
       <tr><td>Pick up a gun</td><td>Take button</td><td>E</td></tr>
       <tr><td>Artillery</td><td>Radio button when full</td><td>F</td></tr>
       <tr><td>AFK mode</td><td>AFK button (top right)</td><td>K</td></tr>
+      <tr><td>Outpost: build</td><td>Hammer button, pick an item, walk to aim the outline, tap Build</td><td>B, 1–9 to pick, T rotate, click to place, N next wave</td></tr>
     </table>
     <ul class="tips">
       <li>Sandbags stop bullets, but someone crouched right behind them can still shoot over. Get close, flank, or throw a grenade.</li>
@@ -214,6 +240,7 @@
 <script src="js/missions.js"></script>
 <script src="js/input.js"></script>
 <script src="js/afk.js"></script>
+<script src="js/base.js"></script>
 <script src="js/game.js"></script>
 <script src="js/main.js"></script>
 </body>
