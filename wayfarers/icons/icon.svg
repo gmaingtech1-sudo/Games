@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A1F5A"/>
+      <stop offset="0.6" stop-color="#6B3F8F"/>
+      <stop offset="1" stop-color="#F09A5B"/>
+    </linearGradient>
+    <radialGradient id="fire" cx="50%" cy="70%" r="60%">
+      <stop offset="0" stop-color="#FFF6C2"/>
+      <stop offset="0.4" stop-color="#FFC94A"/>
+      <stop offset="1" stop-color="#FF6A2B"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#FFC94A" stop-opacity="0.65"/>
+      <stop offset="1" stop-color="#FFC94A" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#sky)"/>
+  <circle cx="390" cy="120" r="34" fill="#FFF3D6"/>
+  <g fill="#FFFFFF" opacity="0.8">
+    <circle cx="90" cy="90" r="3"/><circle cx="160" cy="60" r="2"/><circle cx="250" cy="110" r="2.5"/><circle cx="60" cy="180" r="2"/>
+  </g>
+  <path d="M0 330 L90 230 L160 300 L250 200 L340 290 L420 220 L512 300 L512 512 L0 512Z" fill="#3B2A6B"/>
+  <path d="M0 380 Q130 320 256 360 T512 350 L512 512 L0 512Z" fill="#2A1F4F"/>
+  <circle cx="256" cy="380" r="150" fill="url(#glow)"/>
+  <!-- campfire -->
+  <path d="M196 432 L316 404 M196 404 L316 432" stroke="#6B4A2E" stroke-width="18" stroke-linecap="round"/>
+  <path d="M256 280 C300 330 318 360 300 400 C290 424 222 424 212 400 C196 362 226 340 236 310 C244 332 252 340 262 344 C266 320 262 300 256 280Z" fill="url(#fire)"/>
+  <!-- sword planted in the ground -->
+  <g transform="translate(140 300) rotate(-8)">
+    <rect x="-7" y="-130" width="14" height="140" rx="4" fill="#E6ECF5"/>
+    <rect x="-28" y="-138" width="56" height="12" rx="6" fill="#FFC94A"/>
+    <rect x="-6" y="-176" width="12" height="40" rx="5" fill="#7A4F2A"/>
+    <circle cx="0" cy="-180" r="10" fill="#FFC94A"/>
+  </g>
+  <!-- shield -->
+  <path d="M370 300 l52 18 v40 c0 34 -24 54 -52 62 c-28 -8 -52 -28 -52 -62 v-40z" fill="#4C7BD9" stroke="#C7D0DC" stroke-width="10"/>
+  <path d="M370 322 v84 M336 352 h68" stroke="#FFC94A" stroke-width="10" stroke-linecap="round"/>
+</svg>

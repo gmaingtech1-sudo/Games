@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Wayfarers</title>
+<meta name="description" content="An AFK adventure for your phone. Your heroes fight on while you're away: collect their loot, level them up, summon new heroes and push deeper into the lands.">
+<meta name="theme-color" content="#171230">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wayfarers">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@600;800&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Resources -->
+  <header class="top">
+    <div class="res gold" aria-label="Gold"><i class="ico-gold" aria-hidden="true"></i><span id="r-gold">0</span></div>
+    <div class="res gems" aria-label="Gems"><i class="ico-gem" aria-hidden="true"></i><span id="r-gems">0</span></div>
+    <div class="res souls" id="res-souls" aria-label="Soul stones" hidden><i class="ico-soul" aria-hidden="true"></i><span id="r-souls">0</span></div>
+    <button class="icon-btn" id="btn-settings" type="button" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>
+    </button>
+  </header>
+
+  <!-- The fight -->
+  <section class="scene" aria-label="Battle">
+    <canvas id="battle" aria-hidden="true"></canvas>
+    <div class="stage-hud">
+      <div class="stage-pill">
+        <span id="land-name">Greenmeadow</span>
+        <b id="stage-label">1-1</b>
+      </div>
+      <div class="timer" aria-hidden="true"><i id="timer-bar"></i></div>
+      <div class="boss-tag" id="boss-tag" hidden>BOSS</div>
+    </div>
+    <button class="speed-btn" id="btn-speed" type="button" aria-label="Battle speed">×1</button>
+    <div class="farm-tag" id="farm-tag" hidden>Farming</div>
+  </section>
+
+  <!-- Menus -->
+  <main class="panel">
+    <section class="page" id="page-battle" aria-label="Camp"></section>
+    <section class="page" id="page-heroes" aria-label="Heroes" hidden></section>
+    <section class="page" id="page-summon" aria-label="Summon" hidden></section>
+    <section class="page" id="page-camp" aria-label="Upgrades" hidden></section>
+    <section class="page" id="page-quests" aria-label="Quests" hidden></section>
+  </main>
+
+  <nav class="tabs" aria-label="Menu">
+    <button type="button" class="tab on" data-act="tab" data-tab="battle">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M4 10l1-4h14l1 4M10 14h4"/></svg>
+      <span>AFK</span><b class="badge" id="badge-battle" hidden></b>
+    </button>
+    <button type="button" class="tab" data-act="tab" data-tab="heroes">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 3.5l6 6-9 9-3-3zM8.5 15.5l-5 5M5 14l5 5"/></svg>
+      <span>Heroes</span><b class="badge" id="badge-heroes" hidden></b>
+    </button>
+    <button type="button" class="tab" data-act="tab" data-tab="summon">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.6 6.4L21 9l-5 4.4L17.5 20 12 16.6 6.5 20 8 13.4 3 9l6.4-.6z"/></svg>
+      <span>Summon</span><b class="badge" id="badge-summon" hidden></b>
+    </button>
+    <button type="button" class="tab" data-act="tab" data-tab="camp">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 20l7-15 7 15M12 5v15M9 20l3-5 3 5"/></svg>
+      <span>Camp</span><b class="badge" id="badge-camp" hidden></b>
+    </button>
+    <button type="button" class="tab" data-act="tab" data-tab="quests">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6zM6 3a2 2 0 0 0-2 2v1h2M9 8h7M9 12h7M9 16h4"/></svg>
+      <span>Quests</span><b class="badge" id="badge-quests" hidden></b>
+    </button>
+  </nav>
+
+  <!-- Sheets and pop-ups -->
+  <div class="veil" id="veil" hidden></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/battle.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
