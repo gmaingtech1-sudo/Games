@@ -4,6 +4,8 @@ An AFK adventure for phones. A party of chibi heroes marches through stage after
 
 It's plain HTML, CSS and JavaScript. There's no build step and nothing to install. Heroes, monsters, lands, effects and sounds are all drawn or synthesised in code, so the only image files are the app icons. After the first visit it also works offline.
 
+There's also an installable Android app: see [`../wayfarers-android`](../wayfarers-android) or [download the APK](../wayfarers-android/dist/wayfarers.apk).
+
 ## Playing
 
 The fight runs by itself. Your job is to make the party stronger.
@@ -67,6 +69,7 @@ Then open <http://localhost:8000>. Opening `index.html` straight from the file s
 | --- | --- |
 | `index.html` | Layout: resource bar, battle scene, the five menu pages, tabs, sheets |
 | `css/style.css` | All styling. Mobile-first, respects safe areas (notches) and reduced-motion settings |
+| `js/host.js` | The platform bridge: saves to localStorage in a browser, or to the Android app's storage, vibration and chest reminder inside the app |
 | `js/data.js` | The catalogue and every formula: heroes, lands, monsters, camp upgrades, quests, costs and scaling |
 | `js/state.js` | Your save and everything you can do with it: levelling, summoning, ascending, upgrades, the AFK chest, quests, rebirth |
 | `js/battle.js` | One stage's fight: attack timers, targeting, skills, shields, stuns and the stage timer |

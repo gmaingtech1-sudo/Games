@@ -6,6 +6,7 @@
   let out = null;
   let noise = null;
   let on = true;
+  let haptics = true;
   const last = {};
 
   function ensure() {
@@ -91,7 +92,9 @@
     error: () => tone(200, 0.15, 'square', 0.05, 0, 150),
   };
 
+  // Also buzzes the phone for the sounds that deserve it (Android app only).
   function play(name) {
+    if (haptics && WF.host) WF.host.haptic(name);
     if (!on || !ctx || ctx.state !== 'running') return;
     const fn = SOUNDS[name];
     if (fn) fn();
@@ -101,5 +104,7 @@
     unlock, play,
     get on() { return on; },
     set on(v) { on = !!v; },
+    get haptics() { return haptics; },
+    set haptics(v) { haptics = !!v; },
   };
 })(window.WF = window.WF || {});

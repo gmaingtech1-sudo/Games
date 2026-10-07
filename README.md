@@ -12,6 +12,7 @@ Small games for phones. Each one lives in its own folder.
 | [Cosmos 360](cosmos-360/) | A to-scale universe to explore in 360°. Look around by dragging or moving your phone, fly to real planets and moons where they are today, scan them for your logbook, and jump to Alpha Centauri, TRAPPIST-1 and the black hole at the centre of the Milky Way. |
 | [Starforge](starforge/) | A space shooter where you build your own starfighter. Pick its hull, wings, engine, weapon and special, paint it, then blast through waves of enemy ships and bosses to earn credits for better parts. |
 | [Wayfarers](wayfarers/) | An AFK adventure. A party of chibi heroes fights through six lands of monsters and bosses on its own, even while the game is closed. Claim up to 12 hours of loot from the AFK chest, level your heroes, summon new ones at the altar, ascend them with copies, and rebirth for soul stones that make every run go further. |
+| [Wayfarers for Android](wayfarers-android/) | The same game as an installable Android app, with a reminder when your AFK chest is full. [Download the APK](wayfarers-android/dist/wayfarers.apk). |
 
 ## Books
 

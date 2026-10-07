@@ -340,6 +340,7 @@
     $('#veil').hidden = false;
     sheetAct = onAct || null;
     drawPortraits(sheet);
+    WF.host.setOverlay(true);
     requestAnimationFrame(() => sheet.classList.add('up'));
   }
 
@@ -349,6 +350,7 @@
     sheet.hidden = true;
     $('#veil').hidden = true;
     sheetAct = null;
+    WF.host.setOverlay(false);
   }
 
   const sheetOpen = () => !$('#sheet').hidden;
@@ -467,6 +469,13 @@
       <button class="card mini ${s.sound ? 'on' : ''}" type="button" data-act="sound" aria-pressed="${s.sound}">
         <span class="mini-ico">${svg('sound')}</span><span><b>Sound effects</b></span><em class="switch" aria-hidden="true"><i></i></em>
       </button>
+      ${WF.host.native ? `
+      <button class="card mini ${s.haptics ? 'on' : ''}" type="button" data-act="haptics" aria-pressed="${s.haptics}">
+        <span class="mini-ico">${svg('buzz')}</span><span><b>Vibration</b></span><em class="switch" aria-hidden="true"><i></i></em>
+      </button>
+      <button class="card mini ${s.remind ? 'on' : ''}" type="button" data-act="remind" aria-pressed="${s.remind}">
+        <span class="mini-ico">${svg('bell')}</span><span><b>Chest reminder</b><small>A notification when the AFK chest is full</small></span><em class="switch" aria-hidden="true"><i></i></em>
+      </button>` : ''}
       <h3 class="sub">How to play</h3>
       <ul class="howto">
         <li>Your party fights on its own. Every foe drops gold; spend it on <b>hero levels</b> and <b>camp upgrades</b>.</li>
@@ -480,6 +489,17 @@
       if (act === 'sound') {
         s.sound = !s.sound;
         WF.audio.on = s.sound;
+        settingsSheet();
+      } else if (act === 'haptics') {
+        s.haptics = !s.haptics;
+        WF.audio.haptics = s.haptics;
+        WF.audio.play('tap');
+        settingsSheet();
+      } else if (act === 'remind') {
+        s.remind = !s.remind;
+        if (s.remind) WF.host.notify.request(); // the answer arrives as a notifyPermission message
+        else WF.host.notify.cancel();
+        hooks.save();
         settingsSheet();
       } else if (act === 'reset') {
         confirmSheet('Erase progress?', 'This deletes your heroes, gems and everything else on this device. It can\'t be undone.', 'Erase', () => hooks.reset());
@@ -510,6 +530,7 @@
     if (!got) return;
     WF.audio.play('coin');
     WF.audio.play('win');
+    WF.audio.play('claim');
     toast('Claimed ' + fmt(got.gold) + ' gold' + (got.gems ? ' and ' + got.gems + ' gems' : '') + '!');
     hooks.save();
     rebuild();
@@ -633,6 +654,8 @@
     book: '<path d="M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4zM20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z"/>',
     bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
     sound: '<path d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>',
+    buzz: '<rect x="8" y="3" width="8" height="18" rx="2"/><path d="M4 8v8M20 8v8"/>',
+    bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/>',
   };
   const svg = (k) => '<svg viewBox="0 0 24 24" aria-hidden="true">' + (SVG[k] || '') + '</svg>';
 
@@ -651,5 +674,5 @@
     show('battle');
   }
 
-  WF.ui = { init, show, rebuild, refresh, hud, toast, welcome, closeSheet, sheetOpen, get tab() { return tab; } };
+  WF.ui = { init, show, rebuild, refresh, hud, toast, welcome, closeSheet, sheetOpen, settingsSheet, get tab() { return tab; } };
 })(window.WF = window.WF || {});

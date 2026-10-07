@@ -8,7 +8,7 @@
   const UI = WF.ui;
   const { fmt } = WF.util;
 
-  const store = (() => { try { return window.localStorage; } catch (e) { return null; } })();
+  const store = WF.host.storage;
   const canvas = document.getElementById('battle');
   const ctx = canvas.getContext('2d');
 
@@ -21,6 +21,7 @@
   let saveTimer = 0;
 
   WF.audio.on = S.sound;
+  WF.audio.haptics = S.haptics;
 
   const save = () => ST.save(store);
 
@@ -149,6 +150,8 @@
     reset: () => {
       S = ST.reset(store);
       WF.audio.on = S.sound;
+      WF.audio.haptics = S.haptics;
+      WF.host.notify.cancel();
       lastWall = Date.now();
       newBattle();
       UI.show('battle');
@@ -161,6 +164,28 @@
     S.speed = S.speed >= 3 ? 1 : S.speed + 1;
     WF.audio.play('tap');
     save();
+  });
+
+  /* ---------- The Android app ---------- */
+
+  // When you leave, set a reminder for the moment the AFK chest fills up.
+  function scheduleReminder() {
+    if (!S.remind || !WF.host.notify.permission()) return;
+    const left = D.AFK_CAP - S.chest.secs;
+    if (left < 120) return; // already (nearly) full: nothing new to tell you
+    WF.host.notify.schedule(left / 60, 'Your AFK chest is full!', 'Your heroes have gathered 12 hours of loot. Come back and claim it.');
+  }
+
+  WF.host.on('pause', () => { save(); scheduleReminder(); });
+  WF.host.on('resume', () => WF.host.notify.cancel());
+  WF.host.on('back', () => UI.closeSheet());
+  WF.host.on('notifyPermission', (m) => {
+    if (!m.granted && S.remind) {
+      S.remind = false;
+      UI.toast('Notifications are off for Wayfarers. You can allow them in Android settings.');
+    }
+    save();
+    if (UI.sheetOpen()) UI.settingsSheet();
   });
 
   window.addEventListener('resize', resize);

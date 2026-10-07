@@ -541,3 +541,7 @@ small { color: var(--muted); font-size: 12px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* Settings rows: the switch sits on the right rather than below. */
+.sheet .card.mini { grid-template-columns: auto 1fr auto; grid-template-rows: auto; }
+.sheet .card.mini em { grid-column: auto; margin-top: 0; justify-self: end; }

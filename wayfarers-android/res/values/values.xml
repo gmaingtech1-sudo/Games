@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wayfarers</string>
+    <color name="shell">#171230</color>
+
+    <style name="Wayfarers" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/shell</item>
+        <item name="android:statusBarColor">@color/shell</item>
+        <item name="android:navigationBarColor">@color/shell</item>
+    </style>
+</resources>

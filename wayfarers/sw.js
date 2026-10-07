@@ -1,12 +1,13 @@
 /* Wayfarers — offline support. Serves the cached game instantly and
    refreshes the cache in the background, so updates land on the next launch.
    Fonts come from Google and are left to the browser's own cache. */
-const CACHE = 'wayfarers-v1';
+const CACHE = 'wayfarers-v3';
 const SHELL = [
   './',
   'index.html',
   'css/style.css',
   'js/data.js',
+  'js/host.js',
   'js/state.js',
   'js/battle.js',
   'js/audio.js',

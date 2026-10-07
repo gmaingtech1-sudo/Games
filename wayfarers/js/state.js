@@ -32,6 +32,8 @@
       fastUsed: 0,
       lastSeen: Date.now(),
       sound: true,
+      haptics: true,
+      remind: false,
       tutorial: true,
     };
   }
