@@ -27,18 +27,18 @@ Pick a team (**NOVA**, **PULSAR** or **ECLIPSE**) and a hacker name. Then choose
 
 ### The Sci-Fi Compass
 
-The compass is a radar centred on you. With a compass sensor, it turns with your phone (🧭 switches this off).
+The compass is a 3D holographic disc on the ground around you, seen from above and behind you. Portals stand at their real bearing and distance as spinning crystals on beams of light, your links arc between them, and a sweep circles the disc. With a compass sensor, the view turns with your phone (🧭 switches this off). Without one, drag sideways to turn the view.
 
 | On the compass | What it is |
 | --- | --- |
 | **?** | A portal you haven't discovered. Walk within your scanner range (the solid ring) to discover it. |
-| ● ◆ ⬢ ★ | Portals: Common, Rare, Epic, Legendary. The fill is the team that holds it (grey = neutral), the outline is its rarity. A white dot means it's yours. |
-| Black hole | A ⚫ **Nexus portal** (Level 40+). |
-| Yellow diamonds | **Energy cells.** Walk over them for energy. They come back every 10 minutes. |
-| Violet ripples | A 🌌 **Nexus signal** (Level 30+). Walk to it for 750 XP. Each lasts an hour. |
+| Crystals | Portals. The shape is its rarity: 4-sided Common, 3-sided Rare, 6-sided Epic, 5-sided Legendary (with taller beams for rarer portals). The colour is the team that holds it (grey = neutral), and the base ring is its rarity colour. A ★ above it means it's yours. |
+| Black hole | A ⚫ **Nexus portal** (Level 40+), with a spinning accretion ring. |
+| Yellow cubes | **Energy cells.** Walk over them for energy. They come back every 10 minutes. |
+| Violet ripples and pillar | A 🌌 **Nexus signal** (Level 30+). Walk to it for 750 XP. Each lasts an hour. |
 | Dashed ring | Your reach (45 m). You hack, capture, defend and link from inside it. |
 
-**⤢** widens the radar. From Level 20, **🗺️ Territory map** zooms out to a kilometre and shows who holds every portal.
+**⤢** widens the radar. From Level 20, **🗺️ Territory map** zooms out to a kilometre, tilts the camera to look down from above, and shows who holds every portal.
 
 ### Portals
 
@@ -255,6 +255,7 @@ Explore → Discover → Hack → Earn XP → Level Up → Unlock → Upgrade Co
 - **The world:** there's no server. The globe is cut into cells about 120 m across, and each cell's portal is generated from its coordinates with a seeded random number generator, so everyone in the same place sees the same portals. A few portals change hands every day. Energy cells reroll every 10 minutes and Nexus signals every hour.
 - **Other players:** your squadmates, the rest of your team and the other teams are simulated. Team progress, event scores and attacks on your portals come from seeds, so they're the same every time you look.
 - **Your progress** is saved on your phone (`localStorage`).
+- **The 3D view** is drawn on a 2D canvas with no 3D library: every point is projected through a simple perspective camera, and the crystals are flat-shaded solids drawn back to front.
 - **Sound** is synthesized with WebAudio. There are no image or audio files apart from the app icons.
 
 ## Putting it on your phone
@@ -287,7 +288,7 @@ Stay aware of your surroundings. Don't go onto private property, and never play 
 | `js/data.js` | **Every number in the progression system:** XP and Tech Core rewards, caps, the level table, ranks, unlocks, upgrades, cosmetics, missions, objectives, team levels, Prestige |
 | `js/world.js` | Generates portals, energy cells and Nexus signals from real coordinates |
 | `js/state.js` | Your save and the game rules |
-| `js/compass.js` | The Sci-Fi Compass radar |
+| `js/compass.js` | The 3D Sci-Fi Compass: camera, projection, and drawing the disc, portals, links and you |
 | `js/hack.js` | The hacking puzzle |
 | `js/ui.js` | The HUD, XP bar, next-level card and all the panels |
 | `js/audio.js` | Synthesized sound effects and vibration |

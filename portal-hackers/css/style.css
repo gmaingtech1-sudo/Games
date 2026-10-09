@@ -112,7 +112,7 @@ b.cores { color: var(--cores); }
 /* ------------------ Compass ------------------ */
 
 .compass-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; }
-#compass { width: min(100%, 100vh - 330px, 520px); aspect-ratio: 1; display: block; touch-action: manipulation; }
+#compass { position: absolute; inset: 0 -12px; width: calc(100% + 24px); height: 100%; display: block; touch-action: none; }
 .compass-side { position: absolute; right: 0; top: 0; display: flex; flex-direction: column; gap: 8px; }
 .active-strip { position: absolute; left: 0; right: 48px; top: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; pointer-events: none; }
 .chip { pointer-events: auto; border: 1px solid var(--line); background: var(--panel); border-radius: 16px; padding: 4px 10px; font-size: 12px; font-variant-numeric: tabular-nums; text-align: left; }
@@ -283,10 +283,11 @@ dl.profile.sub dd { color: var(--ink); }
 .hk-status.good { color: var(--good); }
 .hk-status.bad { color: var(--danger); }
 .hk-status.warn { color: var(--warn); }
-.hk-grid { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 8px; }
-.hk-node { aspect-ratio: 1; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--team) 40%, transparent); background: rgba(95, 227, 255, 0.04); position: relative; }
+.hk-grid { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 8px; transform: perspective(700px) rotateX(18deg); transform-origin: 50% 100%; margin-top: -6px; }
+.hk-node { aspect-ratio: 1; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--team) 40%, transparent); background: linear-gradient(180deg, rgba(95, 227, 255, 0.1), rgba(95, 227, 255, 0.02)); position: relative; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12); transition: transform 0.08s, box-shadow 0.08s; }
+.hk-node:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45); }
 .hk-node::after { content: ''; position: absolute; inset: 32%; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--team) 50%, transparent); }
-.hk-node.lit { background: var(--team); box-shadow: 0 0 22px var(--team); }
+.hk-node.lit { background: var(--team); box-shadow: 0 6px 0 rgba(0, 0, 0, 0.45), 0 0 26px var(--team); transform: translateY(-3px); }
 .hk-node.ok { animation: ok 0.35s; }
 .hk-node.bad { animation: bad 0.4s; }
 @keyframes ok { 0% { background: var(--good); box-shadow: 0 0 20px var(--good); } }

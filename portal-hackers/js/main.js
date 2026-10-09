@@ -371,7 +371,7 @@ window.PH = window.PH || {};
       t: t / 1000,
       pos: game.pos,
       heading,
-      rot: s.settings.rotate && heading != null ? -heading : 0,
+      follow: s.settings.rotate && heading != null,
       range,
       scan: S.scanRange(),
       territory: rangeMode === 2,
