@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Portal Hackers: Nexus</title>
+<meta name="description" content="Explore your real streets with a Sci-Fi Compass. Discover and hack portals for your team, defend and link them, and climb from Scout to Nexus Master.">
+<meta name="theme-color" content="#030814">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Portal Hackers">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Audiowide&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ Compass ============ -->
+<main id="game" hidden>
+  <header class="hud">
+    <button id="hud-agent" class="agent" type="button" aria-label="Agent profile">
+      <span id="hud-rank-icon" class="rank-icon">🔭</span>
+      <span class="agent-text"><b id="hud-name">Agent</b><small id="hud-rank">SCOUT · Lv 1</small></span>
+    </button>
+    <div class="hud-res">
+      <span title="Energy">🔋<b id="hud-energy">100</b></span>
+      <span title="Tech Cores">⬢<b id="hud-cores">0</b></span>
+      <button id="hud-menu" class="icon-btn" type="button" aria-label="Menu">☰</button>
+    </div>
+  </header>
+
+  <div id="gps-status" class="gps-status" role="status" aria-live="polite"></div>
+
+  <section class="compass-wrap">
+    <canvas id="compass" aria-label="Sci-Fi Compass: portals around you"></canvas>
+    <div class="compass-side">
+      <button id="btn-range" class="round-btn" type="button" aria-label="Change radar range">⤢</button>
+      <button id="btn-territory" class="round-btn" type="button" aria-label="Territory map" hidden>🗺️</button>
+      <button id="btn-rotate" class="round-btn" type="button" aria-label="Rotate with phone">🧭</button>
+    </div>
+    <div id="active" class="active-strip"></div>
+  </section>
+
+  <section class="xp-panel" aria-label="Level progress">
+    <div class="xp-head"><b id="xp-levels">LEVEL 1 → LEVEL 2</b><small id="xp-rank"></small></div>
+    <div id="xp-bar" class="xp-bar" role="progressbar" aria-label="XP to next level" aria-valuemin="0" aria-valuemax="100"><i id="xp-fill"></i><span></span></div>
+    <div class="xp-foot"><span id="xp-text">0 / 500 XP</span><small id="xp-caps"></small></div>
+  </section>
+
+  <button id="next-card" class="next-card" type="button">
+    <div class="next-top"><b id="next-title">NEXT LEVEL: 2</b><span id="next-left">Earn 500 more XP</span></div>
+    <small class="muted">Recommended:</small>
+    <ul id="next-list"></ul>
+  </button>
+
+  <nav class="dock" aria-label="Main">
+    <button id="btn-missions" class="dock-btn" type="button"><span aria-hidden="true">🎯</span>Missions<i id="dot-missions" class="dot" hidden></i></button>
+    <button id="btn-upgrades" class="dock-btn" type="button"><span aria-hidden="true">🛠️</span>Compass<i id="dot-upgrades" class="dot" hidden></i></button>
+    <button id="btn-scan" class="scan-btn" type="button" aria-label="Scan nearby"><span>SCAN</span></button>
+    <button id="btn-team" class="dock-btn" type="button"><span aria-hidden="true">🤝</span>Team<i id="dot-team" class="dot" hidden></i></button>
+    <button id="btn-profile" class="dock-btn" type="button"><span aria-hidden="true">🪪</span>Profile</button>
+  </nav>
+</main>
+
+<!-- ============ Hack ============ -->
+<section id="hack" class="hack" hidden>
+  <div class="hack-card">
+    <header class="hk-head">
+      <div><b id="hk-title">Basic Hack</b><small id="hk-sub"></small></div>
+      <button id="hk-abort" class="round-btn" type="button" aria-label="Abort hack">✕</button>
+    </header>
+    <div class="hk-timer"><i id="hk-timer"></i></div>
+    <p id="hk-status" class="hk-status" role="status" aria-live="polite"></p>
+    <div id="hk-grid" class="hk-grid"></div>
+    <div class="hk-foot"><span id="hk-progress">0 / 4</span><span id="hk-lives"></span></div>
+  </div>
+</section>
+
+<!-- ============ Sheets, toasts, level-up ============ -->
+<section id="sheet" class="sheet" hidden>
+  <div id="sheet-card" class="sheet-card" role="dialog" aria-modal="true"></div>
+</section>
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+<div id="levelup" class="levelup" hidden>
+  <div class="lu-card">
+    <small>LEVEL UP</small>
+    <b id="lu-level">2</b>
+    <span id="lu-rank" class="lu-rank"></span>
+    <ul id="lu-rewards"></ul>
+    <button id="lu-ok" class="btn btn-main" type="button">Continue</button>
+  </div>
+</div>
+
+<!-- ============ Onboarding ============ -->
+<section id="onboard" class="onboard">
+  <div class="ob-step" data-step="title">
+    <div class="logo-mark" aria-hidden="true"></div>
+    <h1 class="logo">PORTAL HACKERS<span>NEXUS</span></h1>
+    <p class="tagline">Portals are opening on your streets. Find them with your Sci-Fi Compass, hack them for your team, and climb from Scout to Nexus Master.</p>
+    <div class="ob-actions">
+      <button id="ob-continue" class="btn btn-main btn-big" type="button" hidden>Continue</button>
+      <button id="ob-begin" class="btn btn-main btn-big" type="button">Begin</button>
+    </div>
+  </div>
+
+  <div class="ob-step" data-step="team" hidden>
+    <h2>Choose your team</h2>
+    <p class="muted">Three factions fight for the portal network. Your team levels up with you.</p>
+    <div id="ob-teams" class="ob-teams"></div>
+  </div>
+
+  <div class="ob-step" data-step="name" hidden>
+    <h2>Your hacker name</h2>
+    <form id="ob-name-form" class="ob-form">
+      <input id="ob-name" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="NovaPlayer" aria-label="Hacker name">
+      <button class="btn btn-main btn-big" type="submit">Next</button>
+    </form>
+  </div>
+
+  <div class="ob-step" data-step="move" hidden>
+    <h2>How will you move?</h2>
+    <p class="muted">Portals sit on your real streets. Your location stays on your phone.</p>
+    <button id="ob-gps" class="btn btn-main btn-big" type="button">📍 Use my location</button>
+    <button id="ob-tap" class="btn btn-big" type="button">🏠 Play at home (tap the compass to walk)</button>
+    <p class="fineprint">Stay aware of your surroundings. Don't trespass, and never play while driving or cycling.</p>
+  </div>
+</section>
+
+<script src="js/core.js"></script>
+<script src="js/data.js"></script>
+<script src="js/world.js"></script>
+<script src="js/state.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/compass.js"></script>
+<script src="js/hack.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+<script>
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>

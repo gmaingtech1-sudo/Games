@@ -1,0 +1,779 @@
+/* Portal Hackers: Nexus — everything that isn't the compass: the HUD, the
+   XP bar and "next level" card, toasts, the level-up screen, and the panels
+   (portal, scan, missions, Compass upgrades, team, profile, progression
+   guide, menu). */
+window.PH = window.PH || {};
+(function (PH) {
+  'use strict';
+
+  const D = PH.data;
+  const S = PH.state;
+  const W = PH.world;
+  const A = PH.audio;
+  const { esc, fmt, fmtDist, fmtTime } = PH.util;
+  const $ = (id) => document.getElementById(id);
+  const G = () => PH.game;
+
+  /* ------------------ Toasts ------------------ */
+
+  function toast(html, kind) {
+    const box = $('toasts');
+    const el = document.createElement('div');
+    el.className = `toast ${kind || ''}`;
+    el.innerHTML = html;
+    box.appendChild(el);
+    while (box.children.length > 4) box.removeChild(box.firstChild);
+    setTimeout(() => el.classList.add('out'), 3200);
+    setTimeout(() => el.remove(), 3700);
+  }
+
+  const gain = (xp, cores) => [xp ? `<b class="xp">+${fmt(xp)} XP</b>` : '', cores ? `<b class="cores">+${fmt(cores)} ⬢</b>` : ''].join(' ');
+
+  /* ------------------ Sheet ------------------ */
+
+  let sheetOnClose = null;
+  let sheetRender = null;
+
+  function sheet(render, onClose) {
+    sheetRender = render;
+    sheetOnClose = onClose || null;
+    $('sheet').hidden = false;
+    redraw();
+  }
+
+  function redraw() {
+    if (!sheetRender || $('sheet').hidden) return;
+    const card = $('sheet-card');
+    const scroll = card.scrollTop;
+    card.innerHTML = `<button class="sheet-x" type="button" data-close aria-label="Close">✕</button>${sheetRender()}`;
+    card.scrollTop = scroll;
+  }
+
+  function close() {
+    $('sheet').hidden = true;
+    sheetRender = null;
+    const cb = sheetOnClose;
+    sheetOnClose = null;
+    if (cb) cb();
+  }
+
+  const isOpen = () => !$('sheet').hidden;
+
+  // One click handler for every sheet: buttons say what they do with
+  // data-act="name" data-arg="…".
+  const actions = {};
+  function bindSheet() {
+    $('sheet').addEventListener('click', (e) => {
+      if (e.target.id === 'sheet') { close(); return; }
+      const b = e.target.closest('button');
+      if (!b || b.disabled) return;
+      if (b.hasAttribute('data-close')) { A.tap(); close(); return; }
+      const act = b.getAttribute('data-act');
+      if (act && actions[act]) { A.tap(); actions[act](b.getAttribute('data-arg'), b); }
+    });
+  }
+
+  /* ------------------ HUD ------------------ */
+
+  function displayName() {
+    const s = S.save;
+    return `${s.prestige ? `[P${s.prestige}] ` : ''}${s.name}`;
+  }
+
+  function hud() {
+    const s = S.save;
+    if (!s) return;
+    const pr = S.progress();
+    const rk = S.rank();
+    $('hud-name').textContent = displayName();
+    $('hud-rank').textContent = `${rk.name} · Lv ${pr.level}`;
+    $('hud-rank-icon').textContent = rk.icon;
+    $('hud-energy').textContent = `${s.energy}/${S.maxEnergy()}`;
+    $('hud-cores').textContent = fmt(s.cores);
+
+    if (pr.next) {
+      $('xp-levels').textContent = `LEVEL ${pr.level} → LEVEL ${pr.next}`;
+      $('xp-text').textContent = `${fmt(pr.into)} / ${fmt(pr.need)} XP`;
+    } else {
+      $('xp-levels').textContent = `LEVEL ${pr.level} · MAX`;
+      $('xp-text').textContent = S.canPrestige() ? 'NEXUS MASTER: Prestige is ready' : 'MAX';
+    }
+    $('xp-rank').textContent = `${rk.icon} ${rk.name}`;
+    $('xp-fill').style.width = `${pr.frac * 100}%`;
+    $('xp-bar').setAttribute('aria-valuenow', Math.round(pr.frac * 100));
+    $('xp-caps').textContent = `Today ${fmt(s.caps.dayXP)}/${fmt(D.CAPS.day)} · Week ${fmt(s.caps.weekXP)}/${fmt(D.CAPS.week)}`;
+
+    if (pr.next) {
+      $('next-title').textContent = `NEXT LEVEL: ${pr.next}`;
+      $('next-left').textContent = `Earn ${fmt(pr.left)} more XP`;
+      const rw = D.LEVELS[pr.next][1].map(S.rewardText).join(' + ');
+      $('next-list').innerHTML = S.recommend().map((t) => `<li>${esc(t)}</li>`).join('') + `<li class="reward">🎁 ${esc(rw)}</li>`;
+    } else {
+      $('next-title').textContent = 'NEXUS MASTER';
+      $('next-left').textContent = 'Prestige is ready';
+      $('next-list').innerHTML = '<li>👑 Open your profile to enter NEXUS PRESTIGE</li>';
+    }
+
+    $('btn-territory').hidden = !S.has('territory');
+    $('dot-upgrades').hidden = !(s.tokens > 0 || D.BRANCH_ORDER.some((b) => canBuy(b)));
+    $('dot-missions').hidden = !(S.has('squad') && !s.squad.active && s.squad.offer.length) && !(S.has('legendaryMissions') && s.legend && !s.legend.active && !s.legend.done);
+    $('dot-team').hidden = !D.OBJECTIVES.some((o) => { const p = S.objectiveProgress(o, Date.now()); return p.done && !p.claimed; });
+
+    activeStrip();
+  }
+
+  function canBuy(b) {
+    const s = S.save;
+    const B = D.BRANCHES[b];
+    if (B.gate && !S.has(B.gate)) return false;
+    if (s.up[b] >= D.BRANCH_MAX) return false;
+    return s.cores >= D.branchCost(b, s.up[b]);
+  }
+
+  function activeStrip() {
+    const s = S.save;
+    const now = Date.now();
+    const chips = [];
+    if (s.defense) {
+      const m = s.defense.acc / 60e3;
+      const goal = s.defense.paid10 ? 30 : 10;
+      chips.push(`<button class="chip def" type="button" data-chip="defense">🛡️ ${esc(s.defense.name)} ${Math.floor(m)}:${String(Math.floor((s.defense.acc / 1000) % 60)).padStart(2, '0')} / ${goal}:00</button>`);
+    }
+    if (s.squad.active) {
+      const a = s.squad.active, M = D.SQUAD[a.type];
+      chips.push(`<button class="chip squad" type="button" data-chip="missions">🤝 ${esc(M.name)} ${a.prog}/${M.goal} · ${fmtTime(a.until - now)}</button>`);
+    }
+    if (s.legend && s.legend.active) chips.push(`<button class="chip legend" type="button" data-chip="missions">🐉 Legendary ${s.legend.stage}/3</button>`);
+    const w = S.eventWindow(now);
+    if (w.live) chips.push(`<button class="chip event" type="button" data-chip="event">🏆 ${esc(S.eventName())} · ${fmtTime(w.end - now)} · ${s.event.win === w.win ? s.event.pts : 0} pts</button>`);
+    if (G().linkFrom) chips.push(`<button class="chip link" type="button" data-chip="cancelLink">🔗 Pick a portal to link · ✕</button>`);
+    $('active').innerHTML = chips.join('');
+  }
+
+  /* ------------------ Level-up ------------------ */
+
+  const luQueue = [];
+  function levelUp(d) {
+    luQueue.push(d);
+    if (luQueue.length === 1) showLevelUp();
+  }
+
+  function showLevelUp() {
+    const d = luQueue[0];
+    if (!d) return;
+    A.levelUp();
+    $('lu-level').textContent = d.level;
+    const newRank = D.RANKS.find((r) => r.from === d.level && d.level > 1);
+    $('lu-rank').textContent = newRank ? `New rank: ${newRank.icon} ${newRank.name}` : `${d.rank.icon} ${d.rank.name}`;
+    $('lu-rewards').innerHTML = d.rewards.map((r) => `<li>🎁 ${esc(r.text)}${r.note ? `<small>${esc(r.note)}</small>` : ''}</li>`).join('')
+      + (d.level % 5 === 0 ? '<li class="major">★ Major unlock</li>' : '');
+    $('levelup').hidden = false;
+  }
+
+  function bindLevelUp() {
+    $('lu-ok').addEventListener('click', () => {
+      luQueue.shift();
+      $('levelup').hidden = true;
+      if (luQueue.length) setTimeout(showLevelUp, 200);
+      hud();
+    });
+  }
+
+  /* ------------------ Portal ------------------ */
+
+  function ownerLabel(o) {
+    return o ? `<span style="color:${D.TEAMS[o].color}">${D.TEAMS[o].glyph} ${D.TEAMS[o].name}</span>` : '<span class="muted">Neutral</span>';
+  }
+
+  function portalSheet(id) {
+    const p = W.portalById(id);
+    if (!p) return;
+    const pick = G().linkFrom;
+    if (pick && pick.id !== p.id) { linkTo(p); return; }
+    sheet(() => portalHTML(p));
+  }
+
+  function portalHTML(p) {
+    const s = S.save;
+    const now = Date.now();
+    const R = D.RARITY[p.rarity];
+    const dist = W.distM(G().pos, p);
+    const known = S.discovered(p);
+    const owner = S.ownerOf(p, now);
+    const r = s.portals[p.id] || {};
+    let out = `<div class="p-head" style="--rc:${R.color}">
+      <span class="p-icon">${R.icon}</span>
+      <div><h2>${known ? esc(p.name) : 'Unknown signal'}</h2>
+      <small>${R.name} portal · ${R.diff} · ${fmtDist(dist)} away</small></div></div>`;
+    if (!known) {
+      out += `<p class="muted">Walk within your scanner range (${S.scanRange()} m) to discover it.</p>
+        <p class="tbl-note">Discovering it: <b class="xp">+${fmt(D.XP.discover[p.rarity] || 0)} XP</b> <b class="cores">+${fmt(D.CORES.discover[p.rarity] || 0)} ⬢</b></p>`;
+      out += walkBtn(p);
+      return out;
+    }
+    out += `<div class="p-meta"><span>Held by ${ownerLabel(owner)}${r.mine && owner === s.team ? ' · <b>yours</b>' : ''}</span>
+      <span>Worth ${fmt(R.xp[0])}–${fmt(R.xp[1])} XP · ${fmt(R.cores[0])}–${fmt(R.cores[1])} ⬢</span></div>`;
+
+    // Hack.
+    const cd = r.hackAt && r.hackAt > now ? r.hackAt - now : 0;
+    out += `<h3>Hack${cd ? ` · ready in ${fmtTime(cd)}` : ''}</h3><div class="tiers">`;
+    for (const t of S.tiersFor(p)) {
+      const why = S.canHack(p, t.tier, dist);
+      out += `<button class="tier ${t.allowed ? '' : 'locked'}" type="button" data-act="hack" data-arg="${p.id}|${t.tier}" ${why ? 'disabled' : ''}>
+        <b>${t.H.name}</b><small>${t.allowed ? `+${fmt(D.XP.hack[t.tier])} XP · +${D.CORES.hack[t.tier]} ⬢ · 🔋${t.H.energy}` : esc(t.lockText)}</small>
+        ${why && t.allowed ? `<small class="why">${esc(why)}</small>` : ''}</button>`;
+    }
+    out += '</div>';
+    if (r.breach > now) out += `<p class="good small">Shields down for ${fmtTime(r.breach - now)}: capture it now!</p>`;
+
+    // Capture.
+    if (owner !== s.team) {
+      const c = S.canCapture(p, dist);
+      const xp = p.rarity === 'nexus' ? `${fmt(R.xp[0])}–${fmt(R.xp[1])} XP · ${fmt(R.cores[0])}–${fmt(R.cores[1])} ⬢`
+        : owner ? `+${D.XP.captureEnemy} XP · +${D.CORES.captureEnemy} ⬢` : `+${D.XP.captureNeutral} XP`;
+      out += `<button class="btn btn-main wide" type="button" data-act="capture" data-arg="${p.id}" ${c.ok ? '' : 'disabled'}>🏴 Capture <small>${xp} · 🔋${D.ENERGY.cost.capture}</small></button>`;
+      if (!c.ok) out += `<p class="why center">${esc(c.text)}</p>`;
+    } else {
+      // Defend.
+      if (s.defense && s.defense.id === p.id) {
+        out += `<button class="btn wide" type="button" data-act="stopDefend">🛡️ Stop defending <small>${Math.floor(s.defense.acc / 60e3)} min held</small></button>`;
+      } else {
+        const c = S.canDefend(p, dist);
+        out += `<button class="btn wide" type="button" data-act="defend" data-arg="${p.id}" ${c.ok ? '' : 'disabled'}>🛡️ Defend <small>10 min: +${D.XP.defend10} XP · 30 min: +${D.XP.defend30} XP</small></button>`;
+        if (!c.ok) out += `<p class="why center">${esc(c.text)}</p>`;
+      }
+      // Link.
+      if (S.has('linking')) {
+        const ok = dist <= D.RANGE.interact;
+        out += `<button class="btn wide" type="button" data-act="linkStart" data-arg="${p.id}" ${ok ? '' : 'disabled'}>🔗 Connect to another portal <small>2 portals: +${D.XP.link2} XP · network of 3+: +${D.XP.link3} XP</small></button>`;
+        if (!ok) out += `<p class="why center">Stand within ${D.RANGE.interact} m to link from here</p>`;
+      } else {
+        out += `<p class="muted small center">🔗 Portal Linking opens at Level ${D.GATES.linking.level}</p>`;
+      }
+    }
+    out += walkBtn(p);
+    return out;
+  }
+
+  function walkBtn(ll) {
+    if (S.save.settings.walk !== 'tap') return '';
+    return `<button class="btn ghost wide" type="button" data-act="walk" data-arg="${ll.lat},${ll.lng}">🚶 Walk here</button>`;
+  }
+
+  actions.walk = (arg) => {
+    const [lat, lng] = arg.split(',').map(Number);
+    G().setWalk({ lat, lng });
+    close();
+  };
+
+  actions.hack = async (arg) => {
+    const [id, tier] = arg.split('|');
+    const p = W.portalById(id);
+    const dist = W.distM(G().pos, p);
+    const why = S.canHack(p, tier, dist);
+    if (why) { toast(esc(why), 'bad'); return; }
+    S.startHack(p, tier);
+    close();
+    const params = S.hackParams(tier, p.rarity);
+    const ok = await PH.hack.start({ title: D.HACKS[tier].name, sub: `${D.RARITY[p.rarity].icon} ${p.name}`, params });
+    const res = S.finishHack(p, tier, ok);
+    if (res.ok) {
+      toast(`💻 ${D.HACKS[tier].name} complete ${gain(res.xp, res.cores)}${res.doubled ? ' <small>⚛️ Quantum double cores!</small>' : ''}${res.breached ? '<br><small>Shields down: capture it within 5 minutes</small>' : ''}`, 'good');
+      if (res.breached) portalSheet(id);
+    } else {
+      toast('Hack failed. The portal locks you out for 1 minute.', 'bad');
+    }
+    hud();
+  };
+
+  actions.capture = (id) => {
+    const p = W.portalById(id);
+    const c = S.canCapture(p, W.distM(G().pos, p));
+    if (!c.ok) { toast(esc(c.text), 'bad'); return; }
+    const res = S.capture(p);
+    A.capture();
+    toast(`🏴 ${esc(res.text)} ${gain(res.xp, res.cores)}`, 'good');
+    redraw();
+    hud();
+  };
+
+  actions.defend = (id) => {
+    const p = W.portalById(id);
+    S.startDefense(p);
+    toast(`🛡️ Defending ${esc(p.name)}. Stay within ${D.RANGE.defendSlack} m. 10 min: +${D.XP.defend10} XP, 30 min: +${D.XP.defend30} XP`);
+    redraw();
+    hud();
+  };
+  actions.stopDefend = () => { S.stopDefense('Stopped'); redraw(); hud(); };
+
+  actions.linkStart = (id) => {
+    const p = W.portalById(id);
+    G().linkFrom = p;
+    close();
+    const options = linkOptions(p);
+    if (!options.length) toast(`No team portals you've discovered within ${S.linkRange()} m. Capture more nearby first.`, 'bad');
+    else toast(`🔗 Tap a team portal within ${S.linkRange()} m to link it (${options.length} in range)`);
+    hud();
+  };
+
+  function linkOptions(a) {
+    return G().nearby.portals.filter((b) => b.id !== a.id && S.discovered(b) && S.ownerOf(b) === S.save.team && W.distM(a, b) <= S.linkRange());
+  }
+
+  function linkTo(b) {
+    const a = G().linkFrom;
+    const why = S.canLink(a, b, G().pos);
+    if (why) { toast(`🔗 ${esc(why)}`, 'bad'); return; }
+    const res = S.link(a, b);
+    A.link();
+    G().linkFrom = null;
+    toast(`🔗 ${res.n >= 3 ? `Network of ${res.n} portals` : '2 portals connected'} ${gain(res.xp)}`, 'good');
+    hud();
+  }
+
+  function energySheet(e) {
+    sheet(() => {
+      const d = W.distM(G().pos, e);
+      return `<div class="p-head" style="--rc:#FFE65A"><span class="p-icon">🔋</span><div><h2>Energy cell</h2><small>${fmtDist(d)} away</small></div></div>
+        <p class="muted">Walk within ${D.RANGE.interact} m to collect it automatically: +${D.ENERGY.cell(S.save.up.energy)} energy (only when you're not full). Energy cells reappear every 10 minutes.</p>${walkBtn(e)}`;
+    });
+  }
+
+  function signalSheet(sg) {
+    sheet(() => {
+      const d = W.distM(G().pos, sg);
+      return `<div class="p-head" style="--rc:#C08CFF"><span class="p-icon">🌌</span><div><h2>Nexus signal</h2><small>${fmtDist(d)} away · fades in ${fmtTime(sg.expires - Date.now())}</small></div></div>
+        <p class="muted">A rare ripple from the Nexus. Walk within ${D.RANGE.interact} m to lock onto it: <b class="xp">+${fmt(D.XP.nexusSignal)} XP</b>.</p>${walkBtn(sg)}`;
+    });
+  }
+
+  /* ------------------ Scan ------------------ */
+
+  function scanSheet() {
+    sheet(() => {
+      const n = G().nearby;
+      const pos = G().pos;
+      const items = [];
+      for (const p of n.portals) items.push({ d: W.distM(pos, p), p });
+      items.sort((a, b) => a.d - b.d);
+      let out = `<h2>Scan</h2><p class="muted small">Scanner range ${S.scanRange()} m · reach ${D.RANGE.interact} m${S.has('quantum') ? ` · Nexus signals ${S.signalRange()} m` : ''}</p>`;
+      if (n.signals.length) {
+        out += '<h3>Nexus signals</h3><div class="list">';
+        for (const sg of n.signals) out += `<button class="row" type="button" data-act="openSignal" data-arg="${sg.id}"><span class="r-icon">🌌</span><span><b>Nexus signal</b><small>${fmtDist(W.distM(pos, sg))}</small></span></button>`;
+        out += '</div>';
+      }
+      out += '<h3>Portals</h3><div class="list">';
+      if (!items.length) out += '<p class="muted">Nothing on the scanner. Keep moving.</p>';
+      for (const { d, p } of items.slice(0, 30)) {
+        const R = D.RARITY[p.rarity];
+        const known = S.discovered(p);
+        const o = S.ownerOf(p);
+        out += `<button class="row" type="button" data-act="openPortal" data-arg="${p.id}">
+          <span class="r-icon">${R.icon}</span>
+          <span><b>${known ? esc(p.name) : 'Unknown signal'}</b><small>${R.name} · ${known ? ownerLabel(o) : 'undiscovered'}</small></span>
+          <span class="r-dist">${fmtDist(d)}</span></button>`;
+      }
+      out += '</div>';
+      return out;
+    });
+  }
+  actions.openPortal = (id) => portalSheet(id);
+  actions.openSignal = (id) => { const sg = G().nearby.signals.find((x) => x.id === id); if (sg) signalSheet(sg); };
+
+  /* ------------------ Missions ------------------ */
+
+  let missionTab = 'daily';
+  function missionsSheet(tab) {
+    if (tab) missionTab = tab;
+    sheet(missionsHTML);
+  }
+  actions.mtab = (t) => { missionTab = t; redraw(); };
+
+  function tabs(list, cur, act) {
+    return `<div class="tabs">${list.map(([id, label]) => `<button type="button" class="${id === cur ? 'on' : ''}" data-act="${act}" data-arg="${id}">${label}</button>`).join('')}</div>`;
+  }
+
+  function missionsHTML() {
+    const s = S.save;
+    const now = Date.now();
+    let out = `<h2>Missions</h2>${tabs([['daily', 'Daily'], ['squad', 'Squad'], ['legend', 'Legendary'], ['event', 'Team Event']], missionTab, 'mtab')}`;
+    if (missionTab === 'daily') {
+      const dl = s.daily;
+      out += `<p class="muted small">3 new missions every day · resets in ${fmtTime(S.nextMidnight(now) - now)}</p><div class="list">`;
+      for (const id of dl.ids) {
+        const M = D.DAILY[id];
+        const pr = Math.min(M.goal, dl.prog[id] || 0);
+        out += `<div class="mission ${dl.done[id] ? 'done' : ''}"><span class="r-icon">${M.icon}</span>
+          <span><b>${esc(M.text)}</b><small>${M.xp} XP + ${M.cores} Cores</small><span class="mini-bar"><i style="width:${(pr / M.goal) * 100}%"></i></span></span>
+          <span class="r-dist">${dl.done[id] ? '✓' : `${pr}/${M.goal}`}</span></div>`;
+      }
+      out += `</div><div class="mission bonus ${dl.bonus ? 'done' : ''}"><span class="r-icon">🎁</span><span><b>Daily Completion Bonus</b><small>Complete all 3: ${D.DAILY_BONUS.xp} XP + ${D.DAILY_BONUS.cores} Tech Cores</small></span><span class="r-dist">${dl.bonus ? '✓' : `${dl.ids.filter((i) => dl.done[i]).length}/3`}</span></div>`;
+    } else if (missionTab === 'squad') {
+      if (!S.has('squad')) return out + lockedHTML('squad');
+      out += `<p class="muted small">Your squad: ${s.squadmates.map(esc).join(', ')} and you. Every mission: <b class="xp">+${D.XP.squad} XP</b> <b class="cores">+${D.CORES.squad} ⬢</b>. ${D.SQUAD_MINUTES} minutes to finish.</p>`;
+      const a = s.squad.active;
+      if (a) {
+        const M = D.SQUAD[a.type];
+        out += `<div class="mission active"><span class="r-icon">🤝</span><span><b>${esc(M.name)}</b><small>${esc(M.text)} · ${fmtTime(a.until - now)} left</small><span class="mini-bar"><i style="width:${(a.prog / M.goal) * 100}%"></i></span></span><span class="r-dist">${a.prog}/${M.goal}</span></div>`;
+      } else {
+        out += '<h3>Available</h3><div class="list">';
+        if (!s.squad.offer.length) out += '<p class="muted">New squad missions arrive every 4 hours.</p>';
+        for (const t of s.squad.offer) {
+          const M = D.SQUAD[t];
+          out += `<div class="mission"><span class="r-icon">${t === 'teamop' ? '⭐' : '🤝'}</span><span><b>${esc(M.name)}</b><small>${esc(M.text)}${t === 'teamop' ? ' · Special Team Mission' : ''}</small></span><button class="btn small" type="button" data-act="squad" data-arg="${t}">Accept</button></div>`;
+        }
+        out += '</div>';
+      }
+    } else if (missionTab === 'legend') {
+      if (!S.has('legendaryMissions')) return out + lockedHTML('legendaryMissions');
+      const L = s.legend;
+      out += `<p class="muted small">One Legendary Mission a day. Clear all three stages, in order, before midnight: <b class="xp">+${fmt(D.XP.legendaryMission)} XP</b> <b class="cores">+${D.CORES.legendaryMission} ⬢</b></p><div class="list">`;
+      D.LEGENDARY_STAGES.forEach((st, i) => {
+        const done = L.done || L.stage > i;
+        out += `<div class="mission ${done ? 'done' : L.active && L.stage === i ? 'active' : ''}"><span class="r-icon">${done ? '✓' : i + 1}</span><span><b>${esc(st.text)}</b></span></div>`;
+      });
+      out += '</div>';
+      if (L.done) out += '<p class="good center">Done for today. A new one arrives at midnight.</p>';
+      else if (!L.active) out += '<button class="btn btn-main wide" type="button" data-act="legend">🐉 Begin Legendary Mission</button>';
+    } else {
+      const w = S.eventWindow(now);
+      const name = S.eventName();
+      out += `<p class="muted small">A team event runs for 30 minutes every 2 hours. Discover, hack, capture, link and defend to score for your team. Win: <b class="xp">+${fmt(D.XP.teamEvent)} XP</b> and Faction Points.</p>`;
+      if (w.live) {
+        const pts = s.event.win === w.win ? s.event.pts : 0;
+        const sc = S.eventScores(w.win, pts);
+        const fr = Math.min(1, (now - w.start) / D.EVENT.length);
+        out += `<div class="event-card live"><b>🏆 ${esc(name)} is live</b><small>Ends in ${fmtTime(w.end - now)} · your points: ${pts}</small>`;
+        for (const t of Object.keys(D.TEAMS)) {
+          const v = Math.round(sc[t] * (t === s.team ? 1 : fr));
+          out += `<div class="ev-row"><span style="color:${D.TEAMS[t].color}">${D.TEAMS[t].name}</span><span class="mini-bar"><i style="width:${Math.min(100, v / 30)}%;background:${D.TEAMS[t].color}"></i></span><b>${fmt(v)}</b></div>`;
+        }
+        out += '</div>';
+      } else {
+        out += `<div class="event-card"><b>Next: ${esc(name)}</b><small>Starts in ${fmtTime(w.next - now)}</small></div>`;
+      }
+      out += `<h3>Points</h3><p class="small muted">Discover ${D.EVENT_PTS.discover} · Hack ${D.HACKS.basic.pts}/${D.HACKS.advanced.pts}/${D.HACKS.expert.pts} · Capture ${D.EVENT_PTS.capture} · Link ${D.EVENT_PTS.link} · Defend ${D.EVENT_PTS.defendMin}/min · Nexus signal ${D.EVENT_PTS.signal}</p>`;
+    }
+    return out;
+  }
+
+  function lockedHTML(u) {
+    return `<div class="locked-box">🔒 <b>${esc(D.GATES[u].name)}</b> opens at Level ${D.GATES[u].level}<small>${esc(D.GATES[u].text)}</small></div>`;
+  }
+
+  actions.squad = (t) => { if (S.acceptSquad(t)) toast(`🤝 Squad mission accepted: ${esc(D.SQUAD[t].name)}`); redraw(); hud(); };
+  actions.legend = () => { if (S.acceptLegend()) toast('🐉 Legendary Mission started'); redraw(); hud(); };
+
+  /* ------------------ Compass upgrades ------------------ */
+
+  function upgradesSheet() {
+    sheet(() => {
+      const s = S.save;
+      let out = `<h2>Compass upgrades</h2><p class="muted small">Spend Tech Cores to upgrade your Sci-Fi Compass. You choose the path. You have <b class="cores">${fmt(s.cores)} ⬢</b>${s.tokens ? ` and <b>${s.tokens} Compass Module${s.tokens > 1 ? 's' : ''}</b> (a free upgrade each)` : ''}.</p><div class="branches">`;
+      for (const b of D.BRANCH_ORDER) {
+        const B = D.BRANCHES[b];
+        const l = s.up[b];
+        const locked = B.gate && !S.has(B.gate);
+        const max = l >= D.BRANCH_MAX;
+        const cost = max ? 0 : D.branchCost(b, l);
+        out += `<div class="branch ${locked ? 'locked' : ''}">
+          <div class="br-top"><span class="r-icon">${B.icon}</span><span><b>${B.name} <small>${l}/${D.BRANCH_MAX}</small></b><small>${esc(B.text)}</small></span></div>
+          <span class="pips">${Array.from({ length: D.BRANCH_MAX }, (_, i) => `<i class="${i < l ? 'on' : ''}"></i>`).join('')}</span>
+          <small class="effect">Now: ${esc(B.effect(l))}${max ? '' : `<br>Next: ${esc(B.effect(l + 1))}`}</small>
+          ${locked ? `<small class="why">Opens at Level ${D.GATES[B.gate].level}</small>`
+            : max ? '<small class="good">MAX</small>'
+            : `<button class="btn small" type="button" data-act="upgrade" data-arg="${b}" ${s.tokens > 0 || s.cores >= cost ? '' : 'disabled'}>${s.tokens > 0 ? 'Use Compass Module' : `Upgrade · ${fmt(cost)} ⬢`}</button>`}
+        </div>`;
+      }
+      out += '</div>';
+      return out;
+    });
+  }
+
+  actions.upgrade = (b) => {
+    const r = S.upgrade(b);
+    toast(esc(r.text), r.ok ? 'good' : 'bad');
+    if (r.ok) A.ping();
+    redraw();
+    hud();
+  };
+
+  /* ------------------ Team ------------------ */
+
+  function teamSheet() {
+    sheet(() => {
+      const s = S.save;
+      const T = D.TEAMS[s.team];
+      const fp = S.teamFP();
+      const tl = S.teamLevel();
+      const lo = D.teamFPFor(tl), hi = D.teamFPFor(tl + 1);
+      const now = Date.now();
+      let out = `<div class="team-head" style="--tc:${T.color}"><span class="team-glyph">${T.glyph}</span><div><h2>TEAM ${T.name}</h2><small>${esc(T.motto)}</small></div></div>
+        <div class="xp-mini"><b>TEAM LEVEL ${tl}</b><span class="mini-bar"><i style="width:${tl >= D.TEAM_MAX ? 100 : ((fp - lo) / (hi - lo)) * 100}%;background:${T.color}"></i></span>
+        <small>${fmt(fp)} Faction Points${tl < D.TEAM_MAX ? ` · ${fmt(hi - fp)} to Team Level ${tl + 1}` : ''} · you've earned ${fmt(s.fp)}</small></div>
+        <p class="muted small">You earn Faction Points from squad missions, team events, Legendary Missions and weekly objectives. Your team levels up for everyone.</p>
+        <h3>Team perks</h3><div class="list">`;
+      for (const pk of D.TEAM_PERKS) {
+        out += `<div class="perk ${tl >= pk.level ? 'on' : ''}"><b>TEAM LEVEL ${pk.level}</b><span>${esc(pk.name)}${pk.text ? `<small>${esc(pk.text)}</small>` : ''}</span><i>${tl >= pk.level ? '✓' : '🔒'}</i></div>`;
+      }
+      const ws = S.weekStart(now);
+      out += `</div><h3>Weekly team objectives · ${fmtTime(ws + 7 * 86400e3 - now)} left</h3>`;
+      D.OBJECTIVES.forEach((o, i) => {
+        const pr = S.objectiveProgress(o, now);
+        out += `<div class="objective ${pr.done ? 'done' : ''}"><b>OBJECTIVE ${i + 1} — ${esc(o.name)}</b><span>${esc(o.text)}</span>
+          <span class="mini-bar"><i style="width:${pr.frac * 100}%;background:${T.color}"></i></span>
+          <small>${fmt(pr.total)} / ${fmt(o.goal)} · you: ${fmt(pr.mine)}</small><small class="reward">${esc(o.reward)}</small>
+          ${pr.claimed ? '<small class="good">Claimed ✓</small>' : pr.done ? `<button class="btn small btn-main" type="button" data-act="claimObj" data-arg="${o.id}">Claim</button>` : ''}</div>`;
+      });
+      out += `<h3>Your squad</h3><p class="small">${s.squadmates.map((m) => `🧑‍🚀 ${esc(m)}`).join(' · ')}</p>`;
+      if (!S.has('squad')) out += `<p class="muted small">Squad missions open at Level ${D.GATES.squad.level}.</p>`;
+      return out;
+    });
+  }
+
+  actions.claimObj = (id) => {
+    if (S.claimObjective(id)) { A.levelUp(); toast('🏆 Team objective reward claimed', 'good'); }
+    redraw();
+    hud();
+  };
+
+  /* ------------------ Profile ------------------ */
+
+  let profileTab = 'profile';
+  function profileSheet(tab) {
+    if (tab) profileTab = tab;
+    sheet(profileHTML);
+  }
+  actions.ptab = (t) => { profileTab = t; redraw(); };
+
+  function profileHTML() {
+    const s = S.save;
+    const pr = S.progress();
+    const rk = S.rank();
+    const T = D.TEAMS[s.team];
+    let out = `<div class="prof-head" style="--tc:${T.color}">
+      <span class="prof-glyph">${s.gear ? D.GEAR[s.gear].icon : rk.icon}</span>
+      <div><h2>${esc(displayName())}${s.stars ? ` <span class="stars">${'★'.repeat(Math.min(s.stars, 10))}</span>` : ''}</h2>
+      <small>${rk.name}${s.title ? ` · ${esc(s.title)}` : ''}</small></div></div>
+      ${tabs([['profile', 'Profile'], ['ranks', 'Ranks'], ['style', 'Cosmetics'], ['ach', 'Achievements']], profileTab, 'ptab')}`;
+    if (profileTab === 'profile') {
+      const rows = [
+        ['PLAYER LEVEL', pr.level], ['RANK', rk.name], ['TEAM', T.name],
+        ['PORTALS HACKED', s.stats.hacked], ['PORTALS DEFENDED', s.stats.defended], ['SQUAD MISSIONS', s.stats.squad],
+        ['NEXUS EVENTS', s.stats.nexusEvents], ['PRESTIGE', s.prestige],
+      ];
+      out += `<dl class="profile">${rows.map(([k, v]) => `<dt>${k}:</dt><dd>${esc(typeof v === 'number' ? fmt(v) : v)}</dd>`).join('')}</dl>
+        <dl class="profile sub">
+          <dt>Total XP</dt><dd>${fmt(s.xp)} / ${fmt(D.CUM[D.MAX_LEVEL])}</dd>
+          <dt>Portals discovered</dt><dd>${fmt(s.stats.discovered)}</dd>
+          <dt>Portals captured</dt><dd>${fmt(s.stats.captured)} (holding ${S.held().length})</dd>
+          <dt>Links made</dt><dd>${fmt(s.stats.links)}</dd>
+          <dt>Nexus signals</dt><dd>${fmt(s.stats.signals)}</dd>
+          <dt>Team events won</dt><dd>${fmt(s.stats.eventsWon)}</dd>
+          <dt>Distance</dt><dd>${fmtDist(s.stats.meters)}</dd>
+        </dl>`;
+      out += '<h3>Nexus Prestige</h3>';
+      if (S.canPrestige()) {
+        const next = D.prestigeReward(s.prestige + 1);
+        out += `<p class="small">Reset to Level 1 and earn <b>P${s.prestige + 1}: ${esc(next.name)}</b>. You keep your cosmetics, achievements, badges, collectibles, Tech Cores and Compass upgrades.</p>
+          <button class="btn btn-main wide" type="button" data-act="prestige">💠 Enter NEXUS PRESTIGE</button>`;
+      } else {
+        out += `<p class="muted small">Reach Level 50 to Prestige. Your level resets to 1, but you keep cosmetics, achievements, badges, Prestige abilities and rare collectibles.</p>`;
+      }
+      out += `<div class="list">${[1, 2, 3, 4, 5, 6].map((p) => `<div class="perk ${s.prestige >= p ? 'on' : ''}"><b>P${p}${p === 6 ? '+' : ''}</b><span>${esc(D.prestigeReward(p).name)}</span><i>${s.prestige >= p ? '✓' : ''}</i></div>`).join('')}</div>`;
+    } else if (profileTab === 'ranks') {
+      for (const r of D.RANKS) {
+        const cur = r === rk;
+        const done = pr.level > r.to || (pr.level === 50 && r.id === 'master');
+        out += `<div class="rank-card ${cur ? 'cur' : ''} ${done ? 'done' : ''}"><b>${r.icon} LEVELS ${r.from}–${r.to} — ${r.name}</b><small>${esc(r.blurb)}</small>
+          <ul>${r.unlocks.map((u) => `<li>${esc(u)}</li>`).join('')}</ul></div>`;
+      }
+      out += '<h3>Unlock milestones</h3><div class="list">';
+      for (let l = 5; l <= 50; l += 5) {
+        const txt = D.LEVELS[l][1].map(S.rewardText).join(' + ');
+        out += `<div class="perk ${pr.level >= l ? 'on' : ''}"><b>LEVEL ${l}</b><span>${esc(txt)}</span><i>${pr.level >= l ? '✓' : '🔒'}</i></div>`;
+      }
+      out += '</div>';
+    } else if (profileTab === 'style') {
+      out += '<h3>Compass skins</h3><div class="cos-grid">';
+      for (const id in D.SKINS) {
+        const sk = D.SKINS[id];
+        const own = s.skins.includes(id);
+        out += `<button class="cos ${s.skin === id ? 'on' : ''}" type="button" data-act="skin" data-arg="${id}" ${own ? '' : 'disabled'}>
+          <span class="swatch" style="background:conic-gradient(${sk.colors.join(',')},${sk.colors[0]})"></span><b>${esc(sk.name)}</b><small>${own ? (s.skin === id ? 'Equipped' : 'Equip') : `🔒 ${esc(sk.from)}`}</small></button>`;
+      }
+      out += '</div><h3>Agent gear</h3><div class="cos-grid">';
+      out += `<button class="cos ${!s.gear ? 'on' : ''}" type="button" data-act="gear" data-arg=""><span class="swatch big">${rk.icon}</span><b>Rank emblem</b><small>${!s.gear ? 'Equipped' : 'Equip'}</small></button>`;
+      for (const id in D.GEAR) {
+        const g = D.GEAR[id];
+        const own = s.gears.includes(id);
+        out += `<button class="cos ${s.gear === id ? 'on' : ''}" type="button" data-act="gear" data-arg="${id}" ${own ? '' : 'disabled'}><span class="swatch big">${own ? g.icon : '🔒'}</span><b>${esc(g.name)}</b><small>${own ? (s.gear === id ? 'Equipped' : 'Equip') : esc(g.from)}</small></button>`;
+      }
+      out += '</div><h3>Badges</h3><p class="badges">';
+      out += s.badges.length ? s.badges.map((b) => `<span title="${esc(D.BADGES[b].name)}">${D.BADGES[b].icon} ${esc(D.BADGES[b].name)}</span>`).join('') : '<span class="muted">Every 10 levels earns a rank badge.</span>';
+      out += `</p>${s.frame ? '<p class="small">💠 Prestige Compass Frame active</p>' : ''}${s.portalFx ? '<p class="small">✨ Unique Portal Effect active on your portals</p>' : ''}`;
+    } else {
+      out += '<p class="muted small">Achievements are never reset by Prestige.</p><div class="list">';
+      for (const a of D.ACHIEVEMENTS) {
+        const got = s.ach[a.id];
+        out += `<div class="perk ${got ? 'on' : ''}"><b>${a.icon}</b><span>${esc(a.name)}<small>${esc(a.text)}</small></span><i>${got ? '✓' : `${Math.min(a.n, s.stats[a.stat] || 0)}/${a.n}`}</i></div>`;
+      }
+      out += '</div>';
+    }
+    return out;
+  }
+
+  actions.skin = (id) => { S.save.skin = id; S.persist(); redraw(); };
+  actions.gear = (id) => { S.save.gear = id || null; S.persist(); redraw(); };
+  actions.prestige = () => {
+    if (!confirm('Enter NEXUS PRESTIGE? Your level resets to 1. You keep cosmetics, achievements, badges, Tech Cores and Compass upgrades.')) return;
+    const pr = S.prestige();
+    if (!pr) return;
+    A.levelUp();
+    toast(`💠 PRESTIGE ${S.save.prestige}: ${esc(pr.name)}`, 'good');
+    redraw();
+    hud();
+  };
+
+  /* ------------------ Progression guide ------------------ */
+
+  let guideTab = 'levels';
+  function guideSheet(tab) {
+    if (tab) guideTab = tab;
+    sheet(guideHTML);
+  }
+  actions.gtab = (t) => { guideTab = t; redraw(); };
+
+  function table(head, rows) {
+    return `<table class="tbl"><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  }
+
+  function guideHTML() {
+    const lvl = S.level();
+    let out = `<h2>Progression</h2>${tabs([['levels', 'Levels'], ['xp', 'XP'], ['cores', 'Cores'], ['portals', 'Portals'], ['loop', 'How to play']], guideTab, 'gtab')}`;
+    if (guideTab === 'levels') {
+      out += '<p class="muted small">XP to Next is what you need to reach the next level.</p>';
+      const rows = [];
+      for (let l = 1; l <= D.MAX_LEVEL; l++) {
+        const rw = D.LEVELS[l][1].map(S.rewardText).join(' + ');
+        rows.push([l === lvl ? `<b class="here">▶ ${l}</b>` : l, l < D.MAX_LEVEL ? fmt(D.LEVELS[l][0]) : '—', fmt(D.CUM[l]), esc(rw)]);
+      }
+      out += table(['Level', 'XP to Next', 'Cumulative XP', 'Major Reward'], rows);
+    } else if (guideTab === 'xp') {
+      const X = D.XP;
+      out += table(['Action', 'XP Reward'], [
+        ['Discover Common Portal', X.discover.common], ['Discover Rare Portal', X.discover.rare], ['Discover Epic Portal', X.discover.epic], ['Discover Legendary Portal', X.discover.legendary],
+        ['Complete Basic Hack', X.hack.basic], ['Complete Advanced Hack', X.hack.advanced], ['Complete Expert Hack', X.hack.expert],
+        ['Capture Neutral Portal', X.captureNeutral], ['Capture Enemy Portal', X.captureEnemy],
+        ['Defend Portal for 10 min', X.defend10], ['Defend Portal for 30 min', X.defend30],
+        ['Connect 2 Portals', X.link2], ['Connect 3+ Portals', X.link3],
+        ['Complete Squad Mission', X.squad], ['Win Team Event', fmt(X.teamEvent)], ['Discover Nexus Signal', X.nexusSignal], ['Complete Legendary Mission', fmt(X.legendaryMission)],
+      ].map(([a, b]) => [a, `${typeof b === 'number' ? fmt(b) : b} XP`]));
+      out += `<p class="tbl-note">Daily XP Cap: <b>${fmt(D.CAPS.day)} XP</b> · Weekly XP Cap: <b>${fmt(D.CAPS.week)} XP</b></p>`;
+      out += '<h3>Daily missions</h3>' + table(['Mission', 'Reward'], Object.values(D.DAILY).map((m) => [esc(m.text), `${m.xp} XP + ${m.cores} Cores`]));
+      out += `<p class="tbl-note">Completing all 3 daily missions: Daily Completion Bonus, ${D.DAILY_BONUS.xp} XP + ${D.DAILY_BONUS.cores} Tech Cores.</p>`;
+    } else if (guideTab === 'cores') {
+      const C = D.CORES;
+      out += '<p class="muted small">Tech Cores are the main upgrade currency. Spend them on Compass upgrades.</p>';
+      out += table(['Source', 'Tech Cores'], [
+        ['Common Portal', C.discover.common], ['Rare Portal', C.discover.rare], ['Epic Portal', C.discover.epic], ['Legendary Portal', C.discover.legendary],
+        ['Basic Hack', C.hack.basic], ['Advanced Hack', C.hack.advanced], ['Expert Hack', C.hack.expert],
+        ['Enemy Portal Capture', C.captureEnemy], ['Squad Mission', C.squad], ['Legendary Mission', C.legendaryMission], ['Weekly Team Objective', C.weeklyObjective],
+      ]);
+    } else if (guideTab === 'portals') {
+      out += table(['Portal', 'XP', 'Tech Cores', 'Difficulty'], D.RARITY_ORDER.map((k) => {
+        const R = D.RARITY[k];
+        return [`${R.icon} ${R.name}`, `${fmt(R.xp[0])}–${fmt(R.xp[1])}`, `${fmt(R.cores[0])}–${fmt(R.cores[1])}`, R.diff];
+      }));
+      out += `<p class="tbl-note">A portal's range is what it pays across discovering, hacking and capturing it. Your scanner sees Rare portals from Level ${D.RARITY.rare.level}, Epic from ${D.RARITY.epic.level}, Legendary from ${D.RARITY.legendary.level} and Nexus portals from ${D.RARITY.nexus.level}. A Nexus portal pays its whole range in one roll when you capture it.</p>`;
+      out += '<h3>Hacks</h3>' + table(['Hack', 'Opens', 'Code', 'Grid', 'Energy'], D.TIER_ORDER.map((t) => {
+        const H = D.HACKS[t];
+        return [H.name, `Level ${H.level}`, `${H.len} nodes`, `${H.grid}×${H.grid}`, `🔋${H.energy}`];
+      }));
+      out += `<p class="tbl-note">Epic portals need an Advanced Hack or better; Legendary and Nexus portals need an Expert Hack.</p>`;
+    } else {
+      out += `<div class="loop">${['Explore', 'Discover', 'Hack', 'Earn XP', 'Level Up', 'Unlock', 'Upgrade Compass', 'Join Stronger Missions', 'Control More Portals', 'Compete', 'Reach Nexus Master'].map((x) => `<span>${x}</span>`).join('<i>→</i>')}</div>
+        <ul class="howto">
+          <li><b>Every action → XP.</b> Discover, hack, capture, defend and link portals, and finish missions.</li>
+          <li><b>Every level → reward.</b> Every 5 levels → a major unlock. Every 10 levels → a new rank.</li>
+          <li><b>The compass.</b> Portals appear at their real bearing and distance. "?" blips are portals you haven't discovered: walk within scanner range. The dashed ring is your reach (${D.RANGE.interact} m) for hacking, capturing, defending and linking.</li>
+          <li><b>Hacking.</b> Watch the code flash across the nodes, then tap it back in order before time runs out.</li>
+          <li><b>Capturing.</b> Neutral portals can be captured straight away. Enemy portals need a successful hack first to drop their shields for 5 minutes.</li>
+          <li><b>Holding portals.</b> Enemy teams attack the portals you hold. The Defense upgrade helps them hold, and a portal you're defending can't fall.</li>
+          <li><b>Energy.</b> Hacks, captures and links use energy. It refills over time, and ⚡ energy cells on the compass give more.</li>
+          <li><b>Level 50 → Nexus Master. After that → Prestige.</b></li>
+        </ul>`;
+    }
+    return out;
+  }
+
+  /* ------------------ Menu ------------------ */
+
+  function menuSheet() {
+    sheet(() => {
+      const st = S.save.settings;
+      return `<h2>Menu</h2><div class="list">
+        <button class="row" type="button" data-act="guide"><span class="r-icon">📘</span><span><b>Progression guide</b><small>Levels, XP, Tech Cores, portals, how to play</small></span></button>
+        <button class="row" type="button" data-act="walkMode"><span class="r-icon">${st.walk === 'gps' ? '📍' : '🏠'}</span><span><b>Moving: ${st.walk === 'gps' ? 'my location' : 'tap to walk'}</b><small>Tap to switch</small></span></button>
+        <button class="row" type="button" data-act="rotate"><span class="r-icon">🧭</span><span><b>Compass turns with phone: ${st.rotate ? 'on' : 'off'}</b><small>Uses the compass sensor when there is one</small></span></button>
+        <button class="row" type="button" data-act="sound"><span class="r-icon">${st.sound ? '🔊' : '🔇'}</span><span><b>Sound and vibration: ${st.sound ? 'on' : 'off'}</b></span></button>
+        <button class="row danger" type="button" data-act="wipe"><span class="r-icon">🗑️</span><span><b>Start over</b><small>Deletes your hacker from this phone</small></span></button>
+      </div><p class="fineprint">Portal Hackers: Nexus · your progress is saved on this phone.</p>`;
+    });
+  }
+
+  actions.guide = () => guideSheet('levels');
+  actions.walkMode = () => { G().setWalkMode(S.save.settings.walk === 'gps' ? 'tap' : 'gps'); redraw(); };
+  actions.rotate = () => { S.save.settings.rotate = !S.save.settings.rotate; S.persist(); redraw(); };
+  actions.sound = () => { S.save.settings.sound = !S.save.settings.sound; A.enabled = S.save.settings.sound; S.persist(); redraw(); };
+  actions.wipe = () => {
+    if (!confirm('Delete your hacker and start over? This cannot be undone.')) return;
+    S.reset();
+    location.reload();
+  };
+
+  /* ------------------ Wiring ------------------ */
+
+  function bind() {
+    bindSheet();
+    bindLevelUp();
+    $('btn-missions').addEventListener('click', () => { A.tap(); missionsSheet(); });
+    $('btn-upgrades').addEventListener('click', () => { A.tap(); upgradesSheet(); });
+    $('btn-team').addEventListener('click', () => { A.tap(); teamSheet(); });
+    $('btn-profile').addEventListener('click', () => { A.tap(); profileSheet('profile'); });
+    $('hud-agent').addEventListener('click', () => { A.tap(); profileSheet('profile'); });
+    $('hud-menu').addEventListener('click', () => { A.tap(); menuSheet(); });
+    $('next-card').addEventListener('click', () => { A.tap(); guideSheet('levels'); });
+    $('hk-abort').addEventListener('click', () => PH.hack.cancel());
+    $('active').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-chip]');
+      if (!b) return;
+      const c = b.getAttribute('data-chip');
+      if (c === 'defense' && S.save.defense) portalSheet(S.save.defense.id);
+      else if (c === 'missions') missionsSheet(S.save.squad.active ? 'squad' : 'legend');
+      else if (c === 'event') missionsSheet('event');
+      else if (c === 'cancelLink') { G().linkFrom = null; hud(); }
+    });
+    // Panels show live timers.
+    setInterval(() => { if (isOpen() && !PH.hack.running) redraw(); }, 1000);
+  }
+
+  // Game events → toasts and the level-up screen.
+  function onEvent(type, d) {
+    switch (type) {
+      case 'levelup': levelUp(d); break;
+      case 'discover': A.discover(); toast(`${esc(d.text)} ${gain(d.xp, d.cores)}`, 'good'); break;
+      case 'signal': A.signal(); toast(`🌌 Nexus signal locked ${gain(d.xp)}`, 'good'); break;
+      case 'cap': toast(`⛔ ${esc(d.text)}`, 'warn'); break;
+      case 'mission': if (!d.bad) A.ping(); toast(`${d.big ? '🎉 ' : ''}${esc(d.text)} ${gain(d.xp, d.cores)}${d.fp ? ` <small>+${d.fp} FP</small>` : ''}`, d.bad ? 'bad' : 'good'); break;
+      case 'squadChat': toast(`💬 ${esc(d.text)}`); break;
+      case 'lost': toast(`⚠️ ${d.lost.length === 1 ? 'One of your portals was' : `${d.lost.length} of your portals were`} taken by ${esc(D.TEAMS[d.lost[0].by].name)}`, 'bad'); break;
+      case 'defenseEnd': toast(`🛡️ Defense over: ${esc(d.why)}`); break;
+      case 'event': toast(d.win ? `🏆 Your team won the event! ${gain(D.XP.teamEvent)}` : '🏆 Team event over. Another team took it this time.', d.win ? 'good' : ''); break;
+      case 'ach': A.ping(); toast(`🏅 Achievement: ${esc(d.a.name)}`, 'good'); break;
+      default: break;
+    }
+  }
+
+  PH.ui = { bind, onEvent, hud, toast, close, isOpen, portalSheet, energySheet, signalSheet, scanSheet, guideSheet, menuSheet };
+})(window.PH);

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="70%">
+      <stop offset="0" stop-color="#0B1D42"/>
+      <stop offset="1" stop-color="#030814"/>
+    </radialGradient>
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.35" stop-color="#5FE3FF"/>
+      <stop offset="1" stop-color="#1A8CFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="178" fill="none" stroke="#5FE3FF" stroke-width="14"/>
+  <circle cx="256" cy="256" r="132" fill="none" stroke="#5FE3FF" stroke-opacity="0.3" stroke-width="4"/>
+  <circle cx="256" cy="256" r="86" fill="none" stroke="#5FE3FF" stroke-opacity="0.2" stroke-width="4"/>
+  <path d="M256 58 L272 96 L240 96 Z" fill="#FF5A6E"/>
+  <g stroke="#5FE3FF" stroke-width="8" stroke-linecap="round">
+    <line x1="256" y1="434" x2="256" y2="410"/>
+    <line x1="78" y1="256" x2="102" y2="256"/>
+    <line x1="434" y1="256" x2="410" y2="256"/>
+  </g>
+  <path d="M256 256 L256 78 A178 178 0 0 1 382 130 Z" fill="#5FE3FF" fill-opacity="0.18"/>
+  <polygon points="256,186 317,221 317,291 256,326 195,291 195,221" fill="none" stroke="#FFD23F" stroke-width="10" stroke-linejoin="round"/>
+  <circle cx="256" cy="256" r="60" fill="url(#core)"/>
+  <circle cx="352" cy="170" r="12" fill="#FF4FD8"/>
+  <circle cx="168" cy="330" r="9" fill="#FFB238"/>
+</svg>
