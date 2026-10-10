@@ -212,6 +212,9 @@ window.PH = window.PH || {};
     flare:       { kind: 'Epic Compass Skin', name: 'Solar Flare',   from: 'Level 28 · Epic Compass Skin',      colors: ['#FFB547', '#FF5A2B', '#FFE07A'] },
     nebula:      { kind: 'Legendary Compass Skin', name: 'Nebula Gold',   from: 'Level 38 · Legendary Compass Skin', colors: ['#FFD86B', '#B65CFF', '#FFF1B0'] },
     singularity: { kind: 'Master Compass Skin', name: 'Singularity',   from: 'Level 48 · Master Compass Skin',    colors: ['#FFFFFF', '#7A5CFF', '#FF4FD8'] },
+    neon:        { kind: 'Shop Compass Skin', name: 'Neon Grid',  from: 'Shop', colors: ['#39FF14', '#00A86B', '#C6FF4D'] },
+    glacier:     { kind: 'Shop Compass Skin', name: 'Glacier',    from: 'Shop', colors: ['#BFF3FF', '#5AA9FF', '#FFFFFF'] },
+    crimson:     { kind: 'Shop Compass Skin', name: 'Crimson Core', from: 'Shop', colors: ['#FF4D6D', '#9D0208', '#FFB3C1'] },
     prism:       { name: 'Prism Drive',   from: 'Prestige 4 · Animated Compass Skin', colors: ['#FF4FD8', '#35E0FF', '#FFD23F'], animated: true },
   };
 
@@ -233,6 +236,80 @@ window.PH = window.PH || {};
     teamBadge:{ name: 'Territory Badge',   icon: '🏴' },
     prestige: { name: 'Prestige Badge',    icon: '💠' },
   };
+
+  /* ------------------ Profile customisation ------------------ */
+
+  // Avatars: free ones, ones that open with your level, and shop ones.
+  const AVATARS = [
+    { id: 'fox', icon: '🦊' }, { id: 'cat', icon: '🐱' }, { id: 'owl', icon: '🦉' }, { id: 'wolf', icon: '🐺' },
+    { id: 'alien', icon: '👽' }, { id: 'ghost', icon: '👻' }, { id: 'astro', icon: '🧑‍🚀' }, { id: 'ninja', icon: '🥷' },
+    { id: 'bolt', icon: '⚡' }, { id: 'star', icon: '🌟' }, { id: 'eye', icon: '🧿' }, { id: 'sat', icon: '🛰️' },
+    { id: 'mage', icon: '🧙', level: 11 }, { id: 'spy', icon: '🕵️', level: 21 }, { id: 'galaxy', icon: '🌌', level: 31 }, { id: 'crown', icon: '👑', level: 41 },
+    { id: 'robot', icon: '🤖', shop: true }, { id: 'invader', icon: '👾', shop: true }, { id: 'dragon', icon: '🐉', shop: true },
+    { id: 'cyborg', icon: '🦾', shop: true }, { id: 'hawk', icon: '🦅', shop: true }, { id: 'skull', icon: '💀', shop: true },
+  ];
+
+  const NAME_COLORS = [
+    { id: 'team', name: 'Team colour', color: 'team' },
+    { id: 'white', name: 'White', color: '#FFFFFF' },
+    { id: 'sky', name: 'Sky', color: '#7CC8FF' },
+    { id: 'gold', name: 'Gold', color: '#FFD23F', shop: true },
+    { id: 'lime', name: 'Acid Lime', color: '#B6FF3B', shop: true },
+    { id: 'rose', name: 'Hot Rose', color: '#FF5DA2', shop: true },
+    { id: 'violet', name: 'Ultraviolet', color: '#B98CFF', shop: true },
+  ];
+
+  const BANNERS = [
+    { id: 'night', name: 'Night Grid', css: 'linear-gradient(135deg, #0A1630, #030814)' },
+    { id: 'team', name: 'Team Glow', css: 'linear-gradient(135deg, color-mix(in srgb, var(--team) 45%, #030814), #030814)' },
+    { id: 'aurora', name: 'Aurora', css: 'linear-gradient(135deg, #00C2A8, #2A1B6B 60%, #030814)', level: 15 },
+    { id: 'sunset', name: 'Solar Sunset', css: 'linear-gradient(135deg, #FF5A2B, #8A1C7C 55%, #0A0A2A)', shop: true },
+    { id: 'matrix', name: 'Code Rain', css: 'repeating-linear-gradient(90deg, rgba(57,255,20,0.18) 0 2px, transparent 2px 14px), linear-gradient(180deg, #021B0A, #000)', shop: true },
+    { id: 'nebula', name: 'Nebula', css: 'radial-gradient(circle at 30% 30%, #B65CFF, transparent 55%), radial-gradient(circle at 75% 70%, #35E0FF, transparent 50%), #0A0620', shop: true },
+    { id: 'gold', name: 'Gold Circuit', css: 'repeating-linear-gradient(45deg, rgba(255,210,63,0.16) 0 3px, transparent 3px 16px), linear-gradient(135deg, #3A2A00, #0A0700)', level: 41 },
+  ];
+
+  // Titles come from ranks, achievements, Prestige and the shop.
+  const SHOP_TITLES = {
+    ghost: 'Ghost in the Grid',
+    cubes: 'Cube Collector',
+    firewall: 'Human Firewall',
+    zero: 'Zero Day',
+  };
+
+  /* ------------------ Shop ------------------ */
+
+  // Tech Cores buy gear, boosts and cosmetics. `give` is what you get.
+  const SHOP = [
+    { id: 'uplinks5',   cat: 'gear',  icon: '📶', name: '5 Uplinks',          cost: 150,  give: { items: { uplink: 5 } } },
+    { id: 'bombs5',     cat: 'gear',  icon: '💥', name: '5 Pulse Bombs',      cost: 150,  give: { items: { bomb: 5 } } },
+    { id: 'firewall2',  cat: 'gear',  icon: '🧱', name: '2 Firewalls',        cost: 200,  give: { items: { firewall: 2 } } },
+    { id: 'crate',      cat: 'gear',  icon: '📦', name: 'Breach Crate',       cost: 380,  text: '6 Uplinks, 6 Pulse Bombs, 1 Firewall', give: { items: { uplink: 6, bomb: 6, firewall: 1 } } },
+    { id: 'energy',     cat: 'boost', icon: '🔋', name: 'Energy Refill',      cost: 100,  text: 'Fill your energy right now', give: { energy: true } },
+    { id: 'cooldown',   cat: 'boost', icon: '⏱️', name: 'Cooldown Reset',     cost: 120,  text: 'Every portal near you can be hacked again', give: { cooldowns: true } },
+    { id: 'av_robot',   cat: 'look',  icon: '🤖', name: 'Robot avatar',       cost: 400,  give: { avatar: 'robot' } },
+    { id: 'av_invader', cat: 'look',  icon: '👾', name: 'Invader avatar',     cost: 400,  give: { avatar: 'invader' } },
+    { id: 'av_cyborg',  cat: 'look',  icon: '🦾', name: 'Cyborg avatar',      cost: 500,  give: { avatar: 'cyborg' } },
+    { id: 'av_skull',   cat: 'look',  icon: '💀', name: 'Skull avatar',       cost: 500,  give: { avatar: 'skull' } },
+    { id: 'av_dragon',  cat: 'look',  icon: '🐉', name: 'Dragon avatar',      cost: 900,  give: { avatar: 'dragon' } },
+    { id: 'av_hawk',    cat: 'look',  icon: '🦅', name: 'Hawk avatar',        cost: 1200, give: { avatar: 'hawk' } },
+    { id: 'nc_gold',    cat: 'look',  icon: '🟡', name: 'Gold name',          cost: 600,  give: { color: 'gold' } },
+    { id: 'nc_lime',    cat: 'look',  icon: '🟢', name: 'Acid Lime name',     cost: 450,  give: { color: 'lime' } },
+    { id: 'nc_rose',    cat: 'look',  icon: '🩷', name: 'Hot Rose name',      cost: 450,  give: { color: 'rose' } },
+    { id: 'nc_violet',  cat: 'look',  icon: '🟣', name: 'Ultraviolet name',   cost: 450,  give: { color: 'violet' } },
+    { id: 'bn_sunset',  cat: 'look',  icon: '🌅', name: 'Solar Sunset banner', cost: 500, give: { banner: 'sunset' } },
+    { id: 'bn_matrix',  cat: 'look',  icon: '🟩', name: 'Code Rain banner',   cost: 700,  give: { banner: 'matrix' } },
+    { id: 'bn_nebula',  cat: 'look',  icon: '🌌', name: 'Nebula banner',      cost: 900,  give: { banner: 'nebula' } },
+    { id: 'sk_neon',    cat: 'look',  icon: '🧭', name: 'Neon Grid compass',  cost: 1500, give: { skin: 'neon' } },
+    { id: 'sk_glacier', cat: 'look',  icon: '🧭', name: 'Glacier compass',    cost: 1500, give: { skin: 'glacier' } },
+    { id: 'sk_crimson', cat: 'look',  icon: '🧭', name: 'Crimson Core compass', cost: 2000, give: { skin: 'crimson' } },
+    { id: 't_ghost',    cat: 'look',  icon: '🏷️', name: 'Title: Ghost in the Grid', cost: 800, give: { title: 'ghost' } },
+    { id: 't_cubes',    cat: 'look',  icon: '🏷️', name: 'Title: Cube Collector',    cost: 500, give: { title: 'cubes' } },
+    { id: 't_firewall', cat: 'look',  icon: '🏷️', name: 'Title: Human Firewall',    cost: 700, give: { title: 'firewall' } },
+    { id: 't_zero',     cat: 'look',  icon: '🏷️', name: 'Title: Zero Day',          cost: 1500, give: { title: 'zero' } },
+  ];
+  const SHOP_CATS = [['deals', 'Daily deals'], ['gear', 'Gear'], ['boost', 'Boosts'], ['look', 'Style']];
+  const DEAL_OFF = 0.3;   // daily deals are 30% off
 
   /* ------------------ Prestige ------------------ */
 
@@ -374,6 +451,7 @@ window.PH = window.PH || {};
     DAILY, DAILY_BONUS, SQUAD, SQUAD_MINUTES, LEGENDARY_STAGES, OBJECTIVES,
     TEAM_PERKS, TEAM_MAX, teamFPFor, teamLevelFor, EVENT, EVENT_PTS, ACHIEVEMENTS,
     RANGE, ENERGY, COOLDOWN,
+    AVATARS, NAME_COLORS, BANNERS, SHOP_TITLES, SHOP, SHOP_CATS, DEAL_OFF,
     ITEMS, ITEM_ORDER, ITEM_CAP, START_ITEMS, DROPS, DROP_WEIGHT, KEY_CHANCE, SABOTAGE, BOMB_HITS, MAX_UPLINKS, MAX_FIREWALLS, BASE_UPLINKS,
   };
 })(window.PH);

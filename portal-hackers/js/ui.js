@@ -87,7 +87,7 @@ window.PH = window.PH || {};
     const rk = S.rank();
     $('hud-name').textContent = displayName();
     $('hud-rank').textContent = `Lv ${pr.level} · ${rk.name}`;
-    $('hud-rank-icon').textContent = rk.icon;
+    $('hud-rank-icon').textContent = S.avatarIcon();
     $('hud-energy').textContent = `${s.energy}/${S.maxEnergy()}`;
     $('hud-cores').textContent = fmt(s.cores);
 
@@ -117,7 +117,7 @@ window.PH = window.PH || {};
     $('btn-territory').hidden = !S.has('territory');
     $('dot-upgrades').hidden = !(s.tokens > 0 || D.BRANCH_ORDER.some((b) => canBuy(b)));
     $('dot-missions').hidden = !(S.has('squad') && !s.squad.active && s.squad.offer.length) && !(S.has('legendaryMissions') && s.legend && !s.legend.active && !s.legend.done);
-    $('dot-team').hidden = !D.OBJECTIVES.some((o) => { const p = S.objectiveProgress(o, Date.now()); return p.done && !p.claimed; });
+    $('dot-team').hidden = !chatUnread && !D.OBJECTIVES.some((o) => { const p = S.objectiveProgress(o, Date.now()); return p.done && !p.claimed; });
 
     activeStrip();
   }
@@ -318,6 +318,7 @@ window.PH = window.PH || {};
     const res = S.capture(p);
     A.capture();
     toast(`🏴 ${esc(res.text)} ${gain(res.xp, res.cores)}`, 'good');
+    G().share(`captured ${p.name} ${D.RARITY[p.rarity].icon}`);
     redraw();
     hud();
   };
@@ -388,6 +389,7 @@ window.PH = window.PH || {};
     const res = S.link(a, b);
     A.link();
     G().linkFrom = null;
+    if (res.fields) G().share('raised a control field 🔺');
     toast(`🔗 ${res.fields ? `Control field raised!` : res.n >= 3 ? `Network of ${res.n} portals` : '2 portals connected'} ${gain(res.xp)}`, 'good');
     hud();
   }
@@ -604,6 +606,7 @@ window.PH = window.PH || {};
       const lo = D.teamFPFor(tl), hi = D.teamFPFor(tl + 1);
       const now = Date.now();
       let out = `<div class="team-head" style="--tc:${T.color}"><span class="team-glyph">${T.glyph}</span><div><h2>TEAM ${T.name}</h2><small>${esc(T.motto)}</small></div></div>
+        <button class="btn btn-main wide" type="button" data-act="openChat">💬 Team chat <small>${chatStatusText()}${chatUnread ? ` · ${chatUnread} new` : ''}</small></button>
         <div class="xp-mini"><b>TEAM LEVEL ${tl}</b><span class="mini-bar"><i style="width:${tl >= D.TEAM_MAX ? 100 : ((fp - lo) / (hi - lo)) * 100}%;background:${T.color}"></i></span>
         <small>${fmt(fp)} Faction Points${tl < D.TEAM_MAX ? ` · ${fmt(hi - fp)} to Team Level ${tl + 1}` : ''} · you've earned ${fmt(s.fp)}</small></div>
         <p class="muted small">You earn Faction Points from squad missions, team events, Legendary Missions and weekly objectives. Your team levels up for everyone.</p>
@@ -646,11 +649,9 @@ window.PH = window.PH || {};
     const pr = S.progress();
     const rk = S.rank();
     const T = D.TEAMS[s.team];
-    let out = `<div class="prof-head" style="--tc:${T.color}">
-      <span class="prof-glyph">${s.gear ? D.GEAR[s.gear].icon : rk.icon}</span>
-      <div><h2>${esc(displayName())}${s.stars ? ` <span class="stars">${'★'.repeat(Math.min(s.stars, 10))}</span>` : ''}</h2>
-      <small>${rk.name}${s.title ? ` · ${esc(s.title)}` : ''}</small></div></div>
-      ${tabs([['profile', 'Profile'], ['ranks', 'Ranks'], ['style', 'Cosmetics'], ['ach', 'Achievements']], profileTab, 'ptab')}`;
+    let out = `${profileCard()}
+      ${tabs([['profile', 'Profile'], ['custom', 'Customise'], ['style', 'Cosmetics'], ['ranks', 'Ranks'], ['ach', 'Achievements']], profileTab, 'ptab')}`;
+    if (profileTab === 'custom') return out + customiseHTML();
     if (profileTab === 'profile') {
       const rows = [
         ['PLAYER LEVEL', pr.level], ['RANK', rk.name], ['TEAM', T.name],
@@ -815,7 +816,15 @@ window.PH = window.PH || {};
         <button class="row" type="button" data-act="walkMode"><span class="r-icon">${st.walk === 'gps' ? '📍' : '🏠'}</span><span><b>Moving: ${st.walk === 'gps' ? 'my location' : 'tap to walk'}</b><small>Tap to switch</small></span></button>
         <button class="row" type="button" data-act="rotate"><span class="r-icon">🧭</span><span><b>Compass turns with phone: ${st.rotate ? 'on' : 'off'}</b><small>Uses the compass sensor when there is one</small></span></button>
         <button class="row" type="button" data-act="sound"><span class="r-icon">${st.sound ? '🔊' : '🔇'}</span><span><b>Sound and vibration: ${st.sound ? 'on' : 'off'}</b></span></button>
-        <button class="row danger" type="button" data-act="wipe"><span class="r-icon">🗑️</span><span><b>Start over</b><small>Deletes your hacker from this phone</small></span></button>
+        <button class="row" type="button" data-act="share"><span class="r-icon">📣</span><span><b>Share my captures in team chat: ${st.share ? 'on' : 'off'}</b><small>Posts when you capture a portal, raise a field or rank up</small></span></button>
+        ${S.save.muted.length ? `<button class="row" type="button" data-act="unmute"><span class="r-icon">🔈</span><span><b>Unmute everyone in chat</b><small>${S.save.muted.length} muted</small></span></button>` : ''}
+        <button class="row" type="button" data-act="shop"><span class="r-icon">🛒</span><span><b>Shop</b><small>Spend Tech Cores on gear, boosts and style</small></span></button>
+      </div>
+      <h3>Account</h3><div class="list">
+        <div class="row"><span class="r-icon">${S.avatarIcon()}</span><span><b>Logged in as ${esc(S.save.name)}</b><small>Accounts are saved on this phone</small></span></div>
+        <button class="row" type="button" data-act="password"><span class="r-icon">🔑</span><span><b>Change password</b></span></button>
+        <button class="row" type="button" data-act="logout"><span class="r-icon">🚪</span><span><b>Log out</b><small>Switch to another account or sign up</small></span></button>
+        <button class="row danger" type="button" data-act="wipe"><span class="r-icon">🗑️</span><span><b>Delete account</b><small>Deletes your hacker and account from this phone</small></span></button>
       </div><p class="fineprint">Portal Hackers: Nexus · your progress is saved on this phone.</p>`;
     });
   }
@@ -824,11 +833,243 @@ window.PH = window.PH || {};
   actions.walkMode = () => { G().setWalkMode(S.save.settings.walk === 'gps' ? 'tap' : 'gps'); redraw(); };
   actions.rotate = () => { S.save.settings.rotate = !S.save.settings.rotate; S.persist(); redraw(); };
   actions.sound = () => { S.save.settings.sound = !S.save.settings.sound; A.enabled = S.save.settings.sound; S.persist(); redraw(); };
-  actions.wipe = () => {
-    if (!confirm('Delete your hacker and start over? This cannot be undone.')) return;
-    S.reset();
+  actions.share = () => { S.save.settings.share = !S.save.settings.share; S.persist(); redraw(); };
+  actions.shop = () => shopSheet();
+  actions.unmute = () => { S.save.muted = []; S.persist(); redraw(); };
+  actions.logout = () => {
+    S.persist(true);
+    PH.chat.stop();
+    PH.accounts.logOut();
     location.reload();
   };
+  actions.wipe = () => {
+    if (!confirm(`Delete ${S.save.name}'s account and hacker from this phone? This cannot be undone.`)) return;
+    PH.chat.stop();
+    PH.accounts.remove(S.save.name);
+    location.reload();
+  };
+
+  function passwordSheet() {
+    sheet(() => `<h2>Change password</h2>
+      <form class="ob-form" onsubmit="return false">
+        <input id="pw-old" type="password" autocomplete="current-password" placeholder="Current password" aria-label="Current password">
+        <input id="pw-new" type="password" autocomplete="new-password" placeholder="New password (6+ characters)" aria-label="New password">
+        <input id="pw-new2" type="password" autocomplete="new-password" placeholder="New password again" aria-label="New password again">
+        <p id="pw-err" class="form-err" role="alert"></p>
+        <button class="btn btn-main btn-big" type="button" data-act="savePassword">Save</button>
+      </form>`);
+  }
+  actions.password = () => passwordSheet();
+  actions.savePassword = async () => {
+    const o = $('pw-old').value, n = $('pw-new').value;
+    if (n !== $('pw-new2').value) { $('pw-err').textContent = 'The new passwords don\'t match'; return; }
+    $('pw-err').textContent = 'Saving…';
+    const res = await PH.accounts.changePassword(S.save.name, o, n);
+    if (!res.ok) { $('pw-err').textContent = res.error; return; }
+    close();
+    toast('🔑 Password changed', 'good');
+  };
+
+  /* ------------------ Shop ------------------ */
+
+  let shopTab = 'deals';
+  function shopSheet(tab) {
+    if (tab) shopTab = tab;
+    sheet(shopHTML);
+  }
+  actions.stab = (t) => { shopTab = t; redraw(); };
+
+  function shopHTML() {
+    const s = S.save;
+    const now = Date.now();
+    const deals = S.deals(now);
+    let out = `<h2>Shop</h2><p class="muted small">Spend Tech Cores. You have <b class="cores">${fmt(s.cores)} ⬢</b>.</p>${tabs(D.SHOP_CATS, shopTab, 'stab')}`;
+    const items = shopTab === 'deals' ? deals.map((id) => D.SHOP.find((x) => x.id === id)) : D.SHOP.filter((x) => x.cat === shopTab);
+    if (shopTab === 'deals') out += `<p class="small muted">3 items at ${Math.round(D.DEAL_OFF * 100)}% off · new deals in ${fmtTime(S.nextMidnight(now) - now)}</p>`;
+    out += '<div class="shop-grid">';
+    for (const it of items) {
+      const owned = S.ownsShop(it);
+      const price = S.price(it);
+      const deal = price < it.cost;
+      out += `<div class="shop-item ${owned ? 'owned' : ''} ${deal ? 'deal' : ''}">
+        <span class="shop-icon">${it.icon}</span><b>${esc(it.name)}</b>${it.text ? `<small>${esc(it.text)}</small>` : ''}
+        ${owned ? '<span class="good small">Owned ✓</span>'
+          : `<button class="btn small ${s.cores >= price ? 'btn-main' : ''}" type="button" data-act="buy" data-arg="${it.id}" ${s.cores >= price ? '' : 'disabled'}>${deal ? `<s>${fmt(it.cost)}</s> ` : ''}${fmt(price)} ⬢</button>`}
+      </div>`;
+    }
+    out += '</div><p class="fineprint">Earn Tech Cores by discovering portals, hacking, capturing, missions, level-ups and Tech Cubes. There are no real-money purchases.</p>';
+    return out;
+  }
+
+  actions.buy = (id) => {
+    const res = S.buy(id, G().nearby.portals.map((p) => p.id));
+    toast(`${res.ok ? '🛒 ' : ''}${esc(res.text)}`, res.ok ? 'good' : 'bad');
+    if (res.ok) { A.ping(); PH.chat.updateProfile(); }
+    redraw();
+    hud();
+  };
+
+  /* ------------------ Profile card and customisation ------------------ */
+
+  function profileCard() {
+    const s = S.save;
+    const banner = (D.BANNERS.find((b) => b.id === s.look.banner) || D.BANNERS[0]).css;
+    const shows = s.look.showcase.map((id) => (D.BADGES[id] ? D.BADGES[id].icon : (D.ACHIEVEMENTS.find((a) => a.id === id) || {}).icon)).filter(Boolean);
+    return `<div class="prof-card" style="--tc:${D.TEAMS[s.team].color};background:${banner}">
+      <span class="prof-avatar">${S.avatarIcon()}${s.gear ? `<i>${D.GEAR[s.gear].icon}</i>` : ''}</span>
+      <div class="prof-text">
+        <h2 style="color:${S.nameColor()}">${esc(displayName())}${s.stars ? ` <span class="stars">${'★'.repeat(Math.min(s.stars, 10))}</span>` : ''}</h2>
+        <small class="prof-title">${esc(S.titleText())}</small>
+        <small>Lv ${S.level()} · ${D.TEAMS[s.team].glyph} ${D.TEAMS[s.team].name}</small>
+        ${s.look.bio ? `<p class="prof-bio">“${esc(s.look.bio)}”</p>` : ''}
+        ${shows.length ? `<span class="prof-show">${shows.join(' ')}</span>` : ''}
+      </div></div>`;
+  }
+
+  function customiseHTML() {
+    const s = S.save;
+    let out = '<h3>Avatar</h3><div class="avatar-grid">';
+    for (const a of D.AVATARS) {
+      const lock = S.lookLock('avatar', a);
+      out += `<button class="avatar-btn ${s.look.avatar === a.id ? 'on' : ''}" type="button" data-act="look" data-arg="avatar|${a.id}" ${lock ? 'disabled' : ''} aria-label="Avatar ${a.id}">${a.icon}${lock ? `<small>${esc(lock)}</small>` : ''}</button>`;
+    }
+    out += '</div><h3>Name colour</h3><div class="chips">';
+    for (const c of D.NAME_COLORS) {
+      const lock = S.lookLock('color', c);
+      const col = c.color === 'team' ? D.TEAMS[s.team].color : c.color;
+      out += `<button class="chip-btn ${s.look.color === c.id ? 'on' : ''}" type="button" data-act="look" data-arg="color|${c.id}" ${lock ? 'disabled' : ''} style="color:${col}">${esc(c.name)}${lock ? ' 🔒' : ''}</button>`;
+    }
+    out += '</div><h3>Banner</h3><div class="banner-grid">';
+    for (const b of D.BANNERS) {
+      const lock = S.lookLock('banner', b);
+      out += `<button class="banner-btn ${s.look.banner === b.id ? 'on' : ''}" type="button" data-act="look" data-arg="banner|${b.id}" ${lock ? 'disabled' : ''} style="background:${b.css}"><span>${esc(b.name)}${lock ? ` · 🔒 ${esc(lock)}` : ''}</span></button>`;
+    }
+    out += '</div><h3>Title</h3><div class="chips">';
+    out += `<button class="chip-btn ${!s.look.title ? 'on' : ''}" type="button" data-act="look" data-arg="title|">Your rank</button>`;
+    for (const t of S.titles()) out += `<button class="chip-btn ${s.look.title === t.id ? 'on' : ''}" type="button" data-act="look" data-arg="title|${t.id}">${esc(t.text)}</button>`;
+    out += `</div><p class="small muted">Earn titles from ranks, achievements and Prestige, or buy them in the shop.</p>
+      <h3>Bio</h3><div class="bio-row"><input id="bio-input" type="text" maxlength="80" value="${esc(s.look.bio)}" placeholder="A line about you (80 characters)" aria-label="Bio"><button class="btn small btn-main" type="button" data-act="saveBio">Save</button></div>
+      <h3>Showcase (pick up to 3)</h3><div class="chips">`;
+    const opts = s.badges.map((id) => ({ id, icon: D.BADGES[id].icon, name: D.BADGES[id].name }))
+      .concat(D.ACHIEVEMENTS.filter((a) => s.ach[a.id]).map((a) => ({ id: a.id, icon: a.icon, name: a.name })));
+    if (!opts.length) out += '<span class="muted small">Earn badges and achievements to show them off here.</span>';
+    for (const o of opts) out += `<button class="chip-btn ${s.look.showcase.includes(o.id) ? 'on' : ''}" type="button" data-act="look" data-arg="showcase|${o.id}">${o.icon} ${esc(o.name)}</button>`;
+    out += '</div><p class="small muted">Change your compass skin and agent gear in Cosmetics. More avatars, colours, banners and titles are in the 🛒 shop.</p>';
+    out += '<button class="btn wide" type="button" data-act="shopLook">🛒 Shop for style</button>';
+    return out;
+  }
+
+  actions.look = (arg) => {
+    const i = arg.indexOf('|');
+    if (S.setLook(arg.slice(0, i), arg.slice(i + 1))) PH.chat.updateProfile();
+    redraw();
+  };
+  actions.saveBio = () => {
+    S.setLook('bio', $('bio-input').value);
+    toast('Bio saved', 'good');
+    redraw();
+  };
+  actions.shopLook = () => shopSheet('look');
+
+  /* ------------------ Team chat ------------------ */
+
+  let chatUnread = 0;
+  const chatOpen = () => !$('chat').hidden;
+
+  function chatStatusText() {
+    const st = PH.chat.state;
+    const n = PH.chat.roster.length;
+    if (st === 'online') return `${n} online`;
+    if (st === 'connecting') return 'connecting…';
+    if (!PH.chat.supported()) return 'not available on this device';
+    return 'offline';
+  }
+
+  function chatColor(from) {
+    return from.color === 'team' ? D.TEAMS[S.save.team].color : from.color;
+  }
+
+  function msgHTML(m) {
+    const mine = m.from.name === S.save.name;
+    const time = new Date(m.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (m.kind === 'activity') {
+      return `<div class="msg activity"><span>${esc(m.from.avatar)} <b style="color:${chatColor(m.from)}">${esc(m.from.name)}</b> ${esc(m.text)}</span><time>${time}</time></div>`;
+    }
+    return `<div class="msg ${mine ? 'mine' : ''}">
+      <span class="msg-av">${esc(m.from.avatar)}</span>
+      <div class="msg-body"><div class="msg-meta"><button class="msg-name" type="button" data-name="${esc(m.from.name)}" style="color:${chatColor(m.from)}">${m.from.prestige ? `[P${m.from.prestige}] ` : ''}${esc(m.from.name)}</button><small>${esc(m.from.title)} · Lv ${m.from.level}</small><time>${time}</time></div>
+      <p>${esc(m.text)}</p></div></div>`;
+  }
+
+  function renderChat() {
+    if (!chatOpen()) return;
+    const T = D.TEAMS[S.save.team];
+    $('chat-title').textContent = `TEAM ${T.name} CHAT`;
+    $('chat-status').textContent = PH.chat.state === 'online' ? `${PH.chat.roster.length} online${PH.chat.isHub ? ' · you\'re hosting the room' : ''}`
+      : PH.chat.state === 'connecting' ? 'Connecting…' : PH.chat.supported() ? 'Offline: tap to reconnect' : 'Chat isn\'t available on this device';
+    $('chat-roster').innerHTML = PH.chat.roster.map((p) => `<span class="ro" title="${esc(p.name)}"><i>${esc(p.avatar)}</i><b style="color:${chatColor(p)}">${esc(p.name)}</b></span>`).join('');
+    const muted = new Set(S.save.muted);
+    const list = $('chat-list');
+    const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+    const msgs = PH.chat.history.filter((m) => !muted.has(m.from.name));
+    list.innerHTML = msgs.length ? msgs.map(msgHTML).join('')
+      : `<p class="muted center chat-empty">No messages yet. Say hi to Team ${esc(T.name)}!<br><small>Messages go straight to teammates who are online now, and aren't kept on any server.</small></p>`;
+    if (atBottom) list.scrollTop = list.scrollHeight;
+  }
+
+  function openChat() {
+    close();
+    $('chat').hidden = false;
+    chatUnread = 0;
+    if (PH.chat.state === 'offline') PH.chat.reconnect();
+    renderChat();
+    const list = $('chat-list');
+    list.scrollTop = list.scrollHeight;
+    hud();
+  }
+  actions.openChat = () => openChat();
+
+  function bindChat() {
+    $('chat-close').addEventListener('click', () => { $('chat').hidden = true; hud(); });
+    $('chat-status').addEventListener('click', () => { if (PH.chat.state === 'offline') PH.chat.reconnect(); });
+    $('chat-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = $('chat-input');
+      const err = PH.chat.send(input.value);
+      if (err && err !== 'Type a message first') toast(esc(err), 'warn');
+      if (!err || err.startsWith('Not connected')) input.value = '';
+      renderChat();
+      $('chat-list').scrollTop = $('chat-list').scrollHeight;
+    });
+    $('chat-list').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-name]');
+      if (!b) return;
+      const name = b.dataset.name;
+      if (name === S.save.name) return;
+      if (confirm(`Mute ${name}? You won't see their messages. You can unmute everyone in the menu.`)) {
+        S.save.muted.push(name);
+        S.persist();
+        renderChat();
+      }
+    });
+    PH.chat.on('message', (m) => {
+      // Keep the last 100 messages with your account.
+      const c = S.save.chat;
+      if (!c.some((x) => x.id === m.id)) {
+        c.push(m);
+        if (c.length > 100) c.splice(0, c.length - 100);
+        S.persist();
+      }
+      if (!chatOpen() && m.from.name !== S.save.name && m.kind !== 'activity' && !S.save.muted.includes(m.from.name)) {
+        chatUnread++;
+        toast(`💬 <b>${esc(m.from.name)}</b>: ${esc(m.text.slice(0, 60))}`);
+        hud();
+      }
+      renderChat();
+    });
+    PH.chat.on('roster', renderChat);
+    PH.chat.on('state', () => { renderChat(); if (isOpen()) redraw(); });
+  }
 
   /* ------------------ Wiring ------------------ */
 
@@ -842,6 +1083,8 @@ window.PH = window.PH || {};
     $('hud-agent').addEventListener('click', () => { A.tap(); profileSheet('profile'); });
     $('hud-menu').addEventListener('click', () => { A.tap(); menuSheet(); });
     $('hud-gear').addEventListener('click', () => { A.tap(); gearSheet(); });
+    $('hud-shop').addEventListener('click', () => { A.tap(); shopSheet(); });
+    bindChat();
     $('next-card').addEventListener('click', () => { A.tap(); guideSheet('levels'); });
     $('hk-abort').addEventListener('click', () => PH.hack.cancel());
     $('active').addEventListener('click', (e) => {
@@ -854,7 +1097,10 @@ window.PH = window.PH || {};
       else if (c === 'cancelLink') { G().linkFrom = null; hud(); }
     });
     // Panels show live timers.
-    setInterval(() => { if (isOpen() && !PH.hack.running) redraw(); }, 1000);
+    setInterval(() => {
+      const typing = document.activeElement && document.activeElement.tagName === 'INPUT' && $('sheet-card').contains(document.activeElement);
+      if (isOpen() && !PH.hack.running && !typing) redraw();
+    }, 1000);
   }
 
   // Game events → toasts and the level-up screen.

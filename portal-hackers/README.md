@@ -25,13 +25,13 @@ Recommended:
 🛡️ Defend a team portal
 ```
 
-It's plain HTML, CSS and JavaScript. There's no build step, nothing to install, and no map library. Your location stays on your phone.
+It's plain HTML, CSS and JavaScript. There's no build step, nothing to install, and no map library. Your location stays on your phone. The only library is [PeerJS](https://peerjs.com/) (in `js/vendor/`, MIT licence), for team chat.
 
 ## Playing
 
 ### Getting started
 
-Pick a team (**NOVA**, **PULSAR** or **ECLIPSE**) and a hacker name. Then choose how you move:
+**Sign up** with a username and password, pick a team (**NOVA**, **PULSAR** or **ECLIPSE**) and an avatar. Then choose how you move:
 
 - **Use my location:** the compass follows your real GPS.
 - **Play at home:** tap the compass to walk there. You can switch any time in **☰ → Moving**.
@@ -79,6 +79,48 @@ Open it with **🎒** at the top. You start with 6 Uplinks, 4 Pulse Bombs and 1 
 | 🔑 Portal Key | Lets you link to that portal; used up when you do |
 
 **Energy** pays for hacks (5 / 10 / 15), Pulse Bombs (10), captures (20), deploying Uplinks and Firewalls (5) and links (10). It refills by itself, and Tech Cubes top it up.
+
+### Accounts
+
+- **Sign up** with a username (3–16 letters, numbers, `-` or `_`) and a password (6+ characters). **Log in** again with them any time.
+- Accounts are saved **on this phone**. Several people can have their own account on one phone, each with their own hacker. An account doesn't follow you to another phone, because there's no server.
+- Passwords are never stored as you typed them: each one is salted and hashed with PBKDF2-SHA256 (120,000 rounds).
+- The phone remembers who's logged in. **☰ → Log out** switches account; **☰ → Change password** and **☰ → Delete account** are there too.
+- If you played before accounts existed, the title screen offers **Continue as (your name)**: pick a password and your hacker moves into the new account.
+
+### Team chat
+
+Every team has one chat room, shared by every teammate who's online, anywhere. Open it from **Team → 💬 Team chat**. New messages pop up while you play, and a red dot appears on **Team**.
+
+- Messages show each player's avatar, name colour, title and level.
+- With **☰ → Share my captures** on, the room also hears when you capture a portal, raise a control field, reach a new rank, or help win a team event.
+- Tap someone's name to mute them (☰ → Unmute everyone undoes it). Messages are text only, up to 200 characters, and at most 5 every 5 seconds.
+
+How it works without a server: [PeerJS](https://peerjs.com/)'s free public server only introduces phones to each other, and messages go directly between phones (WebRTC). The first teammate in the room becomes its host and relays messages, handing newcomers the last 50. If the host leaves, another phone takes over within about 15 seconds. Nothing is stored anywhere except on the phones in the room, so a message sent when nobody else is online is only seen by you. Anyone who picks the same team can join its room, so don't share anything private.
+
+### Shop
+
+Tap your **⬢ Tech Cores** at the top (or **☰ → Shop**). Everything costs Tech Cores; there are no real-money purchases.
+
+| Section | What's in it |
+| --- | --- |
+| Daily deals | 3 items at 30% off, new every day |
+| Gear | 5 Uplinks (150), 5 Pulse Bombs (150), 2 Firewalls (200), Breach Crate (380) |
+| Boosts | Energy Refill (100), Cooldown Reset for every portal near you (120) |
+| Style | Avatars, name colours, profile banners, compass skins and titles (400–2,000) |
+
+### Profile customisation
+
+**Profile → Customise** changes how you look in your profile and in team chat:
+
+- **Avatar:** 12 free, 4 that open at Levels 11, 21, 31 and 41, and 6 in the shop. It also shows in the top-left corner.
+- **Name colour:** your team colour, white or sky for free, 4 more in the shop.
+- **Banner:** the background of your profile card. Two free, Aurora at Level 15, Gold Circuit at Level 41, and 3 in the shop.
+- **Title:** shown under your name. Earn titles from ranks, achievements and Prestige, or buy them.
+- **Bio:** one line, up to 80 characters.
+- **Showcase:** up to 3 badges or achievements on your card.
+
+Compass skins and agent gear are still under **Profile → Cosmetics**.
 
 ### Missions
 
@@ -281,7 +323,8 @@ Explore → Discover → Hack → Earn XP → Level Up → Unlock → Upgrade Co
 
 - **The world:** there's no server. The globe is cut into cells about 120 m across, and each cell's portal is generated from its coordinates with a seeded random number generator, so everyone in the same place sees the same portals. A few portals change hands every day. Tech Cubes reroll every 10 minutes and Nexus signals every hour.
 - **Other players:** your squadmates, the rest of your team and the other teams are simulated. Team progress, event scores and attacks on your portals come from seeds, so they're the same every time you look.
-- **Your progress** is saved on your phone (`localStorage`).
+- **Your progress** is saved on your phone (`localStorage`), one save per account.
+- **Team chat** uses PeerJS: see [Team chat](#team-chat). To test it without the internet, run a local PeerServer and add `?peerhost=localhost&peerport=9000&peerpath=/ph&peersecure=0` to the address.
 - **The 3D view** is drawn on a 2D canvas with no 3D library: every point is projected through a simple perspective camera, and the crystals are flat-shaded solids drawn back to front.
 - **Sound** is synthesized with WebAudio. There are no image or audio files apart from the app icons.
 
@@ -314,7 +357,10 @@ Stay aware of your surroundings. Don't go onto private property, and never play 
 | `js/core.js` | Seeded random numbers and small helpers |
 | `js/data.js` | **Every number in the progression system:** XP and Tech Core rewards, caps, the level table, ranks, unlocks, upgrades, cosmetics, missions, objectives, team levels, Prestige |
 | `js/world.js` | Generates portals, Tech Cubes and Nexus signals from real coordinates |
-| `js/state.js` | Your save and the game rules |
+| `js/accounts.js` | Sign-up, log-in and passwords |
+| `js/state.js` | Your save and the game rules, including the shop and profile customisation |
+| `js/chat.js` | Team chat over PeerJS |
+| `js/vendor/peerjs.min.js` | PeerJS 1.x (MIT licence, see `PEERJS-LICENSE`) |
 | `js/compass.js` | The 3D Sci-Fi Compass: camera, projection, and drawing the disc, portals, links and you |
 | `js/hack.js` | The hacking puzzle |
 | `js/ui.js` | The HUD, XP bar, next-level card and all the panels |

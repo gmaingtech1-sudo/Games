@@ -350,3 +350,82 @@ dl.profile.sub dd { color: var(--ink); }
 .p-ups { color: var(--ink) !important; font-size: 13px !important; }
 .hint { margin: -4px 0 8px; }
 .r-dist.big { font-size: 20px; font-weight: 700; color: var(--ink); }
+
+/* ------------------ Accounts ------------------ */
+
+.form-err { color: var(--danger); font-size: 13px; min-height: 18px; margin: 0; }
+.ob-accounts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; }
+.ob-accounts small { width: 100%; }
+.acc-btn { border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 6px 12px; font-weight: 700; }
+.ob-form input[type="password"] { letter-spacing: 0.1em; }
+.avatar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+.avatar-btn { position: relative; aspect-ratio: 1; border-radius: 14px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); font-size: 26px; display: grid; place-items: center; }
+.avatar-btn.on { border-color: var(--team); box-shadow: 0 0 12px color-mix(in srgb, var(--team) 50%, transparent); }
+.avatar-btn:disabled { opacity: 0.4; }
+.avatar-btn small { position: absolute; bottom: 2px; left: 0; right: 0; font-size: 9px; color: var(--muted); }
+
+/* ------------------ HUD shop button ------------------ */
+
+.cores-btn { display: flex; align-items: center; gap: 3px; border: 1px solid color-mix(in srgb, var(--cores) 45%, transparent); background: rgba(255, 210, 63, 0.08); border-radius: 14px; padding: 3px 8px; color: var(--cores); font-size: 14px; }
+.cores-btn b { font-variant-numeric: tabular-nums; }
+.cores-btn i { font-style: normal; font-weight: 700; margin-left: 2px; }
+
+/* ------------------ Shop ------------------ */
+
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.shop-item { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; border: 1px solid var(--line); border-radius: 14px; padding: 12px 8px; background: rgba(255, 255, 255, 0.03); }
+.shop-item.deal { border-color: var(--cores); box-shadow: 0 0 14px rgba(255, 210, 63, 0.15); }
+.shop-item.owned { opacity: 0.6; }
+.shop-item b { font-size: 13px; }
+.shop-item small { font-size: 11px; color: var(--muted); }
+.shop-item .btn { margin-top: auto; }
+.shop-item s { opacity: 0.6; font-weight: 500; }
+.shop-icon { font-size: 30px; }
+
+/* ------------------ Profile card and customisation ------------------ */
+
+.prof-card { display: flex; gap: 14px; align-items: center; border-radius: 18px; padding: 16px; margin-right: 40px; border: 1px solid var(--line); }
+.prof-avatar { position: relative; font-size: 40px; width: 72px; height: 72px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--tc); background: rgba(0, 0, 0, 0.35); box-shadow: 0 0 18px color-mix(in srgb, var(--tc) 50%, transparent); }
+.prof-avatar i { position: absolute; right: -6px; bottom: -6px; font-size: 22px; font-style: normal; }
+.prof-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.prof-text h2 { font-size: 20px; overflow-wrap: anywhere; }
+.prof-text small { color: rgba(234, 244, 255, 0.75); font-size: 12px; }
+.prof-text .prof-title { color: var(--cores); font-weight: 700; letter-spacing: 0.04em; }
+.prof-bio { margin: 6px 0 0; font-size: 13px; font-style: italic; }
+.prof-show { font-size: 20px; margin-top: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-btn { border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); border-radius: 14px; padding: 6px 11px; font-size: 13px; font-weight: 600; }
+.chip-btn.on { border-color: var(--team); background: color-mix(in srgb, var(--team) 18%, transparent); }
+.chip-btn:disabled { opacity: 0.45; }
+.banner-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.banner-btn { height: 52px; border-radius: 12px; border: 1px solid var(--line); display: flex; align-items: flex-end; padding: 6px 8px; }
+.banner-btn span { font-size: 11px; font-weight: 700; text-shadow: 0 1px 3px #000; }
+.banner-btn.on { border: 2px solid var(--team); }
+.banner-btn:disabled { opacity: 0.45; }
+.bio-row { display: flex; gap: 6px; }
+.bio-row input { flex: 1; min-width: 0; min-height: 40px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05); padding: 0 12px; -webkit-user-select: text; user-select: text; }
+
+/* ------------------ Team chat ------------------ */
+
+.chat { position: fixed; inset: 0; z-index: 25; display: flex; flex-direction: column; background: var(--bg); padding: calc(var(--safe-t) + 8px) 12px calc(var(--safe-b) + 8px); }
+.chat-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.chat-head b { display: block; font-family: var(--font-display); color: var(--team); letter-spacing: 0.05em; }
+.chat-head small { color: var(--muted); font-size: 12px; cursor: pointer; }
+.chat-roster { display: flex; gap: 8px; overflow-x: auto; padding: 8px 0; min-height: 20px; }
+.chat-roster .ro { display: flex; flex-direction: column; align-items: center; font-size: 10px; flex: none; max-width: 60px; }
+.chat-roster .ro i { font-style: normal; font-size: 22px; }
+.chat-roster .ro b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60px; }
+.chat-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 8px 0; -webkit-user-select: text; user-select: text; }
+.chat-empty { margin: auto; max-width: 300px; }
+.msg { display: flex; gap: 8px; align-items: flex-start; }
+.msg-av { font-size: 22px; width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, 0.06); }
+.msg-body { background: var(--panel); border: 1px solid var(--line); border-radius: 4px 14px 14px 14px; padding: 6px 10px; min-width: 0; max-width: 85%; }
+.msg.mine .msg-body { border-color: color-mix(in srgb, var(--team) 50%, transparent); }
+.msg-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+.msg-name { border: 0; background: none; padding: 0; font-weight: 700; font-size: 13px; }
+.msg-meta small { color: var(--muted); font-size: 11px; }
+.msg time { color: var(--muted); font-size: 10px; margin-left: auto; }
+.msg-body p { margin: 2px 0 0; overflow-wrap: anywhere; }
+.msg.activity { justify-content: space-between; font-size: 12.5px; color: var(--muted); padding: 2px 6px; border-left: 2px solid var(--team); }
+.chat-form { display: flex; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.chat-form input { flex: 1; min-width: 0; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05); padding: 0 12px; -webkit-user-select: text; user-select: text; }

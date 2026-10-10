@@ -9,7 +9,7 @@ Portal Hackers: Nexus as a regular Android app: download the APK, install it, an
 1. Open the APK on your phone (from your browser's downloads, the Files app, or wherever you downloaded it).
 2. Android will say it can't install apps from that source. Tap **Settings**, turn on **Allow from this source**, and go back.
 3. Tap **Install**. If Play Protect warns that it doesn't recognize the app, tap **More details → Install anyway**. It often warns about apps that don't come from the Play Store.
-4. Open **Portal Hackers**, pick your team and name, then tap **Use my location**. Android asks once for location access. If you say no, you tap the compass to walk instead. You can turn location on later in **Settings → Apps → Portal Hackers → Permissions**.
+4. Open **Portal Hackers**, sign up, pick your team and avatar, then tap **Use my location**. Android asks once for location access. If you say no, you tap the compass to walk instead. You can turn location on later in **Settings → Apps → Portal Hackers → Permissions**.
 
 Works on Android 7.0 and newer, as long as Android System WebView is up to date (the Play Store updates it automatically). On phones with a compass sensor the radar turns with the phone; without one, north stays up.
 
@@ -21,14 +21,15 @@ It's the same game as the web version in [`../portal-hackers`](../portal-hackers
 
 - The game files are inside the APK. The app serves them to its WebView from a private `https://appassets.androidplatform.net/` address, which counts as a secure page, so GPS works without hosting. Only the fonts come from Google Fonts, and it falls back to the phone's font without a connection.
 - Your location stays on the phone.
-- Your progress is saved in the app's own storage.
+- Your accounts and progress are saved in the app's own storage.
+- Team chat needs the internet; it connects phones through PeerJS's public server, then directly.
 - The screen stays on while you play.
 - The back button aborts a hack or closes a panel before it leaves the app.
 
 | File | What it does |
 | --- | --- |
 | `src/app/portalhackers/game/MainActivity.java` | The native side: WebView setup, serving the game files, location permission, back button |
-| `AndroidManifest.xml` | App name, icon, permissions (location, internet for fonts, vibration), portrait screen |
+| `AndroidManifest.xml` | App name, icon, permissions (location, internet for fonts and team chat, vibration), portrait screen |
 | `res/` | Launcher icons (including the Android 8+ adaptive icon and the Android 13+ themed icon) and the dark theme |
 | `build.sh` | Builds `dist/portal-hackers.apk` |
 | `signing.keystore` | The key the APK is signed with (password `portalhackers`, alias `portalhackers`) |

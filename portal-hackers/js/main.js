@@ -44,21 +44,109 @@ window.PH = window.PH || {};
   }
 
   let pickTeam = null;
+  let account = null;      // the account being set up
+  let claiming = null;     // a save from before accounts, being given an account
+
+  const AC = PH.accounts;
+
+  // Logged in: load that account's hacker, or set one up.
+  function enter(acc) {
+    S.useAccount(acc.id);
+    const s = S.load();
+    if (s) {
+      s.name = acc.name;
+      begin(s);
+    } else {
+      account = acc;
+      step('team');
+    }
+  }
+
+  function showLogin() {
+    const accs = AC.list().sort((x, y) => (y.last || 0) - (x.last || 0));
+    $('ob-accounts').innerHTML = accs.length ? `<small class="muted">Accounts on this phone</small>${accs.map((a) => `<button class="acc-btn" type="button" data-acc="${esc(a.id)}">${esc(a.name)}</button>`).join('')}` : '';
+    $('ob-login-err').textContent = '';
+    step('login');
+    setTimeout(() => (accs.length === 1 ? (($('ob-login-user').value = accs[0].name), $('ob-login-pass')) : $('ob-login-user')).focus(), 50);
+  }
+
+  function showSignup(prefill) {
+    $('ob-signup-err').textContent = '';
+    $('ob-signup-title').textContent = claiming ? 'Secure your hacker' : 'Sign up';
+    $('ob-signup-note').textContent = claiming
+      ? 'Portal Hackers has accounts now. Pick a username and password for your hacker: your progress comes with you.'
+      : 'Your account and progress are saved on this phone.';
+    $('ob-signup-user').value = prefill || '';
+    step('signup');
+    setTimeout(() => $(prefill ? 'ob-signup-pass' : 'ob-signup-user').focus(), 50);
+  }
 
   function onboarding() {
-    const existing = S.load();
-    if (existing) {
+    const cur = AC.current();
+    const legacy = AC.legacySave();
+    if (cur) {
       $('ob-continue').hidden = false;
-      $('ob-continue').textContent = `Continue as ${existing.prestige ? `[P${existing.prestige}] ` : ''}${existing.name}`;
-      $('ob-begin').textContent = 'New hacker';
-      $('ob-begin').classList.remove('btn-main');
+      $('ob-continue').textContent = `Continue as ${cur.name}`;
+      $('ob-continue').onclick = () => { A.unlock(); enter(cur); };
+      $('ob-login').textContent = 'Log in to another account';
+      $('ob-login').classList.remove('btn-main');
+    } else if (legacy && legacy.name && !AC.list().length) {
+      $('ob-continue').hidden = false;
+      $('ob-continue').textContent = `Continue as ${legacy.name}`;
+      $('ob-continue').onclick = () => {
+        A.unlock();
+        claiming = legacy;
+        showSignup(String(legacy.name).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 16));
+      };
+      $('ob-login').classList.remove('btn-main');
     }
-    $('ob-continue').addEventListener('click', () => { A.unlock(); begin(existing); });
-    $('ob-begin').addEventListener('click', () => {
-      A.unlock();
-      if (existing && !confirm('Start a new hacker? Your current one will be deleted.')) return;
-      step('team');
+    $('ob-login').addEventListener('click', () => { A.unlock(); claiming = null; showLogin(); });
+    $('ob-signup').addEventListener('click', () => { A.unlock(); claiming = null; showSignup(''); });
+    document.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => {
+      const g = b.dataset.goto;
+      if (g === 'login') showLogin();
+      else if (g === 'signup') showSignup('');
+      else step(g);
+    }));
+    $('ob-accounts').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-acc]');
+      if (!b) return;
+      const acc = AC.find(b.dataset.acc);
+      $('ob-login-user').value = acc ? acc.name : '';
+      $('ob-login-pass').focus();
     });
+
+    $('ob-login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('ob-login-err').textContent = 'Checking…';
+      const res = await AC.logIn($('ob-login-user').value, $('ob-login-pass').value);
+      if (!res.ok) { $('ob-login-err').textContent = res.error; A.bad(); return; }
+      $('ob-login-pass').value = '';
+      enter(res.account);
+    });
+
+    $('ob-signup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const user = $('ob-signup-user').value.trim();
+      const pass = $('ob-signup-pass').value;
+      const err = AC.checkName(user) || AC.checkPass(pass) || (pass !== $('ob-signup-pass2').value ? 'The passwords don\'t match' : null);
+      if (err) { $('ob-signup-err').textContent = err; A.bad(); return; }
+      $('ob-signup-err').textContent = 'Creating your account…';
+      const res = await AC.signUp(user, pass);
+      if (!res.ok) { $('ob-signup-err').textContent = res.error; A.bad(); return; }
+      $('ob-signup-pass').value = '';
+      $('ob-signup-pass2').value = '';
+      if (claiming) {
+        AC.adoptLegacy(res.account.name);
+        claiming = null;
+        enter(res.account);
+      } else {
+        account = res.account;
+        S.useAccount(account.id);
+        step('team');
+      }
+    });
+
     $('ob-teams').innerHTML = Object.values(D.TEAMS).map((t) => `<button class="team-btn" data-t="${t.id}" type="button" style="--tc:${t.color}">
       <span class="team-glyph">${t.glyph}</span><span><b>${t.name}</b><small>${esc(t.motto)}</small></span></button>`).join('');
     $('ob-teams').addEventListener('click', (e) => {
@@ -66,20 +154,33 @@ window.PH = window.PH || {};
       if (!b) return;
       A.tap();
       pickTeam = b.dataset.t;
-      step('name');
-      setTimeout(() => $('ob-name').focus(), 50);
+      document.body.style.setProperty('--team', D.TEAMS[pickTeam].color);
+      step('avatar');
     });
-    $('ob-name-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const name = $('ob-name').value.trim().replace(/\s+/g, ' ') || 'NovaPlayer';
-      S.reset();
-      const s = S.fresh(name.slice(0, 16), pickTeam);
+    $('ob-avatars').innerHTML = D.AVATARS.filter((a) => !a.shop && !a.level).map((a) => `<button class="avatar-btn" type="button" data-av="${a.id}" aria-label="Avatar ${a.id}">${a.icon}</button>`).join('');
+    $('ob-avatars').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-av]');
+      if (!b || !account) return;
+      A.tap();
+      const s = S.fresh(account.name, pickTeam);
+      s.look.avatar = b.dataset.av;
       S.start(s);
       S.persist(true);
       step('move');
     });
     $('ob-gps').addEventListener('click', () => { S.save.settings.walk = 'gps'; S.persist(); begin(S.save); });
     $('ob-tap').addEventListener('click', () => { S.save.settings.walk = 'tap'; S.persist(); begin(S.save); });
+  }
+
+  // Posts what you just did to your team chat (if you're sharing).
+  function share(text) {
+    if (!S.save || !S.save.settings.share || PH.chat.state !== 'online') return;
+    PH.chat.send(text, 'activity');
+  }
+  game.share = share;
+
+  function startChat(save) {
+    PH.chat.start(save.team, () => S.publicProfile(), save.chat);
   }
 
   function begin(save) {
@@ -98,6 +199,7 @@ window.PH = window.PH || {};
     refresh(true);
     UI.hud();
     requestAnimationFrame(loop);
+    startChat(save);
     if (save.stats.hacked === 0 && save.stats.discovered === 0) {
       setTimeout(() => UI.toast('Welcome, SCOUT. Walk towards the <b>?</b> blips on your compass to discover portals.'), 800);
     }
@@ -413,7 +515,11 @@ window.PH = window.PH || {};
 
   /* ------------------ Start ------------------ */
 
-  S.on(UI.onEvent);
+  S.on((type, d) => {
+    UI.onEvent(type, d);
+    if (type === 'levelup' && (d.level % 5 === 0 || D.RANKS.some((r) => r.from === d.level && d.level > 1))) share(`reached Level ${d.level}${D.RANKS.some((r) => r.from === d.level) ? ` and the ${d.rank.name} rank` : ''}`);
+    if (type === 'event' && d.win) share('helped win the team event 🏆');
+  });
   UI.bind();
   bind();
   onboarding();

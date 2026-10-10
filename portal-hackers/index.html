@@ -29,7 +29,7 @@
     </button>
     <div class="hud-res">
       <span title="Energy">🔋<b id="hud-energy">100</b></span>
-      <span title="Tech Cores">⬢<b id="hud-cores">0</b></span>
+      <button id="hud-shop" class="cores-btn" type="button" aria-label="Tech Cores: open the shop">⬢<b id="hud-cores">0</b><i>+</i></button>
       <button id="hud-gear" class="icon-btn" type="button" aria-label="Gear">🎒</button>
       <button id="hud-menu" class="icon-btn" type="button" aria-label="Menu">☰</button>
     </div>
@@ -82,6 +82,20 @@
   </div>
 </section>
 
+<!-- ============ Team chat ============ -->
+<section id="chat" class="chat" hidden>
+  <header class="chat-head">
+    <div><b id="chat-title">TEAM CHAT</b><small id="chat-status">Connecting…</small></div>
+    <button id="chat-close" class="round-btn" type="button" aria-label="Close chat">✕</button>
+  </header>
+  <div id="chat-roster" class="chat-roster" aria-label="Online now"></div>
+  <div id="chat-list" class="chat-list" role="log" aria-live="polite"></div>
+  <form id="chat-form" class="chat-form">
+    <input id="chat-input" type="text" maxlength="200" autocomplete="off" placeholder="Message your team" aria-label="Message">
+    <button class="btn btn-main" type="submit">Send</button>
+  </form>
+</section>
+
 <!-- ============ Sheets, toasts, level-up ============ -->
 <section id="sheet" class="sheet" hidden>
   <div id="sheet-card" class="sheet-card" role="dialog" aria-modal="true"></div>
@@ -105,8 +119,36 @@
     <p class="tagline">Portals are opening on your streets. Find them with your Sci-Fi Compass, hack them for gear, knock out enemy Uplinks, link portals into control fields, and climb from Scout to Nexus Master.</p>
     <div class="ob-actions">
       <button id="ob-continue" class="btn btn-main btn-big" type="button" hidden>Continue</button>
-      <button id="ob-begin" class="btn btn-main btn-big" type="button">Begin</button>
+      <button id="ob-login" class="btn btn-main btn-big" type="button">Log in</button>
+      <button id="ob-signup" class="btn btn-big" type="button">Sign up</button>
     </div>
+  </div>
+
+  <div class="ob-step" data-step="login" hidden>
+    <h2>Log in</h2>
+    <div id="ob-accounts" class="ob-accounts"></div>
+    <form id="ob-login-form" class="ob-form">
+      <input id="ob-login-user" type="text" maxlength="16" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="Username" aria-label="Username">
+      <input id="ob-login-pass" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password">
+      <p id="ob-login-err" class="form-err" role="alert"></p>
+      <button class="btn btn-main btn-big" type="submit">Log in</button>
+    </form>
+    <button class="btn ghost" type="button" data-goto="signup">No account? Sign up</button>
+    <button class="btn ghost" type="button" data-goto="title">Back</button>
+  </div>
+
+  <div class="ob-step" data-step="signup" hidden>
+    <h2 id="ob-signup-title">Sign up</h2>
+    <p id="ob-signup-note" class="muted small">Your account and progress are saved on this phone.</p>
+    <form id="ob-signup-form" class="ob-form">
+      <input id="ob-signup-user" type="text" maxlength="16" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="Username (3–16 letters or numbers)" aria-label="Username">
+      <input id="ob-signup-pass" type="password" autocomplete="new-password" placeholder="Password (6+ characters)" aria-label="Password">
+      <input id="ob-signup-pass2" type="password" autocomplete="new-password" placeholder="Password again" aria-label="Password again">
+      <p id="ob-signup-err" class="form-err" role="alert"></p>
+      <button class="btn btn-main btn-big" type="submit">Create account</button>
+    </form>
+    <button class="btn ghost" type="button" data-goto="login">Have an account? Log in</button>
+    <button class="btn ghost" type="button" data-goto="title">Back</button>
   </div>
 
   <div class="ob-step" data-step="team" hidden>
@@ -115,12 +157,10 @@
     <div id="ob-teams" class="ob-teams"></div>
   </div>
 
-  <div class="ob-step" data-step="name" hidden>
-    <h2>Your hacker name</h2>
-    <form id="ob-name-form" class="ob-form">
-      <input id="ob-name" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="NovaPlayer" aria-label="Hacker name">
-      <button class="btn btn-main btn-big" type="submit">Next</button>
-    </form>
+  <div class="ob-step" data-step="avatar" hidden>
+    <h2>Pick your avatar</h2>
+    <p class="muted">Your teammates see it in team chat. You can change it, and much more, in your profile.</p>
+    <div id="ob-avatars" class="avatar-grid"></div>
   </div>
 
   <div class="ob-step" data-step="move" hidden>
@@ -135,10 +175,13 @@
 <script src="js/core.js"></script>
 <script src="js/data.js"></script>
 <script src="js/world.js"></script>
+<script src="js/accounts.js"></script>
 <script src="js/state.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/compass.js"></script>
 <script src="js/hack.js"></script>
+<script src="js/vendor/peerjs.min.js"></script>
+<script src="js/chat.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>
 <script>

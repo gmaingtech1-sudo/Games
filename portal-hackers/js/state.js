@@ -15,7 +15,8 @@ window.PH = window.PH || {};
   const W = PH.world;
   const { rng, randInt, pick, clamp, fmt } = PH.util;
 
-  const SAVE_KEY = 'portal-hackers-save-v1';
+  // Each account has its own save (see accounts.js).
+  let SAVE_KEY = 'portal-hackers-save-v1';
   const LAUNCH = Date.UTC(2026, 9, 5);     // when the teams' war began (a Monday)
 
   let save = null;
@@ -86,10 +87,17 @@ window.PH = window.PH || {};
       event: { win: -1, pts: 0, done: {} },
       weekly: null,
       fp: 0,
-      settings: { walk: 'gps', sound: true, rotate: true },
+      settings: { walk: 'gps', sound: true, rotate: true, share: true },
+      look: { avatar: 'fox', color: 'team', banner: 'night', title: '', bio: '', showcase: [] },
+      owned: { avatar: [], color: [], banner: [], title: [] },
+      bought: {},            // shop item id → how many times
+      chat: [],              // your team chat, last 100 messages
+      muted: [],             // names you've muted in chat
       home: null,
     };
   }
+
+  function useAccount(id) { SAVE_KEY = PH.accounts.saveKey(id); }
 
   function load() {
     try {
@@ -960,6 +968,112 @@ window.PH = window.PH || {};
     }
   }
 
+  /* ------------------ Profile customisation ------------------ */
+
+  // Can you use this avatar / colour / banner? Returns null, or why not.
+  function lookLock(kind, it) {
+    if (it.level && level() < it.level && save.prestige === 0) return `Level ${it.level}`;
+    if (it.shop && !save.owned[kind].includes(it.id)) return 'Shop';
+    return null;
+  }
+
+  // Every title you've earned: ranks, achievements, Prestige and the shop.
+  function titles() {
+    const out = [];
+    for (const r of D.RANKS) if (save.badges.includes(r.id) || (r.from <= level())) out.push({ id: `rank:${r.id}`, text: r.name });
+    for (const a of D.ACHIEVEMENTS) if (save.ach[a.id]) out.push({ id: `ach:${a.id}`, text: a.name });
+    if (save.title) out.push({ id: 'prestige', text: save.title });
+    for (const id of save.owned.title) out.push({ id: `shop:${id}`, text: D.SHOP_TITLES[id] });
+    return out;
+  }
+
+  function titleText() {
+    const t = titles().find((x) => x.id === save.look.title);
+    return t ? t.text : rank().name;
+  }
+
+  const avatarIcon = (id) => (D.AVATARS.find((a) => a.id === (id || save.look.avatar)) || D.AVATARS[0]).icon;
+
+  function nameColor() {
+    const c = D.NAME_COLORS.find((x) => x.id === save.look.color) || D.NAME_COLORS[0];
+    return c.color === 'team' ? D.TEAMS[save.team].color : c.color;
+  }
+
+  function setLook(kind, id) {
+    const lists = { avatar: D.AVATARS, color: D.NAME_COLORS, banner: D.BANNERS };
+    if (kind === 'title') {
+      if (id && !titles().some((t) => t.id === id)) return false;
+      save.look.title = id || '';
+    } else if (kind === 'bio') {
+      save.look.bio = String(id || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    } else if (kind === 'showcase') {
+      const sc = save.look.showcase;
+      const i = sc.indexOf(id);
+      if (i >= 0) sc.splice(i, 1);
+      else if (save.badges.includes(id) || save.ach[id]) { sc.push(id); while (sc.length > 3) sc.shift(); }
+    } else {
+      const it = lists[kind].find((x) => x.id === id);
+      if (!it || lookLock(kind, it)) return false;
+      save.look[kind] = id;
+    }
+    persist();
+    return true;
+  }
+
+  // What other players see in team chat.
+  function publicProfile() {
+    const c = D.NAME_COLORS.find((x) => x.id === save.look.color) || D.NAME_COLORS[0];
+    return { name: save.name, avatar: avatarIcon(), color: c.color === 'team' ? 'team' : c.color, title: titleText(), level: level(), prestige: save.prestige };
+  }
+
+  /* ------------------ Shop ------------------ */
+
+  // Three items a day at 30% off, the same for everyone.
+  function deals(now) {
+    const r = rng(`deals:${dayKey(now || Date.now())}`);
+    const pool = D.SHOP.slice();
+    const out = [];
+    while (out.length < 3 && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0].id);
+    return out;
+  }
+
+  function price(it) {
+    return deals().includes(it.id) ? Math.round(it.cost * (1 - D.DEAL_OFF)) : it.cost;
+  }
+
+  // Already own it (for one-off cosmetics)?
+  function ownsShop(it) {
+    const g = it.give;
+    if (g.avatar) return save.owned.avatar.includes(g.avatar);
+    if (g.color) return save.owned.color.includes(g.color);
+    if (g.banner) return save.owned.banner.includes(g.banner);
+    if (g.title) return save.owned.title.includes(g.title);
+    if (g.skin) return save.skins.includes(g.skin);
+    return false;
+  }
+
+  function buy(id, nearbyIds) {
+    const it = D.SHOP.find((x) => x.id === id);
+    if (!it) return { ok: false, text: 'Not for sale' };
+    if (ownsShop(it)) return { ok: false, text: 'You already own it' };
+    const g = it.give;
+    if (g.energy && save.energy >= maxEnergy()) return { ok: false, text: 'Your energy is already full' };
+    const cost = price(it);
+    if (save.cores < cost) return { ok: false, text: `Needs ${fmt(cost)} Tech Cores` };
+    save.cores -= cost;
+    if (g.items) for (const k in g.items) giveItem(k, g.items[k]);
+    if (g.energy) { save.energy = maxEnergy(); save.energyAt = Date.now(); }
+    if (g.cooldowns) for (const pid of nearbyIds || []) if (save.portals[pid]) save.portals[pid].hackAt = 0;
+    if (g.avatar) save.owned.avatar.push(g.avatar);
+    if (g.color) save.owned.color.push(g.color);
+    if (g.banner) save.owned.banner.push(g.banner);
+    if (g.title) save.owned.title.push(g.title);
+    if (g.skin) save.skins.push(g.skin);
+    save.bought[id] = (save.bought[id] || 0) + 1;
+    persist();
+    return { ok: true, text: `Bought ${it.name}`, cost };
+  }
+
   /* ------------------ Prestige ------------------ */
 
   function canPrestige() { return level() >= D.MAX_LEVEL; }
@@ -1022,6 +1136,8 @@ window.PH = window.PH || {};
 
   PH.state = {
     get save() { return save; },
+    useAccount, lookLock, titles, titleText, avatarIcon, nameColor, setLook, publicProfile,
+    deals, price, ownsShop, buy,
     start(s) {
       save = s;
       // Saves from before gear and fields existed.
@@ -1030,6 +1146,13 @@ window.PH = window.PH || {};
       if (!save.fields) save.fields = [];
       if (save.stats.fields == null) save.stats.fields = 0;
       if (save.stats.bombs == null) save.stats.bombs = 0;
+      // Saves from before profiles and the shop.
+      if (!save.look) save.look = { avatar: 'fox', color: 'team', banner: 'night', title: '', bio: '', showcase: [] };
+      if (!save.owned) save.owned = { avatar: [], color: [], banner: [], title: [] };
+      if (!save.bought) save.bought = {};
+      if (!save.chat) save.chat = [];
+      if (!save.muted) save.muted = [];
+      if (save.settings.share == null) save.settings.share = true;
       checkLevel();
     },
     fresh, load, persist, reset,
