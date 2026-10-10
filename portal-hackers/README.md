@@ -60,10 +60,10 @@ The compass is a 3D holographic disc on the ground around you, seen from above a
 | **Discover** | Walk within scanner range. |
 | **Hack** | Tap a portal in reach and pick a hack. The portal flashes a code across a grid of nodes: tap it back in order before time runs out. Basic (3×3, 4 nodes), Advanced (4×4, 6 nodes, Level 11), Expert (5×5, 8 nodes, Level 17). Epic portals need Advanced or better; Legendary and Nexus portals need Expert. 5-minute cooldown per portal. A successful hack drops gear (Basic 2–3 items, Advanced 3–5, Expert 5–7) and a key to that portal (50% / 75% / always). On an enemy portal it also knocks out Uplinks (Basic 1, Advanced 2, Expert 3). |
 | **Attack** | Fire a 💥 **Pulse Bomb** at an enemy portal in reach: it knocks out 2 Uplinks. When the last one goes, the portal is neutral. |
-| **Capture** | Deploy a 📶 **Uplink** on a neutral portal. If you knocked it out in the last 10 minutes, it counts as capturing an enemy portal. ⚫ Nexus portals need an Expert Hack first to drop their wards for 5 minutes. |
+| **Capture** | Deploy a 📶 **Uplink** on a neutral portal. If you knocked it out yourself, it counts as capturing an enemy portal, with no time limit. ⚫ Nexus portals need an Expert Hack first to drop their wards; they stay down until you capture it. |
 | **Fortify** | Deploy more Uplinks on your team's portals (up to 8: that's its level, L1–L8) and install up to 2 🧱 **Firewalls**. Both make it much harder for the other teams to take. |
 | **Defend** | From Level 15, stand by one of your team's portals. Defended portals can't fall. You get XP at 10 minutes and at 30 minutes. |
-| **Link** | From Level 25, connect two of your team's portals. You need a 🔑 key to the far portal, and linking uses it up. A link that grows a network to 3 or more portals is worth more, and one that closes a triangle raises a **control field**. Links can't cross. |
+| **Link** | From Level 1, connect two of your team's portals. You need a 🔑 key to the far portal, and linking uses it up. A link that grows a network to 3 or more portals is worth more, and one that closes a triangle raises a **control field**. Links can't cross. |
 
 Enemy teams attack the portals you hold: each hour, each one has a small chance to fall (and its links and fields go with it). More Uplinks, Firewalls, the **Defense** upgrade and **Team Level 10** make that less likely.
 
@@ -183,9 +183,9 @@ What the rewards do:
 
 | Levels | Rank | Unlocks |
 | --- | --- | --- |
-| 1–10 | 🔭 SCOUT | Basic compass, portal scanner, basic hacking, team, squad, Common portals |
+| 1–10 | 🔭 SCOUT | Basic compass, portal scanner, basic hacking, portal linking, team, squad, Common portals |
 | 11–20 | 💻 HACKER | Advanced hacks, Rare portals, portal defense, territory map |
-| 21–30 | ⚡ OPERATIVE | Epic portals, portal linking, Quantum scanner |
+| 21–30 | ⚡ OPERATIVE | Epic portals, bigger link networks, Quantum scanner |
 | 31–40 | 🌌 NEXUS AGENT | Legendary portals, Legendary missions, Nexus technology |
 | 41–50 | 👑 NEXUS MASTER | Master hacking, the last skins and cosmetics, Prestige |
 
@@ -197,7 +197,7 @@ Every 5 levels there's a major unlock:
 | 10 | Advanced Scanner (+50 m) |
 | 15 | Portal Defense |
 | 20 | Territory Map |
-| 25 | Portal Linking |
+| 25 | Link Master Module (+1 Network) |
 | 30 | Quantum Scanner (Nexus signals, Quantum branch) |
 | 35 | Legendary Missions |
 | 40 | Nexus Technology (Nexus portals) |

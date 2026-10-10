@@ -346,8 +346,8 @@ window.PH = window.PH || {};
   }
   const firewallsOf = (p) => (save.portals[p.id] && save.portals[p.id].fw) || 0;
 
-  // An enemy portal with no Uplinks left goes neutral, and for 10 minutes the
-  // one who emptied it counts as capturing it from its team.
+  // An enemy portal with no Uplinks left goes neutral, and capturing it
+  // counts as taking it from its team, however long you take.
   function knockOut(p, n) {
     const now = Date.now();
     const r = rec(p.id);
@@ -357,7 +357,7 @@ window.PH = window.PH || {};
       r.fw = 0;
       r.owner = null;
       r.mine = false;
-      r.neutral = now + D.COOLDOWN.neutral;
+      r.neutral = true;   // counts as taken from `from` whenever you capture it
       r.from = owner;
       return true;
     }
@@ -458,7 +458,7 @@ window.PH = window.PH || {};
       sabotaged = Math.min(D.SABOTAGE[tier], uplinksOf(p, now));
       neutralized = knockOut(p, D.SABOTAGE[tier]);
     }
-    if (p.rarity === 'nexus' && !owner) { r.breach = now + D.COOLDOWN.breach; breached = true; }
+    if (p.rarity === 'nexus' && !owner) { r.breach = true; breached = true; }
     progressEvent('hack');
     if (tier === 'expert' && ['epic', 'legendary', 'nexus'].includes(p.rarity)) progressEvent('hackElite');
     eventPts(H.pts);
@@ -475,7 +475,7 @@ window.PH = window.PH || {};
     if (dist > D.RANGE.interact) return { ok: false, text: `Get within ${D.RANGE.interact} m` };
     if (!discovered(p)) return { ok: false, text: 'Discover it first' };
     if (owner) return { ok: false, text: `Knock out its ${uplinksOf(p, now)} Uplinks first (Pulse Bombs or a hack)` };
-    if (p.rarity === 'nexus' && !(r.breach > now)) return { ok: false, text: 'Breach it with an Expert Hack first' };
+    if (p.rarity === 'nexus' && !r.breach) return { ok: false, text: 'Breach it with an Expert Hack first' };
     if (itemCount('uplink') <= 0) return { ok: false, text: 'You need an Uplink. Hack portals for more' };
     if (save.energy < D.ENERGY.cost.capture) return { ok: false, text: `Needs ${D.ENERGY.cost.capture} energy` };
     return { ok: true };
@@ -484,7 +484,7 @@ window.PH = window.PH || {};
   function capture(p) {
     const now = Date.now();
     const r = rec(p.id);
-    const owner = r.neutral > now ? r.from : null;   // you just emptied it
+    const owner = r.neutral ? r.from || null : null;   // you emptied it
     spend(D.ENERGY.cost.capture);
     useItem('uplink');
     r.uplinks = 1;
@@ -665,7 +665,6 @@ window.PH = window.PH || {};
   /* ------------------ Linking ------------------ */
 
   function canLink(a, b, posLL) {
-    if (!has('linking')) return `Portal Linking opens at Level ${D.GATES.linking.level}`;
     if (a.id === b.id) return 'Pick another portal';
     if (ownerOf(a) !== save.team || ownerOf(b) !== save.team) return 'Both portals must be held by your team';
     if (!discovered(b)) return 'Discover it first';
@@ -1109,7 +1108,7 @@ window.PH = window.PH || {};
     const extras = [];
     if (has('squad') && !save.squad.active) extras.push({ text: '🤝 Complete 1 squad mission', xp: D.XP.squad });
     if (has('defense') && !save.defense) extras.push({ text: '🛡️ Defend a team portal', xp: D.XP.defend10 });
-    if (has('linking')) extras.push({ text: '🔗 Connect 2 portals', xp: D.XP.link2 });
+    extras.push({ text: '🔗 Connect 2 portals', xp: D.XP.link2 });
     extras.push({ text: '🏴 Capture 1 enemy portal', xp: D.XP.captureEnemy });
     extras.push({ text: '🔎 Discover a new portal', xp: D.XP.discover.common });
     const two = extras.slice(0, 2);

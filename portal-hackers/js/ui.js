@@ -232,7 +232,7 @@ window.PH = window.PH || {};
         ${why && t.allowed ? `<small class="why">${esc(why)}</small>` : ''}</button>`;
     }
     out += '</div>';
-    if (r.breach > now) out += `<p class="good small">Nexus wards down for ${fmtTime(r.breach - now)}: deploy an Uplink now!</p>`;
+    if (r.breach && !owner) out += '<p class="good small">Nexus wards down: deploy an Uplink to capture it!</p>';
 
     if (enemy) {
       // Attack.
@@ -243,10 +243,10 @@ window.PH = window.PH || {};
     } else if (!owner) {
       // Capture.
       const c = S.canCapture(p, dist);
-      const fromEnemy = r.neutral > now;
+      const fromEnemy = !!(r.neutral && r.from);
       const xp = p.rarity === 'nexus' ? `${fmt(R.xp[0])}–${fmt(R.xp[1])} XP · ${fmt(R.cores[0])}–${fmt(R.cores[1])} ⬢`
         : fromEnemy ? `+${D.XP.captureEnemy} XP · +${D.CORES.captureEnemy} ⬢` : `+${D.XP.captureNeutral} XP`;
-      if (fromEnemy) out += `<p class="good small center">You knocked it out! Capture it within ${fmtTime(r.neutral - now)} to count it as taken from ${esc(D.TEAMS[r.from].name)}.</p>`;
+      if (fromEnemy) out += `<p class="good small center">You knocked it out! Capturing it counts as taking it from ${esc(D.TEAMS[r.from].name)}.</p>`;
       out += `<button class="btn btn-main wide" type="button" data-act="capture" data-arg="${p.id}" ${c.ok ? '' : 'disabled'}>📶 Deploy Uplink to capture <small>${xp} · 🔋${D.ENERGY.cost.capture}</small></button>`;
       if (!c.ok) out += `<p class="why center">${esc(c.text)}</p>`;
     } else {
@@ -265,13 +265,9 @@ window.PH = window.PH || {};
         if (!c.ok) out += `<p class="why center">${esc(c.text)}</p>`;
       }
       // Link.
-      if (S.has('linking')) {
-        const ok = dist <= D.RANGE.interact;
-        out += `<button class="btn wide" type="button" data-act="linkStart" data-arg="${p.id}" ${ok ? '' : 'disabled'}>🔗 Link to another portal <small>Needs its key · +${D.XP.link2} XP · close a triangle for a control field: +${D.XP.link3} XP</small></button>`;
-        if (!ok) out += `<p class="why center">Stand within ${D.RANGE.interact} m to link from here</p>`;
-      } else {
-        out += `<p class="muted small center">🔗 Portal Linking opens at Level ${D.GATES.linking.level}</p>`;
-      }
+      const near = dist <= D.RANGE.interact;
+      out += `<button class="btn wide" type="button" data-act="linkStart" data-arg="${p.id}" ${near ? '' : 'disabled'}>🔗 Link to another portal <small>Needs its key · +${D.XP.link2} XP · close a triangle for a control field: +${D.XP.link3} XP</small></button>`;
+      if (!near) out += `<p class="why center">Stand within ${D.RANGE.interact} m to link from here</p>`;
     }
     out += walkBtn(p);
     return out;
@@ -303,7 +299,7 @@ window.PH = window.PH || {};
       const got = Object.keys(res.drops).map((k) => `${D.ITEMS[k].icon}×${res.drops[k]}`).concat(res.key ? ['🔑×1'] : []).join(' ');
       toast(`💻 ${D.HACKS[tier].name} complete ${gain(res.xp, res.cores)}${res.doubled ? ' <small>⚛️ Quantum double cores!</small>' : ''}<br><small>Gear: ${got}</small>`
         + (res.sabotaged ? `<br><small>💥 Sabotage: ${res.sabotaged} Uplink${res.sabotaged > 1 ? 's' : ''} knocked out${res.neutralized ? '. It\'s neutral: deploy an Uplink!' : ''}</small>` : '')
-        + (res.breached ? '<br><small>Nexus wards down: deploy an Uplink within 5 minutes</small>' : ''), 'good');
+        + (res.breached ? '<br><small>Nexus wards down: deploy an Uplink to capture it</small>' : ''), 'good');
       if (res.neutralized || res.breached) portalSheet(id);
     } else {
       toast('Hack failed. The portal locks you out for 1 minute.', 'bad');

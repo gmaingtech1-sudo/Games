@@ -72,11 +72,11 @@ window.PH = window.PH || {};
 
   const RANKS = [
     { id: 'scout',  name: 'SCOUT',        icon: '🔭', from: 1,  to: 10, blurb: 'New players learn the basics.',
-      unlocks: ['Basic Sci-Fi Compass', 'Portal scanner', 'Basic hacking', 'First team selection', 'Squad system', 'Common portals'] },
+      unlocks: ['Basic Sci-Fi Compass', 'Portal scanner', 'Basic hacking', 'Portal linking', 'First team selection', 'Squad system', 'Common portals'] },
     { id: 'hacker', name: 'HACKER',       icon: '💻', from: 11, to: 20, blurb: 'Players become advanced portal hackers.',
       unlocks: ['Advanced hacking puzzles', 'Longer-range portal scanner', 'Portal defenses', 'Team territory map', 'Rare portals', 'New compass abilities'] },
     { id: 'op',     name: 'OPERATIVE',    icon: '⚡', from: 21, to: 30, blurb: 'Players become important members of their faction.',
-      unlocks: ['Portal linking', 'Energy networks', 'Squad abilities', 'Advanced team missions', 'Epic portals', 'Custom compass modules'] },
+      unlocks: ['Bigger link networks', 'Energy networks', 'Squad abilities', 'Advanced team missions', 'Epic portals', 'Custom compass modules'] },
     { id: 'agent',  name: 'NEXUS AGENT',  icon: '🌌', from: 31, to: 40, blurb: 'Players gain access to dangerous Nexus technology.',
       unlocks: ['Quantum scanner', 'Legendary portals', 'Nexus missions', 'Advanced team upgrades', 'Special hacking abilities', 'Large-scale multiplayer events'] },
     { id: 'master', name: 'NEXUS MASTER', icon: '👑', from: 41, to: 50, blurb: 'The highest normal progression tier.',
@@ -119,7 +119,7 @@ window.PH = window.PH || {};
     [6500,  [{ t: 'cores', n: 600 }]],
     [6750,  [{ t: 'free', b: 'network', name: 'Portal Link Upgrade' }]],
     [7000,  [{ t: 'gear', id: 'cape' }]],
-    [7500,  [{ t: 'unlock', u: 'linking' }]],
+    [7500,  [{ t: 'free', b: 'network', name: 'Link Master Module' }]],
     [7750,  [{ t: 'cores', n: 750 }]],
     [8000,  [{ t: 'free', b: 'network', name: 'Advanced Network Module' }]],
     [8250,  [{ t: 'skin', id: 'flare' }]],
@@ -168,7 +168,6 @@ window.PH = window.PH || {};
     expertHack:        { level: 17, name: 'Expert Hacking',      text: 'Expert Hacks: the hardest puzzles, worth 500 XP.' },
     territory:         { level: 20, name: 'Territory Map',       text: 'Zoom the compass out to see who holds every portal in a kilometre.' },
     epic:              { level: 21, name: 'Epic Portals',        text: 'Your scanner can see 🟠 Epic portals.' },
-    linking:           { level: 25, name: 'Portal Linking',      text: 'Connect your team\'s portals into energy networks.' },
     quantum:           { level: 30, name: 'Quantum Scanner',     text: 'Detect 🌌 Nexus signals, and upgrade the Quantum branch.' },
     legendary:         { level: 31, name: 'Legendary Portals',   text: 'Your scanner can see 🟡 Legendary portals.' },
     legendaryMissions: { level: 35, name: 'Legendary Missions',  text: 'One three-stage mission a day, worth 2,000 XP and 250 Tech Cores.' },
@@ -345,7 +344,7 @@ window.PH = window.PH || {};
     sweep:  { name: 'Signal Sweep',  text: 'Discover 3 portals',         ev: 'discover', goal: 3 },
     strike: { name: 'Strike Team',   text: 'Capture 1 portal',           ev: 'capture',  goal: 1 },
     hold:   { name: 'Hold the Line', text: 'Defend a portal for 10 min', ev: 'defend',   goal: 1, gate: 'defense' },
-    wire:   { name: 'Wire Job',      text: 'Connect 2 portals',          ev: 'link',     goal: 1, gate: 'linking' },
+    wire:   { name: 'Wire Job',      text: 'Connect 2 portals',          ev: 'link',     goal: 1 },
     teamop: { name: 'Special Team Op', text: 'Hack 4 portals',           ev: 'hack',     goal: 4, teamLevel: 20 },
   };
   const SQUAD_MINUTES = 45;
@@ -420,7 +419,7 @@ window.PH = window.PH || {};
     cell: (l) => 15 + 5 * l,
   };
 
-  const COOLDOWN = { hack: 5 * 60e3, fail: 60e3, breach: 5 * 60e3, neutral: 10 * 60e3 };
+  const COOLDOWN = { hack: 5 * 60e3, fail: 60e3 };
 
   /* ------------------ Gear (dropped by hacks) ------------------ */
 

@@ -470,7 +470,7 @@ window.PH = window.PH || {};
         kind: 'portal', id: p.id, lat: p.lat, lng: p.lng, rarity: p.rarity,
         known: S.discovered(p), owner,
         mine: !!(r.mine && owner === team),
-        breached: r.breach > now || r.neutral > now,
+        breached: !!(r.breach || r.neutral),
         uplinks: owner ? S.uplinksOf(p, now) : 0,
         firewalls: S.firewallsOf(p),
         key: S.keyCount(p.id) > 0,
