@@ -193,7 +193,7 @@ window.PH = window.PH || {};
     defense: { name: 'Defense', icon: '🛡️', text: 'Improve the player\'s ability to defend team portals.',
       effect: (l) => `Your portals resist attacks ${7 * l}% better` },
     network: { name: 'Network', icon: '🔗', text: 'Increase the number of portals the player can connect.',
-      effect: (l) => `Up to ${4 + 2 * l} links, ${250 + 75 * l} m long` },
+      effect: (l) => `Up to ${4 + 2 * l} links, any distance` },
     quantum: { name: 'Quantum', icon: '⚛️', text: 'Unlock powerful late-game abilities.', gate: 'quantum', mult: 1.5,
       effect: (l) => `Nexus signals seen at ${300 + 60 * l} m, ${4 * l}% chance of double hack cores` },
   };
@@ -407,9 +407,8 @@ window.PH = window.PH || {};
   /* ------------------ World tuning ------------------ */
 
   const RANGE = {
-    interact: 45,      // meters: hack, capture, defend, link from here
+    interact: 45,      // meters: hack, capture and defend from here
     defendSlack: 90,   // meters: how far you can wander while defending
-    linkBase: 250,
   };
 
   const ENERGY = {

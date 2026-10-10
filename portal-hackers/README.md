@@ -49,7 +49,7 @@ The compass is a 3D holographic disc on the ground around you, seen from above a
 | Black hole | A ⚫ **Nexus portal** (Level 40+), with a spinning accretion ring. |
 | Yellow cubes | **Tech Cubes.** Walk within reach (45 m) and they're picked up for you, or tap one in reach. Each gives +5 Tech Cores and energy, even when your energy is full. They come back every 10 minutes. |
 | Violet ripples and pillar | A 🌌 **Nexus signal** (Level 30+). Walk to it for 750 XP. Each lasts an hour. |
-| Dashed ring | Your reach (45 m). You hack, capture, defend and link from inside it. |
+| Dashed ring | Your reach (45 m). You hack, attack, capture and defend from inside it. Linking works at any distance. |
 
 **⤢** widens the radar. From Level 20, **🗺️ Territory map** zooms out to a kilometre, tilts the camera to look down from above, and shows who holds every portal.
 
@@ -63,7 +63,7 @@ The compass is a 3D holographic disc on the ground around you, seen from above a
 | **Capture** | Deploy a 📶 **Uplink** on a neutral portal. If you knocked it out yourself, it counts as capturing an enemy portal, with no time limit. ⚫ Nexus portals need an Expert Hack first to drop their wards; they stay down until you capture it. |
 | **Fortify** | Deploy more Uplinks on your team's portals (up to 8: that's its level, L1–L8) and install up to 2 🧱 **Firewalls**. Both make it much harder for the other teams to take. |
 | **Defend** | From Level 15, stand by one of your team's portals. Defended portals can't fall. You get XP at 10 minutes and at 30 minutes. |
-| **Link** | From Level 1, connect two of your team's portals. You need a 🔑 key to the far portal, and linking uses it up. A link that grows a network to 3 or more portals is worth more, and one that closes a triangle raises a **control field**. Links can't cross. |
+| **Link** | From Level 1, connect any two of your team's portals, at **any distance**, and from wherever you are. Tap **Link** on a portal and pick the other from the list of portals you hold keys to (or tap it on the compass). You need a 🔑 key to the far portal, and linking uses it up. A link that grows a network to 3 or more portals is worth more, and one that closes a triangle raises a **control field**. Links can't cross. |
 
 Enemy teams attack the portals you hold: each hour, each one has a small chance to fall (and its links and fields go with it). More Uplinks, Firewalls, the **Defense** upgrade and **Team Level 10** make that less likely.
 
@@ -259,7 +259,7 @@ Spend Tech Cores on six branches, 10 levels each. Levels cost 150, 300, 500, 750
 | 💻 Hacking | +8% hack time and 5% slower codes. Level 5 forgives 1 mistake, Level 10 forgives 2. |
 | 🔋 Energy | +20 max energy, +5 energy per cell, faster refill |
 | 🛡️ Defense | Your portals resist attacks 7% better |
-| 🔗 Network | +2 links you can hold, +75 m link range |
+| 🔗 Network | +2 links you can hold |
 | ⚛️ Quantum (Level 30+) | Nexus signals seen 60 m further, 4% chance of double hack cores |
 
 You choose your own path: nothing is upgraded automatically except the free levels from level rewards.

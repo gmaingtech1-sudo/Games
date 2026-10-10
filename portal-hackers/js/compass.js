@@ -637,12 +637,13 @@ window.PH = window.PH || {};
     drawSky(f, ring);
     drawGround(f, ring, glow, sweep);
 
-    // Pending link range.
+    // The portal you're linking from pulses.
     if (f.linkFrom) {
       const [x, y] = toWorld(f, f.linkFrom);
       ctx.setLineDash([3, 4]);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-      groundPath(circlePts((f.linkRange / f.range) * RING, 0, 64).map((q) => [q[0] + x, q[1] + y, 0]));
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + 0.4 * Math.sin(f.t * 5)})`;
+      ctx.lineWidth = 2;
+      groundPath(circlePts(1.6 + 0.2 * Math.sin(f.t * 5), 0, 32).map((q) => [q[0] + x, q[1] + y, 0]));
       ctx.stroke();
       ctx.setLineDash([]);
     }

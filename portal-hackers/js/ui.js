@@ -265,9 +265,7 @@ window.PH = window.PH || {};
         if (!c.ok) out += `<p class="why center">${esc(c.text)}</p>`;
       }
       // Link.
-      const near = dist <= D.RANGE.interact;
-      out += `<button class="btn wide" type="button" data-act="linkStart" data-arg="${p.id}" ${near ? '' : 'disabled'}>🔗 Link to another portal <small>Needs its key · +${D.XP.link2} XP · close a triangle for a control field: +${D.XP.link3} XP</small></button>`;
-      if (!near) out += `<p class="why center">Stand within ${D.RANGE.interact} m to link from here</p>`;
+      out += `<button class="btn wide" type="button" data-act="linkStart" data-arg="${p.id}">🔗 Link to another portal <small>Any distance · needs its key · +${D.XP.link2} XP · close a triangle for a control field: +${D.XP.link3} XP</small></button>`;
     }
     out += walkBtn(p);
     return out;
@@ -362,25 +360,34 @@ window.PH = window.PH || {};
   };
   actions.stopDefend = () => { S.stopDefense('Stopped'); redraw(); hud(); };
 
+  // Pick where to link: every team portal you hold a key to, however far away.
   actions.linkStart = (id) => {
-    const p = W.portalById(id);
-    G().linkFrom = p;
-    close();
-    const options = linkOptions(p);
-    const withKey = options.filter((b) => S.keyCount(b.id) > 0);
-    if (!options.length) toast(`No team portals you've discovered within ${S.linkRange()} m. Capture more nearby first.`, 'bad');
-    else if (!withKey.length) toast(`🔗 ${options.length} team portal${options.length > 1 ? 's' : ''} in range, but you have no keys to them. Hack them for keys.`, 'bad');
-    else toast(`🔗 Tap a team portal you have a key to (${withKey.length} in range)`);
+    const a = W.portalById(id);
+    G().linkFrom = a;
     hud();
+    sheet(() => {
+      const opts = linkOptions(a);
+      let out = `<h2>Link ${esc(a.name)} to…</h2><p class="muted small">Any of your team's portals, at any distance, if you have its 🔑 key. Linking uses the key and ${D.ENERGY.cost.link} energy. You can also tap a portal on the compass.</p><div class="list">`;
+      if (!opts.length) out += '<p class="muted">No keys to your team\'s other portals yet. Hack your team\'s portals to collect their keys.</p>';
+      for (const b of opts) {
+        const why = S.canLink(a, b);
+        out += `<button class="row" type="button" data-act="linkPick" data-arg="${b.id}" ${why ? 'disabled' : ''}><span class="r-icon">${D.RARITY[b.rarity].icon}</span><span><b>${esc(b.name)}</b><small>${why ? esc(why) : `🔑 ×${S.keyCount(b.id)} · L${S.uplinksOf(b)}`}</small></span><span class="r-dist">${fmtDist(W.distM(a, b))}</span></button>`;
+      }
+      return out + '</div>';
+    });
   };
+  // Closing the list without picking leaves linking on, to tap a portal on the compass.
+  actions.linkPick = (id) => { const b = W.portalById(id); if (b) { close(); linkTo(b); } };
 
   function linkOptions(a) {
-    return G().nearby.portals.filter((b) => b.id !== a.id && S.discovered(b) && S.ownerOf(b) === S.save.team && W.distM(a, b) <= S.linkRange());
+    return Object.keys(S.save.keys).filter((id) => S.save.keys[id] > 0 && id !== a.id)
+      .map((id) => W.portalById(id)).filter((b) => b && S.ownerOf(b) === S.save.team)
+      .sort((x, y) => W.distM(a, x) - W.distM(a, y));
   }
 
   function linkTo(b) {
     const a = G().linkFrom;
-    const why = S.canLink(a, b, G().pos);
+    const why = S.canLink(a, b);
     if (why) { toast(`🔗 ${esc(why)}`, 'bad'); return; }
     const res = S.link(a, b);
     A.link();
@@ -793,7 +800,7 @@ window.PH = window.PH || {};
           <li><b>Hacking.</b> Watch the code flash across the nodes, then tap it back in order. A successful hack drops gear (📶 Uplinks, 💥 Pulse Bombs, 🧱 Firewalls) and often a 🔑 key to that portal.</li>
           <li><b>Portals.</b> Each portal holds up to 8 Uplinks; that's its level (L1–L8). Deploy an Uplink on a neutral portal to capture it, and more to level up your team's portals. Firewalls help them hold.</li>
           <li><b>Taking enemy portals.</b> Knock out all their Uplinks with Pulse Bombs, or sabotage them with hacks (Basic 1, Advanced 2, Expert 3). Then it's neutral: deploy an Uplink to capture it.</li>
-          <li><b>Links and control fields.</b> Link two of your team's portals with a key to the far one. Close a triangle of links to raise a control field.</li>
+          <li><b>Links and control fields.</b> Link any two of your team's portals, at any distance, with a key to the far one. Close a triangle of links to raise a control field.</li>
           <li><b>Holding portals.</b> Enemy teams attack the portals you hold. More Uplinks, Firewalls and the Defense upgrade help them hold, and a portal you're defending can't fall.</li>
           <li><b>Energy.</b> Hacks, attacks, deploying and linking use energy. It refills over time, and Tech Cubes top it up.</li>
           <li><b>Level 50 → Nexus Master. After that → Prestige.</b></li>

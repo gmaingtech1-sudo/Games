@@ -257,7 +257,6 @@ window.PH = window.PH || {};
   }
   const signalRange = () => 300 + 60 * save.up.quantum;
   const maxEnergy = () => D.ENERGY.base + D.ENERGY.perLevel * save.up.energy;
-  const linkRange = () => D.RANGE.linkBase + 75 * save.up.network;
   const maxLinks = () => 4 + 2 * save.up.network;
   const hackCooldown = () => (has('masterHack') ? D.COOLDOWN.hack / 2 : D.COOLDOWN.hack);
 
@@ -664,13 +663,13 @@ window.PH = window.PH || {};
 
   /* ------------------ Linking ------------------ */
 
-  function canLink(a, b, posLL) {
+  // Links have no distance limit: any two of your team's portals, anywhere,
+  // as long as you hold a key to the far one.
+  function canLink(a, b) {
     if (a.id === b.id) return 'Pick another portal';
     if (ownerOf(a) !== save.team || ownerOf(b) !== save.team) return 'Both portals must be held by your team';
     if (!discovered(b)) return 'Discover it first';
     if (keyCount(b.id) <= 0) return `You need a Portal Key to ${b.name}. Hack it to get one`;
-    if (W.distM(posLL, a) > D.RANGE.interact) return `Stand within ${D.RANGE.interact} m of the first portal`;
-    if (W.distM(a, b) > linkRange()) return `Out of link range (${linkRange()} m)`;
     if (save.links.length >= maxLinks()) return `You can hold ${maxLinks()} links. Upgrade Network for more`;
     if (save.links.some((l) => (l.a === a.id && l.b === b.id) || (l.a === b.id && l.b === a.id))) return 'Already linked';
     if (save.energy < D.ENERGY.cost.link) return `Needs ${D.ENERGY.cost.link} energy`;
@@ -1157,7 +1156,7 @@ window.PH = window.PH || {};
     fresh, load, persist, reset,
     on(fn) { listener = fn; },
     level, rank, has, progress, award, addCores, rewardText, capRoom,
-    upgrade, scanRange, signalRange, maxEnergy, linkRange, maxLinks, hackParams, teamLevel, teamFP,
+    upgrade, scanRange, signalRange, maxEnergy, maxLinks, hackParams, teamLevel, teamFP,
     collectCube, itemCount, keyCount, uplinksOf, firewallsOf,
     canDeploy, deploy, canFirewall, installFirewall, canBomb, bomb,
     ownerOf, visible, discovered, discover, discoverSignal,

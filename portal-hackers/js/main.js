@@ -347,7 +347,7 @@ window.PH = window.PH || {};
     if (!force && now - lastRefresh.t < 1500 && moved < 8) return;
     lastRefresh = { t: now, lat: game.pos.lat, lng: game.pos.lng };
     const sigR = S.has('quantum') ? S.signalRange() : 0;
-    const r = Math.max(radarRange(), S.linkRange(), sigR) + 20;
+    const r = Math.max(radarRange(), sigR) + 20;
     const a = W.around(game.pos, r, now);
     game.nearby = {
       portals: a.portals.filter((p) => S.visible(p)),
@@ -504,7 +504,6 @@ window.PH = window.PH || {};
       signals: rangeMode === 2 ? [] : game.nearby.signals,
       links,
       linkFrom: game.linkFrom,
-      linkRange: S.linkRange(),
       walkTo: game.walkTo,
       teamColor: D.TEAMS[team].color,
       skin: s.skin,
