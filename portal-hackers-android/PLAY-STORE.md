@@ -17,7 +17,7 @@ Everything you need for the Play Console and for YouTube is in this folder:
 | | |
 | --- | --- |
 | Package name | `app.portalhackers.game` |
-| Version | 1.4.1 (version code 6) |
+| Version | 1.4.2 (version code 7) |
 | Target SDK | 36 (Android 16), as Google Play requires for new apps from 31 August 2026 |
 | Min SDK | 24 (Android 7.0) |
 | Upload key SHA-256 | `BB:5B:70:14:C4:13:64:DD:69:A4:77:E1:D2:CF:05:38:5F:88:E3:A7:AA:72:05:53:52:39:07:B8:93:C7:D5:98` |
@@ -97,7 +97,7 @@ Check every answer against Google's current wording before you submit. You're re
 
 - **Privacy policy:** the URL above.
 - **Ads:** No ads.
-- **App access:** All functionality is available without special access. You create an account in the app (stored on the phone); reviewers can sign up themselves.
+- **App access:** *Is any part of your app restricted?* **Yes** (you need an account to play). Add sign-in details: name `Review account`, username `PlayReview`, password `Review2026`. This account is built in: it logs in on any phone, because Google's reviewers can't sign up. Paste the instructions from the [App access](#app-access-instructions) section below.
 - **Content rating (IARC questionnaire):** Game. Violence: none (abstract "attacks" on glowing portals, no characters hurt). **Users can interact or exchange content: Yes** (team chat). **Shares user location with other users: No.** No purchases of digital goods with real money. Expect a Teen-type rating because of the open chat.
 - **Target audience:** 13 and over (the open chat makes it unsuitable for children). Not designed for children.
 - **Data safety:**
@@ -107,6 +107,14 @@ Check every answer against Google's current wording before you submit. You're re
   - No other data is collected. The PeerJS connection service sees IP addresses only to connect phones; Google Fonts sees IP addresses when fonts load.
 - **User-generated content:** players can **block** others (tap their name in chat) and **report** them (opens a report on the project's GitHub issues page with their recent messages).
 - **Government app / financial features / health:** No.
+
+## App access instructions
+
+For **Any other information required to access your app** (under 500 characters):
+
+```
+On the first screen tap "Log in" (not Sign up) and enter the username and password above. This review account works on any device. Then pick any team and avatar, and on the next screen tap "Play at home (tap the compass to walk)" to play without GPS: tap anywhere on the compass to walk there. Everything is free; there are no purchases or subscriptions. Team chat shows messages when another player on the same team is online.
+```
 
 ## 5. YouTube
 

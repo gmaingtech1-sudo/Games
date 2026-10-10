@@ -81,7 +81,13 @@ window.PH = window.PH || {};
     return { ok: true, account: acc };
   }
 
+  // Google Play's reviewers can't sign up, and accounts only exist on the
+  // phone that made them, so this one account logs in on any phone: the
+  // first log-in creates it there. It's an ordinary local account.
+  const REVIEW = { user: 'PlayReview', pass: 'Review2026' };
+
   async function logIn(user, pass) {
+    if (!find(user) && norm(user) === norm(REVIEW.user) && pass === REVIEW.pass) return signUp(REVIEW.user, REVIEW.pass);
     const acc = find(user);
     if (!acc) return { ok: false, error: 'No account with that username on this phone' };
     const h = await hashPass(String(pass || ''), acc.salt);
