@@ -430,3 +430,46 @@ dl.profile.sub dd { color: var(--ink); }
 .chat-form { display: flex; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
 .chat-form input { flex: 1; min-width: 0; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05); padding: 0 12px; -webkit-user-select: text; user-select: text; }
 a.row { color: inherit; text-decoration: none; }
+
+/* ------------------ World standings ------------------ */
+
+.wc { --wc-surface: #08122A; position: relative; }
+.wc-head { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--muted); }
+.wc-hero { display: flex; align-items: baseline; gap: 8px; margin: 8px 0 6px; }
+.wc-hero b { font-family: var(--font-display); font-size: 22px; letter-spacing: 0.04em; }
+.wc-hero small { color: var(--muted); }
+.wc-dot { width: 12px; height: 12px; border-radius: 50%; align-self: center; flex: none; }
+.wc-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; }
+.wc-legend span { display: flex; align-items: center; gap: 6px; }
+.wc-legend i, .wc-agents i, .wc-tip i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.wc-legend b { font-variant-numeric: tabular-nums; }
+.wc-legend em { font-style: normal; font-size: 11px; color: var(--muted); }
+.wc-svg { display: block; width: 100%; height: auto; margin-top: 6px; touch-action: pan-y; background: var(--wc-surface); border-radius: 12px; }
+.wc-grid { stroke: rgba(160, 200, 255, 0.10); stroke-width: 1; }
+.wc-ax { fill: var(--muted); font: 500 9px "Chakra Petch", sans-serif; }
+.wc-lab { fill: var(--ink); font: 700 9.5px "Chakra Petch", sans-serif; }
+.wc-cross { stroke: rgba(234, 244, 255, 0.5); stroke-width: 1; stroke-dasharray: 3 3; }
+.wc-tip { position: absolute; z-index: 2; pointer-events: none; background: rgba(4, 10, 24, 0.96); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 12px; display: flex; flex-direction: column; gap: 2px; min-width: 130px; }
+.wc-tip span { display: flex; align-items: center; gap: 6px; }
+.wc-tip em { font-style: normal; margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; }
+.wc-note { font-size: 11.5px; color: var(--muted); margin: 6px 0; }
+.wc h4 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+.wc-agents { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 3px; counter-reset: ag; }
+.wc-agents li { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 8px; border-radius: 8px; counter-increment: ag; }
+.wc-agents li::before { content: counter(ag); width: 16px; color: var(--muted); font-size: 11px; }
+.wc-agents li.you { background: rgba(255, 255, 255, 0.06); }
+.wc-agents span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wc-agents small { color: var(--muted); font-size: 11px; }
+.wc-agents b { font-variant-numeric: tabular-nums; }
+.wc-table { margin-top: 10px; font-size: 12px; }
+.wc-table summary { cursor: pointer; color: var(--muted); }
+.wc-table table { width: 100%; border-collapse: collapse; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.wc-table th, .wc-table td { text-align: right; padding: 3px 6px; border-bottom: 1px solid rgba(120, 190, 255, 0.08); }
+.wc-table th:first-child, .wc-table td:first-child { text-align: left; }
+.wc-table tr.avg td { font-weight: 700; }
+
+/* ------------------ Intel overlay ------------------ */
+
+.intel-overlay { position: fixed; inset: 0; z-index: 26; background: var(--bg); display: flex; flex-direction: column; }
+.intel-overlay iframe { flex: 1; width: 100%; border: 0; }
+.intel-overlay .round-btn { position: absolute; top: calc(var(--safe-t) + 10px); right: 10px; z-index: 2; background: var(--panel); }

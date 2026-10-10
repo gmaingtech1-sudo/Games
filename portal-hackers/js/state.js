@@ -696,6 +696,47 @@ window.PH = window.PH || {};
     return seen.size;
   }
 
+  // What a control field of `cp` Control Points pays on top of the link XP.
+  function fieldReward(cp) {
+    return {
+      xp: Math.min(1500, 50 + Math.round(cp / 10)),
+      cores: Math.min(300, 10 + Math.round(cp / 20)),
+      fp: Math.max(5, Math.round(cp / 20)),
+    };
+  }
+
+  // The CP of all the fields you hold right now.
+  function myCP() {
+    let total = 0;
+    for (const f of save.fields) {
+      if (f.cp == null) {
+        const pa = W.portalById(f.a), pb = W.portalById(f.b), pc = W.portalById(f.c);
+        f.cp = pa && pb && pc ? PH.score.fieldCP(pa, pb, pc) : 10;
+      }
+      total += f.cp;
+    }
+    return total;
+  }
+
+  // Remember your CP at each checkpoint of the cycle, for the world chart.
+  function logCP(now) {
+    const cyc = PH.score.cycleOf(now);
+    if (!save.cpLog || save.cpLog.cycle !== cyc.index) save.cpLog = { cycle: cyc.index, pts: {} };
+    const k = Math.max(0, cyc.checkpoint - 1);
+    save.cpLog.pts[k] = Math.max(save.cpLog.pts[k] || 0, myCP());
+  }
+
+  function worldStandings(now) {
+    now = now || Date.now();
+    const cyc = PH.score.cycleOf(now);
+    const log = save.cpLog && save.cpLog.cycle === cyc.index ? save.cpLog.pts : {};
+    return PH.score.standings(now, { team: save.team, cp: myCP(), log });
+  }
+
+  function topAgents(now) {
+    return PH.score.topAgents(now || Date.now(), { name: save.name, team: save.team, cp: myCP() });
+  }
+
   const linked = (x, y) => save.links.some((l) => (l.a === x && l.b === y) || (l.a === y && l.b === x));
 
   function link(a, b) {
@@ -708,20 +749,35 @@ window.PH = window.PH || {};
     // A link that closes triangles raises control fields.
     const ids = new Set();
     for (const l of save.links) { ids.add(l.a); ids.add(l.b); }
-    let fields = 0;
+    let fields = 0, cp = 0;
     for (const c of ids) {
       if (c === a.id || c === b.id || !linked(a.id, c) || !linked(b.id, c)) continue;
-      save.fields.push({ a: a.id, b: b.id, c });
+      const pc = W.portalById(c);
+      const f = { a: a.id, b: b.id, c, cp: pc ? PH.score.fieldCP(a, b, pc) : 10 };
+      save.fields.push(f);
       fields++;
+      cp += f.cp;
     }
     save.stats.fields += fields;
     const n = networkSize(a.id);
-    const xp = fields ? award(D.XP.link3, `Control field raised (${n} portals connected)`)
+    let xp = fields ? award(D.XP.link3, `Control field raised (${n} portals connected)`)
       : n >= 3 ? award(D.XP.link3, `Connected a network of ${n} portals`) : award(D.XP.link2, 'Connected 2 portals');
+    // Bigger fields are worth more: Control Points for your team's world
+    // score, plus bonus XP, Tech Cores and Faction Points by size.
+    let bonus = null;
+    if (fields) {
+      const r = fieldReward(cp);
+      xp += award(r.xp, `Control field bonus (${cp} CP)`);
+      addCores(r.cores);
+      save.fp += r.fp;
+      save.stats.cp = (save.stats.cp || 0) + cp;
+      bonus = Object.assign({ cp }, r);
+      logCP(Date.now());
+    }
     progressEvent('link');
-    eventPts(D.EVENT_PTS.link);
+    eventPts(D.EVENT_PTS.link + (fields ? Math.min(200, Math.round(cp / 50)) : 0));
     persist();
-    return { xp, n, fields };
+    return { xp, n, fields, bonus };
   }
 
   /* ------------------ Missions: events feed them ------------------ */
@@ -1127,6 +1183,7 @@ window.PH = window.PH || {};
     rollLegend(now);
     rollWeekly(now);
     resolveEvent(now);
+    logCP(now);
     // Forget energy cells taken more than an hour ago.
     for (const id in save.energyTaken) if (now - save.energyTaken[id] > 3600e3) delete save.energyTaken[id];
     for (const id in save.signals) if (now - save.signals[id] > 2 * 86400e3) delete save.signals[id];
@@ -1162,7 +1219,7 @@ window.PH = window.PH || {};
     ownerOf, visible, discovered, discover, discoverSignal,
     tiersFor, canHack, startHack, finishHack, canCapture, capture, held, simulateAttacks,
     canDefend, startDefense, stopDefense, tickDefense,
-    canLink, link, networkSize,
+    canLink, link, networkSize, fieldReward, myCP, worldStandings, topAgents,
     acceptSquad, acceptLegend, eventWindow, eventName, eventScores,
     objectiveProgress, claimObjective,
     canPrestige, prestige, recommend, tick,

@@ -67,6 +67,40 @@ The compass is a 3D holographic disc on the ground around you, seen from above a
 
 Enemy teams attack the portals you hold: each hour, each one has a small chance to fall (and its links and fields go with it). More Uplinks, Firewalls, the **Defense** upgrade and **Team Level 10** make that less likely.
 
+### Control fields and the world score
+
+Close a triangle of links to raise a **control field**. A field's worth is its area: **1 Control Point (CP) per 1,000 m²** (at least 10). Bigger fields score more:
+
+| | For every field |
+| --- | --- |
+| XP | 500 (Connect 3+ Portals) + a size bonus of 50 + CP ÷ 10 (up to 1,500) |
+| Tech Cores | 10 + CP ÷ 20 (up to 300) |
+| Faction Points | CP ÷ 20 (at least 5) |
+| World score | The field's CP counts for your team at every checkpoint while you hold it |
+
+Links work at any distance, so long links make big, valuable fields. A field disappears if one of its portals falls.
+
+### World standings
+
+**Team → 🌍 World standings** (or **☰ → World standings**) shows who's winning, like Ingress's global score:
+
+- The war is scored in **cycles** of 175 hours, with a **checkpoint** every 5 hours (35 per cycle). At each checkpoint, every team's CP is counted, and the team with the highest **average** wins the cycle.
+- A line chart shows every team's CP at each checkpoint so far (touch it for the numbers, or open it as a table), with the leader and the gap at the top.
+- **Top agents this cycle** ranks you against the strongest players by the CP of the fields they hold.
+
+The other players are simulated (there's no server), the same for everyone; your own fields count for your team live.
+
+### Intel map
+
+**Team → 🛰️ Intel map** (or **☰ → Intel map**) opens a map of every portal, like Ingress's Intel map. It's also a website, `intel.html`, that works on a computer:
+
+- Every portal on real streets, coloured by the team that holds it and ringed by rarity. Tap one for its name, owner, level, Uplinks and your keys.
+- Your own links and control fields, with each field's CP, if you're logged into the game in the same browser or app.
+- Filters for rarity and team, 📍 to jump to where you are, and the world standings panel (tap the score bar).
+- Portals show from street level (zoom 14) inwards.
+
+The map uses [Leaflet](https://leafletjs.com/) (in `js/vendor/leaflet/`, BSD licence) with CARTO's dark street tiles of OpenStreetMap data. With GitHub Pages turned on (see below), the website is at `https://<your-user>.github.io/<repo>/portal-hackers/intel.html`.
+
 ### Gear
 
 Open it with **🎒** at the top. You start with 6 Uplinks, 4 Pulse Bombs and 1 Firewall, and get more from hacking.
@@ -360,6 +394,10 @@ Stay aware of your surroundings. Don't go onto private property, and never play 
 | `js/accounts.js` | Sign-up, log-in and passwords |
 | `js/state.js` | Your save and the game rules, including the shop and profile customisation |
 | `js/chat.js` | Team chat over PeerJS |
+| `js/score.js` | Control Points, cycles and checkpoints, the simulated world score, top agents |
+| `js/worldchart.js` | The world standings chart, shared by the game and the Intel map |
+| `intel.html`, `js/intel.js` | The Intel map website |
+| `js/vendor/leaflet/` | Leaflet 1.9.4, the map library for the Intel map (BSD licence, see `LEAFLET-LICENSE`) |
 | `js/vendor/peerjs.min.js` | PeerJS 1.x (MIT licence, see `PEERJS-LICENSE`) |
 | `js/compass.js` | The 3D Sci-Fi Compass: camera, projection, and drawing the disc, portals, links and you |
 | `js/hack.js` | The hacking puzzle |

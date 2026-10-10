@@ -392,8 +392,10 @@ window.PH = window.PH || {};
     const res = S.link(a, b);
     A.link();
     G().linkFrom = null;
-    if (res.fields) G().share('raised a control field 🔺');
-    toast(`🔗 ${res.fields ? `Control field raised!` : res.n >= 3 ? `Network of ${res.n} portals` : '2 portals connected'} ${gain(res.xp)}`, 'good');
+    if (res.fields) G().share(`raised a control field worth ${fmt(res.bonus.cp)} CP 🔺`);
+    toast(res.fields
+      ? `🔺 Control field raised: <b>${fmt(res.bonus.cp)} CP</b> for ${esc(D.TEAMS[S.save.team].name)} ${gain(res.xp, res.bonus.cores)}<br><small>Bigger fields score more. +${res.bonus.fp} Faction Points</small>`
+      : `🔗 ${res.n >= 3 ? `Network of ${res.n} portals` : '2 portals connected'} ${gain(res.xp)}`, 'good');
     hud();
   }
 
@@ -609,6 +611,7 @@ window.PH = window.PH || {};
       const lo = D.teamFPFor(tl), hi = D.teamFPFor(tl + 1);
       const now = Date.now();
       let out = `<div class="team-head" style="--tc:${T.color}"><span class="team-glyph">${T.glyph}</span><div><h2>TEAM ${T.name}</h2><small>${esc(T.motto)}</small></div></div>
+        <div class="tiers two"><button class="tier" type="button" data-act="world"><b>🌍 World standings</b><small>Who's leading the cycle</small></button><button class="tier" type="button" data-act="intel"><b>🛰️ Intel map</b><small>Every portal, field and link</small></button></div>
         <button class="btn btn-main wide" type="button" data-act="openChat">💬 Team chat <small>${chatStatusText()}${chatUnread ? ` · ${chatUnread} new` : ''}</small></button>
         <div class="xp-mini"><b>TEAM LEVEL ${tl}</b><span class="mini-bar"><i style="width:${tl >= D.TEAM_MAX ? 100 : ((fp - lo) / (hi - lo)) * 100}%;background:${T.color}"></i></span>
         <small>${fmt(fp)} Faction Points${tl < D.TEAM_MAX ? ` · ${fmt(hi - fp)} to Team Level ${tl + 1}` : ''} · you've earned ${fmt(s.fp)}</small></div>
@@ -821,6 +824,8 @@ window.PH = window.PH || {};
         <button class="row" type="button" data-act="sound"><span class="r-icon">${st.sound ? '🔊' : '🔇'}</span><span><b>Sound and vibration: ${st.sound ? 'on' : 'off'}</b></span></button>
         <button class="row" type="button" data-act="share"><span class="r-icon">📣</span><span><b>Share my captures in team chat: ${st.share ? 'on' : 'off'}</b><small>Posts when you capture a portal, raise a field or rank up</small></span></button>
         ${S.save.muted.length ? `<button class="row" type="button" data-act="unmute"><span class="r-icon">🔈</span><span><b>Unblock everyone in chat</b><small>${S.save.muted.length} blocked</small></span></button>` : ''}
+        <button class="row" type="button" data-act="world"><span class="r-icon">🌍</span><span><b>World standings</b><small>Which team leads the cycle, and the top agents</small></span></button>
+        <button class="row" type="button" data-act="intel"><span class="r-icon">🛰️</span><span><b>Intel map</b><small>See every portal, link and field on a map</small></span></button>
         <button class="row" type="button" data-act="shop"><span class="r-icon">🛒</span><span><b>Shop</b><small>Spend Tech Cores on gear, boosts and style</small></span></button>
       </div>
       <h3>Account</h3><div class="list">
@@ -975,6 +980,35 @@ window.PH = window.PH || {};
     redraw();
   };
   actions.shopLook = () => shopSheet('look');
+
+  /* ------------------ World standings and Intel ------------------ */
+
+  function worldSheet() {
+    sheet(() => {
+      const st = S.worldStandings();
+      const mine = S.myCP();
+      return `<h2>🌍 World standings</h2>
+        <p class="small muted">Your fields hold <b>${fmt(mine)} CP</b> for ${esc(D.TEAMS[S.save.team].name)} (${S.save.fields.length} field${S.save.fields.length === 1 ? '' : 's'}). Link three of your team's portals into a triangle to raise a field: the bigger it is, the more it scores.</p>
+        ${PH.worldchart.render(st, { myTeam: S.save.team, agents: S.topAgents() })}
+        <button class="btn wide" type="button" data-act="intel">🛰️ Open the Intel map</button>`;
+    });
+  }
+  actions.world = () => worldSheet();
+
+  // The Intel map is its own page (intel.html); in the game it opens on top.
+  function openIntel() {
+    close();
+    let ov = $('intel-overlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'intel-overlay';
+      ov.className = 'intel-overlay';
+      ov.innerHTML = '<button class="round-btn" type="button" aria-label="Close the Intel map">✕</button><iframe title="Intel map" src="intel.html?embed=1"></iframe>';
+      ov.querySelector('button').addEventListener('click', () => { ov.remove(); });
+      document.body.appendChild(ov);
+    }
+  }
+  actions.intel = () => openIntel();
 
   /* ------------------ Team chat ------------------ */
 
@@ -1135,5 +1169,5 @@ window.PH = window.PH || {};
     }
   }
 
-  PH.ui = { bind, onEvent, hud, toast, close, isOpen, portalSheet, cubeSheet, gearSheet, signalSheet, scanSheet, guideSheet, menuSheet };
+  PH.ui = { bind, onEvent, hud, toast, close, isOpen, worldSheet, openIntel, portalSheet, cubeSheet, gearSheet, signalSheet, scanSheet, guideSheet, menuSheet };
 })(window.PH);

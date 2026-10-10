@@ -31,7 +31,7 @@ rm -rf "$BUILD"
 mkdir -p "$BUILD/gen" "$BUILD/classes" "$BUILD/assets/game" dist
 
 echo "1/5 Copying the game from ../portal-hackers"
-cp -R ../portal-hackers/index.html ../portal-hackers/css ../portal-hackers/js ../portal-hackers/icons "$BUILD/assets/game/"
+cp -R ../portal-hackers/index.html ../portal-hackers/intel.html ../portal-hackers/css ../portal-hackers/js ../portal-hackers/icons "$BUILD/assets/game/"
 
 echo "2/5 Compiling resources"
 aapt2 compile --dir res -o "$BUILD/res.zip"

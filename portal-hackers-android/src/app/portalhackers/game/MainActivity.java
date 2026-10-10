@@ -46,9 +46,12 @@ public class MainActivity extends Activity {
 
     private static final int ASK_LOCATION = 1;
 
-    // Closes the hack puzzle or an open panel; says whether it did.
+    // Closes the hack puzzle, the Intel map, team chat or an open panel;
+    // says whether it did.
     private static final String BACK_JS =
             "(function(){try{if(PH.hack.running){PH.hack.cancel();return true;}"
+            + "var o=document.getElementById('intel-overlay');if(o){o.remove();return true;}"
+            + "var c=document.getElementById('chat');if(c&&!c.hidden){c.hidden=true;return true;}"
             + "if(PH.ui.isOpen()){PH.ui.close();return true;}}catch(e){}return false;})()";
 
     private WebView web;

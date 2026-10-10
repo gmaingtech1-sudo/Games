@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Portal Hackers Intel</title>
+<meta name="description" content="The Portal Hackers: Nexus Intel map: every portal on your streets, who holds it, your links and control fields, and which team leads the world.">
+<meta name="theme-color" content="#030814">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="js/vendor/leaflet/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Audiowide&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body { background: #030814; -webkit-user-select: auto; user-select: auto; }
+  #map { position: absolute; inset: 0; background: #0A0F1C; }
+  .leaflet-container { font-family: var(--font-body); }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel); color: var(--ink); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .leaflet-popup-content { margin: 12px 14px; font-size: 13px; line-height: 1.45; }
+  .leaflet-popup-content b.pn { display: block; font-size: 16px; margin-bottom: 2px; }
+  .leaflet-popup-close-button { color: var(--muted) !important; }
+  .leaflet-control-attribution { background: rgba(3, 8, 20, 0.7) !important; color: var(--muted) !important; }
+  .leaflet-control-attribution a { color: var(--xp) !important; }
+  .leaflet-tooltip { background: var(--panel); color: var(--ink); border: 1px solid var(--line); box-shadow: none; }
+  .leaflet-tooltip::before { display: none; }
+  .leaflet-bar a { background: var(--panel) !important; color: var(--ink) !important; border-color: var(--line) !important; }
+
+  .top { position: absolute; z-index: 500; left: 10px; top: calc(env(safe-area-inset-top, 0px) + 10px); right: 64px; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .top > * { pointer-events: auto; }
+  .brand { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; align-self: flex-start; max-width: 100%; }
+  .brand img { width: 30px; height: 30px; border-radius: 8px; }
+  .brand b { font-family: var(--font-display); letter-spacing: 0.06em; font-size: 15px; }
+  .brand small { display: block; color: var(--muted); font-size: 11px; }
+  .score { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; align-self: flex-start; cursor: pointer; max-width: 100%; }
+  .score .bar { display: flex; width: 160px; height: 10px; border-radius: 5px; overflow: hidden; gap: 2px; background: var(--panel); }
+  .score .bar i { display: block; height: 100%; }
+  .score span { font-size: 12px; white-space: nowrap; }
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; }
+  .filters button { border: 1px solid var(--line); background: var(--panel); border-radius: 14px; padding: 5px 10px; font-size: 12px; color: var(--ink); }
+  .filters button.off { opacity: 0.4; }
+  .side { position: absolute; z-index: 600; top: 0; bottom: 0; left: 0; width: min(420px, 100%); background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px 24px; transform: translateX(-102%); transition: transform 0.25s; }
+  .side.on { transform: none; }
+  .side h2 { padding-right: 40px; }
+  .side .sheet-x { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); right: 12px; }
+  .status { position: absolute; z-index: 500; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 6px 14px; font-size: 13px; white-space: nowrap; }
+  .legend { position: absolute; z-index: 500; left: 10px; bottom: 26px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; font-size: 11.5px; display: flex; flex-direction: column; gap: 3px; }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .me-btn { position: absolute; z-index: 500; right: 10px; bottom: 110px; }
+  body.embed .top { right: 64px; }
+  .filters-btn { display: none; align-self: flex-start; border: 1px solid var(--line); background: var(--panel); border-radius: 14px; padding: 6px 12px; font-size: 13px; color: var(--ink); }
+  @media (max-width: 560px) {
+    .legend { display: none; }
+    .status { bottom: 18px; font-size: 12px; }
+    .filters-btn { display: block; }
+    .filters { display: none; }
+    .top.open .filters { display: flex; }
+  }
+</style>
+</head>
+<body>
+<div id="map" aria-label="Map of portals"></div>
+
+<div class="top">
+  <div class="brand"><img src="icons/icon.svg" alt=""><div><b>PORTAL HACKERS INTEL</b><small id="who">World map</small></div></div>
+  <button id="score" class="score" type="button" aria-label="World standings"></button>
+  <button id="filters-btn" class="filters-btn" type="button" aria-expanded="false">⚙ Filters</button>
+  <div id="filters" class="filters" aria-label="Show on the map"></div>
+</div>
+
+<button id="me" class="round-btn me-btn" type="button" aria-label="Go to my location">📍</button>
+<div id="status" class="status" role="status" aria-live="polite"></div>
+<div class="legend" aria-hidden="true">
+  <span><i style="background:#35E0FF"></i>NOVA</span>
+  <span><i style="background:#FF4FD8"></i>PULSAR</span>
+  <span><i style="background:#FFB238"></i>ECLIPSE</span>
+  <span><i style="background:#8A94A8"></i>Neutral</span>
+  <span><i style="background:#000;border:2px solid #E9E4FF;box-sizing:border-box"></i>Nexus portal</span>
+</div>
+
+<aside id="side" class="side" aria-label="World standings">
+  <button id="side-x" class="sheet-x" type="button" aria-label="Close">✕</button>
+  <h2>🌍 World standings</h2>
+  <div id="side-body"></div>
+</aside>
+
+<script src="js/vendor/leaflet/leaflet.js"></script>
+<script src="js/core.js"></script>
+<script src="js/data.js"></script>
+<script src="js/world.js"></script>
+<script src="js/accounts.js"></script>
+<script src="js/score.js"></script>
+<script src="js/state.js"></script>
+<script src="js/worldchart.js"></script>
+<script src="js/intel.js"></script>
+</body>
+</html>
