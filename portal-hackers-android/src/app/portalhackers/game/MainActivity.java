@@ -8,6 +8,8 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.view.WindowInsets;
+import android.widget.FrameLayout;
 import android.view.WindowManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.ValueCallback;
@@ -89,7 +91,24 @@ public class MainActivity extends Activity {
 
         web.setWebViewClient(new GameClient());
         web.setWebChromeClient(new LocationClient());
-        setContentView(web);
+
+        // Android 15+ draws every app edge to edge, under the status bar,
+        // the navigation bar and the keyboard. Pad the game in by those
+        // insets so nothing hides behind them (and the chat box stays above
+        // the keyboard); the frame's dark background fills the bars.
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(NIGHT);
+        root.addView(web, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            @SuppressWarnings("deprecation")
+            public WindowInsets onApplyWindowInsets(View v, WindowInsets in) {
+                v.setPadding(in.getSystemWindowInsetLeft(), in.getSystemWindowInsetTop(),
+                        in.getSystemWindowInsetRight(), in.getSystemWindowInsetBottom());
+                return in.consumeSystemWindowInsets();
+            }
+        });
+        setContentView(root);
         web.loadUrl(START_URL);
     }
 

@@ -817,7 +817,7 @@ window.PH = window.PH || {};
         <button class="row" type="button" data-act="rotate"><span class="r-icon">🧭</span><span><b>Compass turns with phone: ${st.rotate ? 'on' : 'off'}</b><small>Uses the compass sensor when there is one</small></span></button>
         <button class="row" type="button" data-act="sound"><span class="r-icon">${st.sound ? '🔊' : '🔇'}</span><span><b>Sound and vibration: ${st.sound ? 'on' : 'off'}</b></span></button>
         <button class="row" type="button" data-act="share"><span class="r-icon">📣</span><span><b>Share my captures in team chat: ${st.share ? 'on' : 'off'}</b><small>Posts when you capture a portal, raise a field or rank up</small></span></button>
-        ${S.save.muted.length ? `<button class="row" type="button" data-act="unmute"><span class="r-icon">🔈</span><span><b>Unmute everyone in chat</b><small>${S.save.muted.length} muted</small></span></button>` : ''}
+        ${S.save.muted.length ? `<button class="row" type="button" data-act="unmute"><span class="r-icon">🔈</span><span><b>Unblock everyone in chat</b><small>${S.save.muted.length} blocked</small></span></button>` : ''}
         <button class="row" type="button" data-act="shop"><span class="r-icon">🛒</span><span><b>Shop</b><small>Spend Tech Cores on gear, boosts and style</small></span></button>
       </div>
       <h3>Account</h3><div class="list">
@@ -825,6 +825,8 @@ window.PH = window.PH || {};
         <button class="row" type="button" data-act="password"><span class="r-icon">🔑</span><span><b>Change password</b></span></button>
         <button class="row" type="button" data-act="logout"><span class="r-icon">🚪</span><span><b>Log out</b><small>Switch to another account or sign up</small></span></button>
         <button class="row danger" type="button" data-act="wipe"><span class="r-icon">🗑️</span><span><b>Delete account</b><small>Deletes your hacker and account from this phone</small></span></button>
+        <a class="row" href="${D.PRIVACY_URL}" target="_blank" rel="noopener"><span class="r-icon">🔒</span><span><b>Privacy policy</b></span></a>
+        <a class="row" href="${D.SUPPORT_URL}" target="_blank" rel="noopener"><span class="r-icon">💬</span><span><b>Help and feedback</b><small>Report a problem or a player</small></span></a>
       </div><p class="fineprint">Portal Hackers: Nexus · your progress is saved on this phone.</p>`;
     });
   }
@@ -1013,7 +1015,7 @@ window.PH = window.PH || {};
     const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
     const msgs = PH.chat.history.filter((m) => !muted.has(m.from.name));
     list.innerHTML = msgs.length ? msgs.map(msgHTML).join('')
-      : `<p class="muted center chat-empty">No messages yet. Say hi to Team ${esc(T.name)}!<br><small>Messages go straight to teammates who are online now, and aren't kept on any server.</small></p>`;
+      : `<p class="muted center chat-empty">No messages yet. Say hi to Team ${esc(T.name)}!<br><small>Messages go straight to teammates who are online now, and aren't kept on any server. Tap a name to block or report someone.</small></p>`;
     if (atBottom) list.scrollTop = list.scrollHeight;
   }
 
@@ -1028,6 +1030,15 @@ window.PH = window.PH || {};
     hud();
   }
   actions.openChat = () => openChat();
+
+  // Reports go to the project's issue tracker, with the player's recent messages.
+  function reportPlayer(name) {
+    const msgs = PH.chat.history.filter((m) => m.from.name === name).slice(-5)
+      .map((m) => `- ${new Date(m.at).toISOString()}: ${m.text}`).join('\n');
+    const body = `**Player:** ${name}\n**Team:** ${D.TEAMS[S.save.team].name}\n**Reported by:** ${S.save.name}\n\n**What happened?**\n(Please describe it here.)\n\n**Their recent messages:**\n${msgs || '(none on this phone)'}\n`;
+    const url = `${D.SUPPORT_URL}/new?title=${encodeURIComponent(`Report: ${name} in team chat`)}&labels=report&body=${encodeURIComponent(body)}`;
+    window.open(url, '_blank', 'noopener');
+  }
 
   function bindChat() {
     $('chat-close').addEventListener('click', () => { $('chat').hidden = true; hud(); });
@@ -1046,10 +1057,11 @@ window.PH = window.PH || {};
       if (!b) return;
       const name = b.dataset.name;
       if (name === S.save.name) return;
-      if (confirm(`Mute ${name}? You won't see their messages. You can unmute everyone in the menu.`)) {
+      if (confirm(`Block ${name}? You won't see their messages any more. You can unblock everyone in the menu.`)) {
         S.save.muted.push(name);
         S.persist();
         renderChat();
+        if (confirm(`Also report ${name} to the developer? This opens a report form in your browser with their recent messages filled in.`)) reportPlayer(name);
       }
     });
     PH.chat.on('message', (m) => {

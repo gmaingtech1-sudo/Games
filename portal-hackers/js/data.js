@@ -308,6 +308,10 @@ window.PH = window.PH || {};
     { id: 't_firewall', cat: 'look',  icon: '🏷️', name: 'Title: Human Firewall',    cost: 700, give: { title: 'firewall' } },
     { id: 't_zero',     cat: 'look',  icon: '🏷️', name: 'Title: Zero Day',          cost: 1500, give: { title: 'zero' } },
   ];
+  // Where reports and questions go (the project's public issue tracker).
+  const SUPPORT_URL = 'https://github.com/gmaingtech1-sudo/Games/issues';
+  const PRIVACY_URL = 'https://github.com/gmaingtech1-sudo/Games/blob/HEAD/portal-hackers/PRIVACY.md';
+
   const SHOP_CATS = [['deals', 'Daily deals'], ['gear', 'Gear'], ['boost', 'Boosts'], ['look', 'Style']];
   const DEAL_OFF = 0.3;   // daily deals are 30% off
 
@@ -451,6 +455,7 @@ window.PH = window.PH || {};
     DAILY, DAILY_BONUS, SQUAD, SQUAD_MINUTES, LEGENDARY_STAGES, OBJECTIVES,
     TEAM_PERKS, TEAM_MAX, teamFPFor, teamLevelFor, EVENT, EVENT_PTS, ACHIEVEMENTS,
     RANGE, ENERGY, COOLDOWN,
+    SUPPORT_URL, PRIVACY_URL,
     AVATARS, NAME_COLORS, BANNERS, SHOP_TITLES, SHOP, SHOP_CATS, DEAL_OFF,
     ITEMS, ITEM_ORDER, ITEM_CAP, START_ITEMS, DROPS, DROP_WEIGHT, KEY_CHANCE, SABOTAGE, BOMB_HITS, MAX_UPLINKS, MAX_FIREWALLS, BASE_UPLINKS,
   };

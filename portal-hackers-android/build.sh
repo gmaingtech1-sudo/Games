@@ -19,6 +19,14 @@ done
 [ -n "$DX" ] || { echo "Missing dx/dalvik-exchange (see the top of this script)"; exit 1; }
 [ -f "$ANDROID_JAR" ] || { echo "Missing $ANDROID_JAR (set ANDROID_JAR)"; exit 1; }
 
+# The signing key is private and is never committed (see README.md):
+#   KEYSTORE=/path/to/portal-hackers-upload.jks KEYSTORE_PASS=... ./build.sh
+KEYSTORE="${KEYSTORE:-}"
+KEY_ALIAS="${KEY_ALIAS:-upload}"
+[ -n "$KEYSTORE" ] && [ -f "$KEYSTORE" ] || { echo "Set KEYSTORE to your private signing key (.jks) and KEYSTORE_PASS to its password"; exit 1; }
+[ -n "${KEYSTORE_PASS:-}" ] || { echo "Set KEYSTORE_PASS to your signing key's password"; exit 1; }
+export KEYSTORE_PASS
+
 rm -rf "$BUILD"
 mkdir -p "$BUILD/gen" "$BUILD/classes" "$BUILD/assets/game" dist
 
@@ -40,8 +48,8 @@ echo "4/5 Converting to Android bytecode"
 
 echo "5/5 Aligning and signing"
 zipalign -f -p 4 "$BUILD/unsigned.apk" "$BUILD/aligned.apk"
-apksigner sign --ks signing.keystore --ks-pass pass:portalhackers --key-pass pass:portalhackers \
-  --ks-key-alias portalhackers --out "$OUT" "$BUILD/aligned.apk"
+apksigner sign --ks "$KEYSTORE" --ks-pass env:KEYSTORE_PASS --key-pass env:KEYSTORE_PASS \
+  --ks-key-alias "$KEY_ALIAS" --out "$OUT" "$BUILD/aligned.apk"
 apksigner verify "$OUT"
 rm -f "$OUT.idsig"
 

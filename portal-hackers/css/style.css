@@ -429,3 +429,4 @@ dl.profile.sub dd { color: var(--ink); }
 .msg.activity { justify-content: space-between; font-size: 12.5px; color: var(--muted); padding: 2px 6px; border-left: 2px solid var(--team); }
 .chat-form { display: flex; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
 .chat-form input { flex: 1; min-width: 0; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05); padding: 0 12px; -webkit-user-select: text; user-select: text; }
+a.row { color: inherit; text-decoration: none; }

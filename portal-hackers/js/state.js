@@ -300,7 +300,7 @@ window.PH = window.PH || {};
     if (save.energyTaken[cube.id]) return null;
     save.energyTaken[cube.id] = Date.now();
     const before = save.energy;
-    save.energy = Math.min(maxEnergy(), save.energy + D.ENERGY.cell(save.up.energy));
+    save.energy = Math.max(save.energy, Math.min(maxEnergy(), save.energy + D.ENERGY.cell(save.up.energy)));
     save.cores += D.CORES.cube;
     persist();
     return { energy: save.energy - before, cores: D.CORES.cube };

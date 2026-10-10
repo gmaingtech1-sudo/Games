@@ -1,1 +1,4 @@
 build/
+*.jks
+*.keystore
+*.idsig

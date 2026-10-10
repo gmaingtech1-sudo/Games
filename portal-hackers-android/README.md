@@ -2,7 +2,7 @@
 
 Portal Hackers: Nexus as a regular Android app: download the APK, install it, and it gets its own icon on your home screen. No app store, and no HTTPS hosting needed for GPS.
 
-**Download:** [`dist/portal-hackers.apk`](dist/portal-hackers.apk) (about 430 KB)
+**Download:** [`dist/portal-hackers.apk`](dist/portal-hackers.apk) (about 490 KB). For Google Play, see [PLAY-STORE.md](PLAY-STORE.md) and the App Bundle [`dist/portal-hackers.aab`](dist/portal-hackers.aab).
 
 ## Installing it
 
@@ -13,7 +13,9 @@ Portal Hackers: Nexus as a regular Android app: download the APK, install it, an
 
 Works on Android 7.0 and newer, as long as Android System WebView is up to date (the Play Store updates it automatically). On phones with a compass sensor the radar turns with the phone; without one, north stays up.
 
-**Updating:** install a newer APK right over the old one. Your progress stays, because every build is signed with the same key (`signing.keystore`). Uninstalling the app deletes your progress.
+**Updating:** install a newer APK right over the old one. Your progress stays, because every build is signed with the same private key. Uninstalling the app deletes your progress.
+
+**Coming from version 1.3 or older?** Those were signed with a different key, so Android won't install 1.4 over them: uninstall the old app first (this deletes its progress), then install the new one.
 
 ## What's in it
 
@@ -32,13 +34,23 @@ It's the same game as the web version in [`../portal-hackers`](../portal-hackers
 | `AndroidManifest.xml` | App name, icon, permissions (location, internet for fonts and team chat, vibration), portrait screen |
 | `res/` | Launcher icons (including the Android 8+ adaptive icon and the Android 13+ themed icon) and the dark theme |
 | `build.sh` | Builds `dist/portal-hackers.apk` |
-| `signing.keystore` | The key the APK is signed with (password `portalhackers`, alias `portalhackers`) |
+| `build-aab.sh` | Builds `dist/portal-hackers.aab`, the App Bundle for Google Play |
+| `PLAY-STORE.md` | How to publish on Google Play, the store listing text, and the YouTube copy |
+| `store/` | Store icon, feature graphic, screenshots, the trailer and its YouTube thumbnail |
 
 ## Building it
 
 ```sh
 sudo apt install openjdk-21-jdk-headless aapt dalvik-exchange zipalign apksigner android-sdk-platform-23 zip
-./build.sh
+export KEYSTORE=/path/to/portal-hackers-upload.jks KEYSTORE_PASS='your key password'
+./build.sh                                              # dist/portal-hackers.apk
+BUNDLETOOL=/path/to/bundletool-all.jar ./build-aab.sh   # dist/portal-hackers.aab (run build.sh first)
 ```
 
-It copies the current game from `../portal-hackers`, so rebuild after changing the game.
+Both copy the current game from `../portal-hackers`, so rebuild after changing the game. Get bundletool from [its releases page](https://github.com/google/bundletool/releases).
+
+### The signing key
+
+Builds are signed with a **private** key, `portal-hackers-upload.jks` (alias `upload`), which is **not in this repository** because the repository is public: anyone with the key could publish an update as you. It's also your Google Play upload key and the key registered for Android developer verification. Keep it and its password safe, and back them up. `.gitignore` stops `.jks` and `.keystore` files being committed.
+
+Versions up to 1.3 were signed with a key that was committed here; that key is no longer used.
