@@ -34,9 +34,11 @@ window.PH = window.PH || {};
   let sheetOnClose = null;
   let sheetRender = null;
 
+  let sheetAt = 0;
   function sheet(render, onClose) {
     sheetRender = render;
     sheetOnClose = onClose || null;
+    if ($('sheet').hidden) sheetAt = Date.now();
     $('sheet').hidden = false;
     redraw();
   }
@@ -64,7 +66,7 @@ window.PH = window.PH || {};
   const actions = {};
   function bindSheet() {
     $('sheet').addEventListener('click', (e) => {
-      if (e.target.id === 'sheet') { close(); return; }
+      if (e.target.id === 'sheet') { if (Date.now() - sheetAt > 400) close(); return; }
       const b = e.target.closest('button');
       if (!b || b.disabled) return;
       if (b.hasAttribute('data-close')) { A.tap(); close(); return; }
@@ -92,27 +94,25 @@ window.PH = window.PH || {};
     $('hud-cores').textContent = fmt(s.cores);
 
     if (pr.next) {
-      $('xp-levels').textContent = `LEVEL ${pr.level} → LEVEL ${pr.next}`;
+      $('xp-levels').textContent = `LV ${pr.level} → ${pr.next}`;
       $('xp-text').textContent = `${fmt(pr.into)} / ${fmt(pr.need)} XP`;
     } else {
-      $('xp-levels').textContent = `LEVEL ${pr.level} · MAX`;
-      $('xp-text').textContent = S.canPrestige() ? 'NEXUS MASTER: Prestige is ready' : 'MAX';
+      $('xp-levels').textContent = `LV ${pr.level} · MAX`;
+      $('xp-text').textContent = S.canPrestige() ? 'Prestige ready' : 'MAX';
     }
     $('xp-rank').textContent = `${rk.icon} ${rk.name}`;
     $('xp-fill').style.width = `${pr.frac * 100}%`;
     $('xp-bar').setAttribute('aria-valuenow', Math.round(pr.frac * 100));
-    $('xp-caps').textContent = `Today ${fmt(s.caps.dayXP)}/${fmt(D.CAPS.day)} · Week ${fmt(s.caps.weekXP)}/${fmt(D.CAPS.week)}`;
-
+    $('xp-caps').textContent = `Today ${short(s.caps.dayXP)}/${short(D.CAPS.day)}`;
     if (pr.next) {
-      $('next-title').textContent = `NEXT LEVEL: ${pr.next}`;
-      $('next-left').textContent = `Earn ${fmt(pr.left)} more XP`;
-      const rw = D.LEVELS[pr.next][1].map(S.rewardText).join(' + ');
-      $('next-list').innerHTML = S.recommend().map((t) => `<li>${esc(t)}</li>`).join('') + `<li class="reward">🎁 ${esc(rw)}</li>`;
+      const rec = S.recommend()[0];
+      $('next-tip').innerHTML = `<span class="muted">Next:</span> ${esc(rec || 'Hack a portal')} · <b class="xp">${fmt(pr.left)} XP to go</b>`;
     } else {
-      $('next-title').textContent = 'NEXUS MASTER';
-      $('next-left').textContent = 'Prestige is ready';
-      $('next-list').innerHTML = '<li>👑 Open your profile to enter NEXUS PRESTIGE</li>';
+      $('next-tip').textContent = '👑 Open your profile to enter NEXUS PRESTIGE';
     }
+    nearBar();
+    const cb = $('compass').getBoundingClientRect();
+    if (cb.height) document.documentElement.style.setProperty('--toast-b', `${Math.round(window.innerHeight - cb.bottom + 26)}px`);
 
     $('btn-territory').hidden = !S.has('territory');
     $('dot-upgrades').hidden = !(s.tokens > 0 || D.BRANCH_ORDER.some((b) => canBuy(b)));
@@ -120,6 +120,35 @@ window.PH = window.PH || {};
     $('dot-team').hidden = !chatUnread && !D.OBJECTIVES.some((o) => { const p = S.objectiveProgress(o, Date.now()); return p.done && !p.claimed; });
 
     activeStrip();
+  }
+
+  const short = (n) => (n >= 1000 ? `${Math.round(n / 100) / 10}k`.replace('.0k', 'k') : String(n));
+
+  // The nearest portal, so it's one tap away even when the compass is busy.
+  let nearId = null;
+  function nearBar() {
+    const g = G();
+    const list = g && g.nearby ? g.nearby.portals : [];
+    let best = null, bd = Infinity;
+    for (const p of list) {
+      const d = W.distM(g.pos, p);
+      if (d < bd) { bd = d; best = p; }
+    }
+    const el = $('near');
+    if (!best) { el.hidden = true; nearId = null; return; }
+    nearId = best.id;
+    const R = D.RARITY[best.rarity];
+    const known = S.discovered(best);
+    const owner = known ? S.ownerOf(best) : null;
+    const reach = bd <= D.RANGE.interact;
+    const held = !known ? 'Unknown signal' : owner ? `${D.TEAMS[owner].name}${owner === S.save.team ? ' (your team)' : ''}` : 'Neutral';
+    el.hidden = false;
+    el.classList.toggle('reach', reach);
+    el.style.setProperty('--nc', owner ? D.TEAMS[owner].color : R.color);
+    el.setAttribute('aria-label', `Nearest portal: ${known ? best.name : 'unknown signal'}, ${fmtDist(bd)} away. Open it`);
+    el.innerHTML = `<span class="near-ic" aria-hidden="true">${R.icon}</span>
+      <span class="near-tx"><b>${known ? esc(best.name) : 'Unknown signal'}</b><small>${R.name} · ${esc(held)} · ${fmtDist(bd)}</small></span>
+      <span class="near-go">${reach ? 'HACK' : 'OPEN'} ›</span>`;
   }
 
   function canBuy(b) {
@@ -754,7 +783,7 @@ window.PH = window.PH || {};
     const lvl = S.level();
     let out = `<h2>Progression</h2>${tabs([['levels', 'Levels'], ['xp', 'XP'], ['cores', 'Cores'], ['portals', 'Portals'], ['loop', 'How to play']], guideTab, 'gtab')}`;
     if (guideTab === 'levels') {
-      out += '<p class="muted small">XP to Next is what you need to reach the next level.</p>';
+      out += `<p class="muted small">XP to Next is what you need to reach the next level. XP earned today ${fmt(S.save.caps.dayXP)}/${fmt(D.CAPS.day)} · this week ${fmt(S.save.caps.weekXP)}/${fmt(D.CAPS.week)}.</p>`;
       const rows = [];
       for (let l = 1; l <= D.MAX_LEVEL; l++) {
         const rw = D.LEVELS[l][1].map(S.rewardText).join(' + ');
@@ -1135,6 +1164,7 @@ window.PH = window.PH || {};
     $('hud-shop').addEventListener('click', () => { A.tap(); shopSheet(); });
     bindChat();
     $('next-card').addEventListener('click', () => { A.tap(); guideSheet('levels'); });
+    $('near').addEventListener('click', () => { if (!nearId) return; A.tap(); portalSheet(nearId); });
     $('hk-abort').addEventListener('click', () => PH.hack.cancel());
     $('active').addEventListener('click', (e) => {
       const b = e.target.closest('[data-chip]');

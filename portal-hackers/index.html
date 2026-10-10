@@ -47,16 +47,12 @@
     <div id="active" class="active-strip"></div>
   </section>
 
-  <section class="xp-panel" aria-label="Level progress">
-    <div class="xp-head"><b id="xp-levels">LEVEL 1 → LEVEL 2</b><small id="xp-rank"></small></div>
-    <div id="xp-bar" class="xp-bar" role="progressbar" aria-label="XP to next level" aria-valuemin="0" aria-valuemax="100"><i id="xp-fill"></i><span></span></div>
-    <div class="xp-foot"><span id="xp-text">0 / 500 XP</span><small id="xp-caps"></small></div>
-  </section>
+  <button id="near" class="near" type="button" hidden></button>
 
-  <button id="next-card" class="next-card" type="button">
-    <div class="next-top"><b id="next-title">NEXT LEVEL: 2</b><span id="next-left">Earn 500 more XP</span></div>
-    <small class="muted">Recommended:</small>
-    <ul id="next-list"></ul>
+  <button id="next-card" class="prog" type="button" aria-label="Level progress: open the level table">
+    <div class="prog-top"><b id="xp-levels">LV 1 → 2</b><small id="xp-rank"></small><span id="xp-text">0 / 500 XP</span></div>
+    <div id="xp-bar" class="xp-bar" role="progressbar" aria-label="XP to next level" aria-valuemin="0" aria-valuemax="100"><i id="xp-fill"></i><span></span></div>
+    <div class="prog-foot"><span id="next-tip"></span><small id="xp-caps"></small></div>
   </button>
 
   <nav class="dock" aria-label="Main">

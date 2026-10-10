@@ -104,7 +104,7 @@ b.cores { color: var(--cores); }
 .hud-res span b { font-variant-numeric: tabular-nums; }
 .hud-res span:nth-child(2) { color: var(--cores); }
 
-.gps-status { position: fixed; top: calc(var(--safe-t) + 60px); left: 50%; transform: translateX(-50%); z-index: 5;
+.gps-status { position: fixed; bottom: var(--toast-b, calc(var(--safe-b) + 240px)); left: 50%; transform: translateX(-50%); z-index: 5;
   background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 4px 12px; font-size: 12px; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
 .gps-status.show { opacity: 1; }
 .gps-status.warn { color: var(--warn); }
@@ -123,21 +123,27 @@ b.cores { color: var(--cores); }
 
 /* ------------------ XP ------------------ */
 
-.xp-panel { background: var(--glass); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; }
-.xp-head, .xp-foot { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.xp-head b { font-family: var(--font-display); font-size: 15px; letter-spacing: 0.06em; color: var(--xp); }
-.xp-head small, .xp-foot small { color: var(--muted); font-size: 11px; }
-.xp-foot span { font-variant-numeric: tabular-nums; font-weight: 700; }
-.xp-bar { position: relative; height: 22px; border-radius: 6px; background: rgba(95, 227, 255, 0.08); border: 1px solid rgba(95, 227, 255, 0.35); margin: 5px 0; overflow: hidden; }
-.xp-bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #1A8CFF, var(--xp)); box-shadow: 0 0 16px var(--xp); transition: width 0.5s; }
+.prog { display: block; width: 100%; text-align: left; background: var(--glass); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px 7px; }
+.prog-top, .prog-foot { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.prog-top b { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.06em; color: var(--xp); white-space: nowrap; }
+.prog-top small { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prog-top span { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px; white-space: nowrap; }
+.prog-foot span { flex: 1 1 auto; min-width: 0; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prog-foot small { flex: none; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.xp-bar { position: relative; height: 10px; border-radius: 5px; background: rgba(95, 227, 255, 0.08); border: 1px solid rgba(95, 227, 255, 0.35); margin: 5px 0; overflow: hidden; }
+.xp-bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #1A8CFF, var(--xp)); box-shadow: 0 0 12px var(--xp); transition: width 0.5s; }
 .xp-bar span { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), var(--bg) calc(10% - 2px) 10%); }
 
-.next-card { text-align: left; background: var(--glass); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; }
-.next-top { display: flex; justify-content: space-between; gap: 8px; }
-.next-top b { font-family: var(--font-display); font-size: 13px; letter-spacing: 0.05em; }
-.next-top span { color: var(--xp); font-size: 13px; font-weight: 700; }
-.next-card ul { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; }
-.next-card li.reward { color: var(--cores); width: 100%; font-size: 12px; }
+/* The nearest portal: one tap to open it. */
+.near { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--glass); border: 1px solid var(--line); border-left: 4px solid var(--nc, var(--line)); border-radius: 14px; padding: 7px 12px 7px 10px; min-height: 52px; }
+.near[hidden] { display: none; }
+.near .near-ic { font-size: 22px; flex: none; }
+.near .near-tx { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.near .near-tx b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.near .near-tx small { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.near .near-go { flex: none; font-family: var(--font-display); font-size: 12px; letter-spacing: 0.06em; border: 1px solid var(--line); border-radius: 12px; padding: 6px 10px; color: var(--muted); }
+.near.reach { border-color: color-mix(in srgb, var(--team) 55%, transparent); border-left-color: var(--nc, var(--team)); box-shadow: 0 0 16px color-mix(in srgb, var(--team) 22%, transparent); }
+.near.reach .near-go { background: var(--team); border-color: var(--team); color: #021018; }
 
 /* ------------------ Dock ------------------ */
 
@@ -296,14 +302,15 @@ dl.profile.sub dd { color: var(--ink); }
 
 /* ------------------ Toasts, level-up ------------------ */
 
-.toasts { position: fixed; top: calc(var(--safe-t) + 58px); left: 12px; right: 12px; z-index: 40; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+/* Messages sit at the bottom of the compass, clear of the HUD and the chips. */
+.toasts { position: fixed; bottom: var(--toast-b, calc(var(--safe-b) + 240px)); left: 12px; right: 12px; z-index: 40; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px; pointer-events: none; }
 .toast { max-width: 520px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 14px; font-size: 13.5px; text-align: center; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); animation: drop 0.25s ease-out; transition: opacity 0.4s, transform 0.4s; }
 .toast.good { border-color: color-mix(in srgb, var(--good) 50%, transparent); }
 .toast.bad { border-color: var(--danger); }
 .toast.warn { border-color: var(--warn); }
-.toast.out { opacity: 0; transform: translateY(-8px); }
+.toast.out { opacity: 0; transform: translateY(8px); }
 .toast small { color: var(--muted); }
-@keyframes drop { from { transform: translateY(-10px); opacity: 0; } }
+@keyframes drop { from { transform: translateY(10px); opacity: 0; } }
 
 .levelup { position: fixed; inset: 0; z-index: 50; background: rgba(0, 4, 12, 0.8); display: grid; place-items: center; padding: 20px; }
 .lu-card { width: min(100%, 360px); text-align: center; background: var(--panel); border: 2px solid var(--xp); border-radius: 22px; padding: 22px 18px; box-shadow: 0 0 50px rgba(95, 227, 255, 0.35); animation: pop 0.4s cubic-bezier(.2, 1.6, .4, 1); }
@@ -335,8 +342,8 @@ dl.profile.sub dd { color: var(--ink); }
 .ob-form input { min-height: 52px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05); padding: 0 16px; font-size: 18px; text-align: center; -webkit-user-select: text; user-select: text; }
 
 @media (max-height: 640px) {
-  .next-card ul { display: none; }
-  .next-card small { display: none; }
+  .prog-foot { display: none; }
+  .near { min-height: 44px; padding-top: 4px; padding-bottom: 4px; }
 }
 
 /* ------------------ Gear and portal strength ------------------ */

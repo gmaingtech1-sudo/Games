@@ -54,13 +54,19 @@ window.PH = window.PH || {};
         yawShown = userYaw;
       }
     });
-    canvas.addEventListener('pointerup', (e) => {
+    // Act on the click, not on pointerup: on phones the click that follows
+    // a tap would otherwise land on the panel the tap just opened, and shut it.
+    let dragged = false;
+    canvas.addEventListener('pointerup', () => {
       if (!down) return;
-      const wasDrag = down.moved;
+      dragged = down.moved;
       down = null;
-      if (!wasDrag) onTap(e);
     });
-    canvas.addEventListener('pointercancel', () => { down = null; });
+    canvas.addEventListener('pointercancel', () => { down = null; dragged = true; });
+    canvas.addEventListener('click', (e) => {
+      if (dragged) { dragged = false; return; }
+      onTap(e);
+    });
   }
 
   function resize() {
@@ -84,8 +90,9 @@ window.PH = window.PH || {};
     const dist = 21;
     const T = [fx * 2, fy * 2, 0];          // look a little ahead of you
     const C = [T[0] - L[0] * dist, T[1] - L[1] * dist, T[2] - L[2] * dist];
-    const F = Math.min(Wd * 0.98, Ht * 0.95);
-    return { L, R, U, C, F, cx: Wd / 2, cy: Ht * 0.52, yaw };
+    // Fit the whole bezel across the screen, with a little room either side.
+    const F = Math.min(Wd * 0.86, Ht * 0.95);
+    return { L, R, U, C, F, cx: Wd / 2, cy: Ht * 0.5, yaw };
   }
 
   // World point → [screen x, screen y, depth, scale], or null behind the camera.
@@ -514,7 +521,7 @@ window.PH = window.PH || {};
         ctx.stroke();
       }
     }
-    hits.push({ x: c[0], y: c[1], r: Math.max(24, c[3] * sz * 2.4), ent: p });
+    hits.push({ x: c[0], y: c[1], r: Math.max(32, c[3] * sz * 2.4), ent: p });
   }
 
   function drawEnergy(f, e, x, y) {

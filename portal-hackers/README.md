@@ -13,17 +13,15 @@ It plays like Ingress, with some differences:
 | Links need a key to the far portal, and a triangle of links raises a control field. | Squad missions, timed team events, daily missions, a Compass upgrade tree and Prestige. |
 | You walk over the energy lying on the street to collect it. | It's **Tech Cubes**, which give Tech Cores as well as energy. |
 
-Everything you do earns XP, every level gives a reward, every 5 levels opens something big, and every 10 levels brings a new rank. A large XP bar sits under the compass at all times, and the card below it always tells you what to do next:
+Everything you do earns XP, every level gives a reward, every 5 levels opens something big, and every 10 levels brings a new rank. A progress card sits under the compass at all times with your XP bar and what to do next:
 
 ```
-NEXT LEVEL: 28
-Earn 3,200 more XP
-
-Recommended:
-⚡ Hack 2 portals
-🤝 Complete 1 squad mission
-🛡️ Defend a team portal
+LV 27 → 28   🛰️ OPERATIVE        8,800 / 12,000 XP
+[■■■■■■■■■■■■■■■■■■■■■■■■■■■■■·········]
+Next: ⚡ Hack 2 portals · 3,200 XP to go     Today 2.4k/10k
 ```
+
+Tap it for the full level table and the list of what each level unlocks.
 
 It's plain HTML, CSS and JavaScript. There's no build step, nothing to install, and no map library. Your location stays on your phone. The only library is [PeerJS](https://peerjs.com/) (in `js/vendor/`, MIT licence), for team chat.
 
@@ -44,12 +42,14 @@ The compass is a 3D holographic disc on the ground around you, seen from above a
 | --- | --- |
 | **?** | A portal you haven't discovered. Walk within your scanner range (the solid ring) to discover it. |
 | Dots around a portal | Its 8 **Uplink** slots, lit for each one deployed. Orange rings are **Firewalls**, and 🔑 means you have a key to it. |
-| Translucent triangles | Your **control fields**. |
+| Translucent triangles | **Control fields**. Yours are brighter; other teams' are fainter, in their colour. |
 | Crystals | Portals. The shape is its rarity: 4-sided Common, 3-sided Rare, 6-sided Epic, 5-sided Legendary (with taller beams for rarer portals). The colour is the team that holds it (grey = neutral), and the base ring is its rarity colour. A ★ above it means it's yours. |
 | Black hole | A ⚫ **Nexus portal** (Level 40+), with a spinning accretion ring. |
 | Yellow cubes | **Tech Cubes.** Walk within reach (45 m) and they're picked up for you, or tap one in reach. Each gives +5 Tech Cores and energy, even when your energy is full. They come back every 10 minutes. |
 | Violet ripples and pillar | A 🌌 **Nexus signal** (Level 30+). Walk to it for 750 XP. Each lasts an hour. |
 | Dashed ring | Your reach (45 m). You hack, attack, capture and defend from inside it. Linking works at any distance. |
+
+Tap a portal to open it. The bar under the compass always shows the **nearest portal**, its team and how far away it is: tap it to open that portal (it says **HACK** once you're in reach).
 
 **⤢** widens the radar. From Level 20, **🗺️ Territory map** zooms out to a kilometre, tilts the camera to look down from above, and shows who holds every portal.
 
@@ -192,7 +192,7 @@ Compass skins and agent gear are still under **Profile → Cosmetics**.
 
 ### Levels
 
-The full table is in the game (tap the **Next level** card, or **☰ → Progression guide**). It goes from 500 XP for Level 1 → 2 up to 17,000 XP for Level 49 → 50, and Level 50 takes 374,000 XP in total.
+The full table is in the game (tap the progress card under the compass, or **☰ → Progression guide**). It goes from 500 XP for Level 1 → 2 up to 17,000 XP for Level 49 → 50, and Level 50 takes 374,000 XP in total.
 
 | Level | XP to Next | Cumulative XP | Major Reward |
 | --- | --- | --- | --- |
@@ -402,7 +402,7 @@ Stay aware of your surroundings. Don't go onto private property, and never play 
 | `js/vendor/peerjs.min.js` | PeerJS 1.x (MIT licence, see `PEERJS-LICENSE`) |
 | `js/compass.js` | The 3D Sci-Fi Compass: camera, projection, and drawing the disc, portals, links and you |
 | `js/hack.js` | The hacking puzzle |
-| `js/ui.js` | The HUD, XP bar, next-level card and all the panels |
+| `js/ui.js` | The HUD, progress card, nearest-portal bar and all the panels |
 | `js/audio.js` | Synthesized sound effects and vibration |
 | `js/main.js` | Start-up, onboarding, GPS and tap-to-walk, the game loop |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Offline support and home-screen install |
