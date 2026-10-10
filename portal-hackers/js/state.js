@@ -679,6 +679,16 @@ window.PH = window.PH || {};
       const pa = W.portalById(l.a), pb = W.portalById(l.b);
       if (pa && pb && W.crosses(A, B, W.offset(o, pa), W.offset(o, pb))) return 'That link would cross one of yours';
     }
+    // Like Ingress, no link may cross anyone else's link either.
+    const d = W.distM(a, b);
+    if (d < 16000) {
+      const mid = { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
+      for (const l of worldNetworks(mid, d / 2 + 2000).links) {
+        if (l.a === a.id || l.a === b.id || l.b === a.id || l.b === b.id) continue;
+        const pa = W.portalById(l.a), pb = W.portalById(l.b);
+        if (W.crosses(A, B, W.offset(o, pa), W.offset(o, pb))) return `That link would cross a ${D.TEAMS[l.team].name} link`;
+      }
+    }
     return null;
   }
 
@@ -735,6 +745,28 @@ window.PH = window.PH || {};
 
   function topAgents(now) {
     return PH.score.topAgents(now || Date.now(), { name: save.name, team: save.team, cp: myCP() });
+  }
+
+  // Other players' links and fields near `pos` that still stand: their team
+  // still holds every portal (you may have captured one since).
+  function worldNetworks(pos, radius, now) {
+    now = now || Date.now();
+    const net = W.networks(pos, radius, now);
+    const holds = (team, ids) => ids.every((id) => { const p = W.portalById(id); return p && ownerOf(p, now) === team; });
+    // Your links came first: anything of theirs that would cross one isn't there.
+    const mine = save.links.map((l) => [W.portalById(l.a), W.portalById(l.b)]).filter(([x, y]) => x && y);
+    const blocked = (aId, bId) => {
+      if (!mine.length) return false;
+      const a = W.portalById(aId), b = W.portalById(bId);
+      const A = W.offset(pos, a), B = W.offset(pos, b);
+      return mine.some(([x, y]) => W.crosses(A, B, W.offset(pos, x), W.offset(pos, y)));
+    };
+    const links = net.links.filter((l) => holds(l.team, [l.a, l.b]) && !blocked(l.a, l.b));
+    const ok = (x, y) => links.some((l) => (l.a === x && l.b === y) || (l.a === y && l.b === x));
+    return {
+      links,
+      fields: net.fields.filter((f) => holds(f.team, [f.a, f.b, f.c]) && ok(f.a, f.b) && ok(f.b, f.c) && ok(f.c, f.a)),
+    };
   }
 
   const linked = (x, y) => save.links.some((l) => (l.a === x && l.b === y) || (l.a === y && l.b === x));
@@ -1219,7 +1251,7 @@ window.PH = window.PH || {};
     ownerOf, visible, discovered, discover, discoverSignal,
     tiersFor, canHack, startHack, finishHack, canCapture, capture, held, simulateAttacks,
     canDefend, startDefense, stopDefense, tickDefense,
-    canLink, link, networkSize, fieldReward, myCP, worldStandings, topAgents,
+    canLink, link, networkSize, fieldReward, myCP, worldStandings, topAgents, worldNetworks,
     acceptSquad, acceptLegend, eventWindow, eventName, eventScores,
     objectiveProgress, claimObjective,
     canPrestige, prestige, recommend, tick,

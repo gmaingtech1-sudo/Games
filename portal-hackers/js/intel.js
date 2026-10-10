@@ -11,6 +11,7 @@
   const { esc, fmt, fmtDist } = PH.util;
   const $ = (id) => document.getElementById(id);
   const MIN_ZOOM = 14;
+  const MIN_NET_ZOOM = 13;
   const q = new URLSearchParams(location.search);
   if (q.get('embed')) document.body.classList.add('embed');
 
@@ -55,7 +56,8 @@
   const FILTERS = [
     ['common', '🔵 Common'], ['rare', '🟣 Rare'], ['epic', '🟠 Epic'], ['legendary', '🟡 Legendary'], ['nexus', '⚫ Nexus'],
     ['N', '✦ NOVA'], ['P', '◈ PULSAR'], ['E', '◐ ECLIPSE'], ['neutral', 'Neutral'],
-  ].concat(me ? [['links', '🔗 My links & fields']] : []);
+    ['links', '🔺 Links & fields'],
+  ];
   function drawFilters() {
     $('filters').innerHTML = FILTERS.map(([k, label]) => `<button type="button" data-f="${k}" class="${show[k] ? '' : 'off'}" aria-pressed="${show[k]}">${label}</button>`).join('');
   }
@@ -99,23 +101,49 @@
     linkLayer.clearLayers();
     fieldLayer.clearLayers();
     const z = map.getZoom();
-    // Your fields and links.
+    const netCount = { N: 0, P: 0, E: 0 };
+    // Everyone else's links and fields, drawn under yours. A link or field
+    // only stands while its team still holds all of its portals.
+    if (show.links && z >= MIN_NET_ZOOM) {
+      const bounds0 = map.getBounds(), c0 = bounds0.getCenter();
+      const r0 = Math.min(8000, W.distM({ lat: c0.lat, lng: c0.lng }, { lat: bounds0.getNorth(), lng: bounds0.getEast() }) * 1.1);
+      // Logged in: the same standing networks the game sees (yours win any
+      // crossing). Logged out: everything standing in the seeded world.
+      const net = me ? S.worldNetworks({ lat: c0.lat, lng: c0.lng }, r0) : W.networks({ lat: c0.lat, lng: c0.lng }, r0, Date.now());
+      const holds = (team, ...ids) => me || ids.every((id) => { const p = W.portalById(id); return p && ownerOf(p) === team; });
+      for (const f of net.fields) {
+        if (!show[f.team] || !holds(f.team, f.a, f.b, f.c)) continue;
+        const a = W.portalById(f.a), b = W.portalById(f.b), c = W.portalById(f.c);
+        const col = D.TEAMS[f.team].color;
+        L.polygon([[a.lat, a.lng], [b.lat, b.lng], [c.lat, c.lng]], { color: col, weight: 0, fillColor: col, fillOpacity: 0.13 })
+          .bindTooltip(`${D.TEAMS[f.team].name} control field · ${fmt(f.cp)} CP`, { sticky: true }).addTo(fieldLayer);
+        netCount[f.team]++;
+      }
+      for (const l of net.links) {
+        if (!show[l.team] || !holds(l.team, l.a, l.b)) continue;
+        const a = W.portalById(l.a), b = W.portalById(l.b);
+        L.polyline([[a.lat, a.lng], [b.lat, b.lng]], { color: D.TEAMS[l.team].color, weight: 1.5, opacity: 0.75 }).addTo(linkLayer);
+      }
+    }
+    // Your fields and links, on top and a little brighter.
     if (me && show.links) {
       const col = D.TEAMS[me.team].color;
       for (const f of me.fields) {
         const a = W.portalById(f.a), b = W.portalById(f.b), c = W.portalById(f.c);
         if (!a || !b || !c) continue;
-        L.polygon([[a.lat, a.lng], [b.lat, b.lng], [c.lat, c.lng]], { color: col, weight: 0, fillColor: col, fillOpacity: 0.18 })
-          .bindTooltip(`Control field · ${fmt(f.cp || 10)} CP`).addTo(fieldLayer);
+        L.polygon([[a.lat, a.lng], [b.lat, b.lng], [c.lat, c.lng]], { color: col, weight: 0, fillColor: col, fillOpacity: 0.22 })
+          .bindTooltip(`Your control field · ${fmt(f.cp || 10)} CP`, { sticky: true }).addTo(fieldLayer);
+        netCount[me.team]++;
       }
       for (const l of me.links) {
         const a = W.portalById(l.a), b = W.portalById(l.b);
         if (!a || !b) continue;
-        L.polyline([[a.lat, a.lng], [b.lat, b.lng]], { color: col, weight: 2, opacity: 0.9 }).addTo(linkLayer);
+        L.polyline([[a.lat, a.lng], [b.lat, b.lng]], { color: col, weight: 2.5, opacity: 1 }).addTo(linkLayer);
       }
     }
+    const fieldText = show.links && z >= MIN_NET_ZOOM ? ` · fields 🔺 ✦ ${netCount.N} · ◈ ${netCount.P} · ◐ ${netCount.E}` : '';
     if (z < MIN_ZOOM) {
-      $('status').textContent = 'Zoom in to see portals';
+      $('status').textContent = `Zoom in to see portals${fieldText}`;
       return;
     }
     const bounds = map.getBounds();
@@ -139,7 +167,7 @@
       }).bindPopup(() => popup(p)).addTo(portalLayer);
       n++;
     }
-    $('status').textContent = `${n} portal${n === 1 ? '' : 's'} here · ✦ ${count.N} · ◈ ${count.P} · ◐ ${count.E} · ${count.neutral} neutral`;
+    $('status').textContent = `${n} portal${n === 1 ? '' : 's'} · ✦ ${count.N} · ◈ ${count.P} · ◐ ${count.E} · ${count.neutral} neutral${fieldText}`;
   }
 
   map.on('moveend', redraw);

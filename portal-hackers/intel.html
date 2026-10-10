@@ -44,7 +44,7 @@
   .side.on { transform: none; }
   .side h2 { padding-right: 40px; }
   .side .sheet-x { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); right: 12px; }
-  .status { position: absolute; z-index: 500; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 6px 14px; font-size: 13px; white-space: nowrap; }
+  .status { position: absolute; z-index: 500; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 6px 14px; font-size: 13px; text-align: center; max-width: calc(100% - 140px); width: max-content; }
   .legend { position: absolute; z-index: 500; left: 10px; bottom: 26px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; font-size: 11.5px; display: flex; flex-direction: column; gap: 3px; }
   .legend span { display: flex; align-items: center; gap: 6px; }
   .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
@@ -78,6 +78,8 @@
   <span><i style="background:#FFB238"></i>ECLIPSE</span>
   <span><i style="background:#8A94A8"></i>Neutral</span>
   <span><i style="background:#000;border:2px solid #E9E4FF;box-sizing:border-box"></i>Nexus portal</span>
+  <span><b style="display:inline-block;width:14px;height:2px;background:var(--muted)"></b>Link</span>
+  <span><b style="display:inline-block;width:14px;height:10px;background:rgba(143,166,200,0.3)"></b>Control field</span>
 </div>
 
 <aside id="side" class="side" aria-label="World standings">

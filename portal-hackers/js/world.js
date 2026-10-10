@@ -172,5 +172,84 @@ window.PH = window.PH || {};
     return o(a, b, c) !== o(a, b, d) && o(c, d, a) !== o(c, d, b);
   }
 
-  PH.world = { CELL, distM, bearing, offset, move, around, portalById, baseOwner, crosses };
+  /* ------------------ Other players' links and fields ------------------ */
+
+  // Every block of 12 × 12 cells (about 1.5 km) gets a few links and control
+  // fields per team each day, between portals that team holds that day, so
+  // the map shows a living war. They're seeded, the same for everyone, and
+  // never cross each other. Whoever draws them should drop any whose
+  // portals have since changed hands (for example, captured by you).
+  const NET_BLOCK = 12;
+  const netCache = new Map();
+
+  function networksIn(bj, bi, now) {
+    const day = Math.floor(now / DAY);
+    const key = `${bj}:${bi}:${day}`;
+    if (netCache.has(key)) return netCache.get(key);
+    const byTeam = { N: [], P: [], E: [] };
+    for (let j = bj * NET_BLOCK; j < (bj + 1) * NET_BLOCK; j++) {
+      for (let i = bi * NET_BLOCK; i < (bi + 1) * NET_BLOCK; i++) {
+        const p = staticCell(j, i).portal;
+        if (!p || p.rarity === 'nexus') continue;
+        const o = baseOwner(p, now);
+        if (o) byTeam[o].push(p);
+      }
+    }
+    const r = rng(`net:${key}`);
+    const all = [].concat(byTeam.N, byTeam.P, byTeam.E);
+    const origin = all[0] || { lat: 0, lng: 0 };
+    const xy = (p) => offset(origin, p);
+    const segs = [];   // [A, B] in meters, every team
+    const links = [], fields = [];
+    const has = (a, b) => links.some((l) => (l.a === a.id && l.b === b.id) || (l.a === b.id && l.b === a.id));
+    const free = (a, b) => has(a, b) || !segs.some(([c, d]) => crosses(xy(a), xy(b), c, d));
+    const addLink = (a, b, team) => {
+      if (has(a, b)) return;
+      links.push({ a: a.id, b: b.id, team });
+      segs.push([xy(a), xy(b)]);
+    };
+    for (const team of ['N', 'P', 'E']) {
+      const list = byTeam[team];
+      if (list.length < 2) continue;
+      const tries = r() < 0.8 ? 1 + Math.floor(r() * 3) : 0;
+      for (let t = 0; t < tries; t++) {
+        const a = pick(list, r), b = pick(list, r), c = pick(list, r);
+        if (a === b) continue;
+        if (c === a || c === b || r() < 0.25) {
+          // A lone link.
+          if (free(a, b)) addLink(a, b, team);
+          continue;
+        }
+        if (!free(a, b) || !free(b, c) || !free(c, a)) continue;
+        addLink(a, b, team); addLink(b, c, team); addLink(c, a, team);
+        const A = xy(a), B = xy(b), C = xy(c);
+        const area = Math.abs((B[0] - A[0]) * (C[1] - A[1]) - (C[0] - A[0]) * (B[1] - A[1])) / 2;
+        fields.push({ a: a.id, b: b.id, c: c.id, team, cp: Math.max(10, Math.round(area / 1000)) });
+      }
+    }
+    const out = { links, fields };
+    netCache.set(key, out);
+    if (netCache.size > 400) netCache.delete(netCache.keys().next().value);
+    return out;
+  }
+
+  // Everyone's links and fields within `radius` meters of `pos`.
+  function networks(pos, radius, now) {
+    const dLat = radius / M_LAT;
+    const dLng = radius / (M_LNG * Math.max(0.15, Math.cos(pos.lat * DEG)));
+    const j0 = Math.floor((pos.lat - dLat) / CELL / NET_BLOCK), j1 = Math.floor((pos.lat + dLat) / CELL / NET_BLOCK);
+    const out = { links: [], fields: [] };
+    for (let bj = j0; bj <= j1; bj++) {
+      const lngSize = lngSizeAt(bj * NET_BLOCK + NET_BLOCK / 2);
+      const i0 = Math.floor((pos.lng - dLng) / lngSize / NET_BLOCK), i1 = Math.floor((pos.lng + dLng) / lngSize / NET_BLOCK);
+      for (let bi = i0; bi <= i1; bi++) {
+        const n = networksIn(bj, bi, now);
+        out.links.push(...n.links);
+        out.fields.push(...n.fields);
+      }
+    }
+    return out;
+  }
+
+  PH.world = { CELL, distM, bearing, offset, move, around, portalById, baseOwner, crosses, networks };
 })(window.PH);

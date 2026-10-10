@@ -561,7 +561,7 @@ window.PH = window.PH || {};
     }
   }
 
-  function drawLink(f, a, b, team) {
+  function drawLink(f, a, b, team, mine) {
     const pts = [];
     const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
     for (let i = 0; i <= 24; i++) {
@@ -569,13 +569,14 @@ window.PH = window.PH || {};
       pts.push([a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, 1.2 + Math.sin(k * Math.PI) * Math.min(4, d * 0.25)]);
     }
     ctx.shadowColor = rgba(team, 1);
-    ctx.shadowBlur = 10;
-    ctx.strokeStyle = rgba(team, 0.85);
-    ctx.lineWidth = 2.5;
+    ctx.shadowBlur = mine ? 10 : 4;
+    ctx.strokeStyle = rgba(team, mine ? 0.85 : 0.6);
+    ctx.lineWidth = mine ? 2.5 : 1.5;
     groundPath(pts);
     ctx.stroke();
     ctx.shadowBlur = 0;
-    // A pulse of energy running along it.
+    if (!mine) return;
+    // A pulse of energy running along your links.
     const k = (f.t * 0.5) % 1;
     const i = Math.floor(k * 24);
     const s = proj(...pts[i]);
@@ -661,12 +662,14 @@ window.PH = window.PH || {};
     }
 
     // Control fields: translucent triangles just above the ground.
-    for (const tri of f.fields || []) {
-      const pts = tri.map((ll) => toWorld(f, ll)).map((w) => [w[0], w[1], 0.04]);
+    // Other teams' fields are fainter; yours pulse gently.
+    for (const fl of f.fields || []) {
+      const col = fl.team ? rgb(D.TEAMS[fl.team].color) : team;
+      const pts = fl.pts.map((ll) => toWorld(f, ll)).map((w) => [w[0], w[1], 0.04]);
       groundPath([...pts, pts[0]]);
-      ctx.fillStyle = rgba(team, 0.16 + 0.05 * Math.sin(f.t * 2));
+      ctx.fillStyle = rgba(col, fl.mine ? 0.16 + 0.05 * Math.sin(f.t * 2) : 0.1);
       ctx.fill();
-      ctx.strokeStyle = rgba(team, 0.4);
+      ctx.strokeStyle = rgba(col, 0.4);
       ctx.lineWidth = 1;
       ctx.stroke();
     }
@@ -674,7 +677,7 @@ window.PH = window.PH || {};
     // Links (drawn under the portals).
     for (const l of f.links) {
       const a = toWorld(f, l.a), b = toWorld(f, l.b);
-      drawLink(f, a, b, team);
+      drawLink(f, a, b, l.team ? rgb(D.TEAMS[l.team].color) : team, !!l.mine);
     }
 
     // Everything standing on the disc, far to near.

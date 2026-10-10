@@ -63,7 +63,7 @@ The compass is a 3D holographic disc on the ground around you, seen from above a
 | **Capture** | Deploy a 📶 **Uplink** on a neutral portal. If you knocked it out yourself, it counts as capturing an enemy portal, with no time limit. ⚫ Nexus portals need an Expert Hack first to drop their wards; they stay down until you capture it. |
 | **Fortify** | Deploy more Uplinks on your team's portals (up to 8: that's its level, L1–L8) and install up to 2 🧱 **Firewalls**. Both make it much harder for the other teams to take. |
 | **Defend** | From Level 15, stand by one of your team's portals. Defended portals can't fall. You get XP at 10 minutes and at 30 minutes. |
-| **Link** | From Level 1, connect any two of your team's portals, at **any distance**, and from wherever you are. Tap **Link** on a portal and pick the other from the list of portals you hold keys to (or tap it on the compass). You need a 🔑 key to the far portal, and linking uses it up. A link that grows a network to 3 or more portals is worth more, and one that closes a triangle raises a **control field**. Links can't cross. |
+| **Link** | From Level 1, connect any two of your team's portals, at **any distance**, and from wherever you are. Tap **Link** on a portal and pick the other from the list of portals you hold keys to (or tap it on the compass). You need a 🔑 key to the far portal, and linking uses it up. A link that grows a network to 3 or more portals is worth more, and one that closes a triangle raises a **control field**. Links can't cross, and that includes other teams' links: knock out one of their portals first to bring its links down. |
 
 Enemy teams attack the portals you hold: each hour, each one has a small chance to fall (and its links and fields go with it). More Uplinks, Firewalls, the **Defense** upgrade and **Team Level 10** make that less likely.
 
@@ -95,8 +95,9 @@ The other players are simulated (there's no server), the same for everyone; your
 **Team → 🛰️ Intel map** (or **☰ → Intel map**) opens a map of every portal, like Ingress's Intel map. It's also a website, `intel.html`, that works on a computer:
 
 - Every portal on real streets, coloured by the team that holds it and ringed by rarity. Tap one for its name, owner, level, Uplinks and your keys.
-- Your own links and control fields, with each field's CP, if you're logged into the game in the same browser or app.
-- Filters for rarity and team, 📍 to jump to where you are, and the world standings panel (tap the score bar).
+- Every team's links and control fields from zoom 13, in the team's colour. Tap a field for its CP. A link or field only stands while its team holds every one of its portals, so capture one and it's gone.
+- Your own links and control fields drawn brighter on top, if you're logged into the game in the same browser or app.
+- Filters for rarity, team and links & fields, 📍 to jump to where you are, and the world standings panel (tap the score bar).
 - Portals show from street level (zoom 14) inwards.
 
 The map uses [Leaflet](https://leafletjs.com/) (in `js/vendor/leaflet/`, BSD licence) with CARTO's dark street tiles of OpenStreetMap data. With GitHub Pages turned on (see below), the website is at `https://<your-user>.github.io/<repo>/portal-hackers/intel.html`.

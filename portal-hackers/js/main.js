@@ -349,6 +349,12 @@ window.PH = window.PH || {};
     const sigR = S.has('quantum') ? S.signalRange() : 0;
     const r = Math.max(radarRange(), sigR) + 20;
     const a = W.around(game.pos, r, now);
+    // Other players' standing links and fields around you.
+    const net = S.worldNetworks(game.pos, Math.max(radarRange(), 600) * 1.6, now);
+    game.net = {
+      links: net.links.map((l) => ({ a: W.portalById(l.a), b: W.portalById(l.b), team: l.team })),
+      fields: net.fields.map((f) => ({ pts: [W.portalById(f.a), W.portalById(f.b), W.portalById(f.c)], team: f.team })),
+    };
     game.nearby = {
       portals: a.portals.filter((p) => S.visible(p)),
       energy: a.energy.filter((e) => !S.save.energyTaken[e.id]),
@@ -481,13 +487,16 @@ window.PH = window.PH || {};
     const links = [];
     for (const l of s.links) {
       const a = W.portalById(l.a), b = W.portalById(l.b);
-      if (a && b && (W.distM(game.pos, a) < range * 1.5 || W.distM(game.pos, b) < range * 1.5)) links.push({ a, b });
+      if (a && b && (W.distM(game.pos, a) < range * 1.5 || W.distM(game.pos, b) < range * 1.5)) links.push({ a, b, mine: true });
     }
+    const net = game.net || { links: [], fields: [] };
+    for (const l of net.links) links.unshift(l);
     const fields = [];
     for (const fl of s.fields) {
       const a = W.portalById(fl.a), b = W.portalById(fl.b), c = W.portalById(fl.c);
-      if (a && b && c && W.distM(game.pos, a) < range * 3) fields.push([a, b, c]);
+      if (a && b && c && W.distM(game.pos, a) < range * 3) fields.push({ pts: [a, b, c], mine: true });
     }
+    for (const fl of net.fields) fields.unshift(fl);
     while (blasts.length && t / 1000 - blasts[0].t > 1.2) blasts.shift();
     C.draw({
       t: t / 1000,

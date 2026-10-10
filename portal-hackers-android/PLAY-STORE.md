@@ -17,7 +17,7 @@ Everything you need for the Play Console and for YouTube is in this folder:
 | | |
 | --- | --- |
 | Package name | `app.portalhackers.game` |
-| Version | 1.5.0 (version code 10) |
+| Version | 1.5.1 (version code 11) |
 | Target SDK | 36 (Android 16), as Google Play requires for new apps from 31 August 2026 |
 | Min SDK | 24 (Android 7.0) |
 | Upload key SHA-256 | `BB:5B:70:14:C4:13:64:DD:69:A4:77:E1:D2:CF:05:38:5F:88:E3:A7:AA:72:05:53:52:39:07:B8:93:C7:D5:98` |
