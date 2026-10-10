@@ -1,6 +1,17 @@
 # Portal Hackers: Nexus
 
-Portals are opening on your real streets. Find them with your Sci-Fi Compass, hack them for your team, defend and link them, and climb 50 levels from **Scout** to **Nexus Master**. Then Prestige and do it again.
+Portals are opening on your real streets. Find them with your Sci-Fi Compass, hack them for gear, knock out the other teams' Uplinks, deploy your own, and link your portals into control fields. Climb 50 levels from **Scout** to **Nexus Master**, then Prestige and do it again.
+
+It plays like Ingress, with some differences:
+
+| Like Ingress | Different |
+| --- | --- |
+| Teams fight over portals pinned to real places. | Three teams (NOVA, PULSAR, ECLIPSE), not two. |
+| Hacking a portal gives you gear and keys. | Hacking is a memory puzzle you have to solve, at three difficulties. A successful hack on an enemy portal also **sabotages** it, knocking out Uplinks. |
+| Portals are held up by 8 deployed items (Uplinks), and their count is the portal's level. | You find portals with a 3D Sci-Fi Compass instead of a map. |
+| You knock out enemy portals with bombs (Pulse Bombs), then claim them. | Rare 🌌 Nexus signals and ⚫ Nexus portals: endgame black holes worth thousands of XP. |
+| Links need a key to the far portal, and a triangle of links raises a control field. | Squad missions, timed team events, daily missions, a Compass upgrade tree and Prestige. |
+| You walk over the energy lying on the street to collect it. | It's **Tech Cubes**, which give Tech Cores as well as energy. |
 
 Everything you do earns XP, every level gives a reward, every 5 levels opens something big, and every 10 levels brings a new rank. A large XP bar sits under the compass at all times, and the card below it always tells you what to do next:
 
@@ -32,9 +43,11 @@ The compass is a 3D holographic disc on the ground around you, seen from above a
 | On the compass | What it is |
 | --- | --- |
 | **?** | A portal you haven't discovered. Walk within your scanner range (the solid ring) to discover it. |
+| Dots around a portal | Its 8 **Uplink** slots, lit for each one deployed. Orange rings are **Firewalls**, and 🔑 means you have a key to it. |
+| Translucent triangles | Your **control fields**. |
 | Crystals | Portals. The shape is its rarity: 4-sided Common, 3-sided Rare, 6-sided Epic, 5-sided Legendary (with taller beams for rarer portals). The colour is the team that holds it (grey = neutral), and the base ring is its rarity colour. A ★ above it means it's yours. |
 | Black hole | A ⚫ **Nexus portal** (Level 40+), with a spinning accretion ring. |
-| Yellow cubes | **Energy cells.** Walk over them for energy. They come back every 10 minutes. |
+| Yellow cubes | **Tech Cubes.** Walk within reach (45 m) and they're picked up for you, or tap one in reach. Each gives +5 Tech Cores and energy, even when your energy is full. They come back every 10 minutes. |
 | Violet ripples and pillar | A 🌌 **Nexus signal** (Level 30+). Walk to it for 750 XP. Each lasts an hour. |
 | Dashed ring | Your reach (45 m). You hack, capture, defend and link from inside it. |
 
@@ -45,14 +58,27 @@ The compass is a 3D holographic disc on the ground around you, seen from above a
 | Action | How |
 | --- | --- |
 | **Discover** | Walk within scanner range. |
-| **Hack** | Tap a portal in reach and pick a hack. The portal flashes a code across a grid of nodes: tap it back in order before time runs out. Basic (3×3, 4 nodes), Advanced (4×4, 6 nodes, Level 11), Expert (5×5, 8 nodes, Level 17). Epic portals need Advanced or better; Legendary and Nexus portals need Expert. 5-minute cooldown per portal. |
-| **Capture** | Neutral portals can be captured straight away. Enemy portals (and Nexus portals) need a successful hack first: that drops their shields for 5 minutes. |
+| **Hack** | Tap a portal in reach and pick a hack. The portal flashes a code across a grid of nodes: tap it back in order before time runs out. Basic (3×3, 4 nodes), Advanced (4×4, 6 nodes, Level 11), Expert (5×5, 8 nodes, Level 17). Epic portals need Advanced or better; Legendary and Nexus portals need Expert. 5-minute cooldown per portal. A successful hack drops gear (Basic 2–3 items, Advanced 3–5, Expert 5–7) and a key to that portal (50% / 75% / always). On an enemy portal it also knocks out Uplinks (Basic 1, Advanced 2, Expert 3). |
+| **Attack** | Fire a 💥 **Pulse Bomb** at an enemy portal in reach: it knocks out 2 Uplinks. When the last one goes, the portal is neutral. |
+| **Capture** | Deploy a 📶 **Uplink** on a neutral portal. If you knocked it out in the last 10 minutes, it counts as capturing an enemy portal. ⚫ Nexus portals need an Expert Hack first to drop their wards for 5 minutes. |
+| **Fortify** | Deploy more Uplinks on your team's portals (up to 8: that's its level, L1–L8) and install up to 2 🧱 **Firewalls**. Both make it much harder for the other teams to take. |
 | **Defend** | From Level 15, stand by one of your team's portals. Defended portals can't fall. You get XP at 10 minutes and at 30 minutes. |
-| **Link** | From Level 25, connect two of your team's portals. A link that grows a network to 3 or more portals is worth more. Links can't cross. |
+| **Link** | From Level 25, connect two of your team's portals. You need a 🔑 key to the far portal, and linking uses it up. A link that grows a network to 3 or more portals is worth more, and one that closes a triangle raises a **control field**. Links can't cross. |
 
-Enemy teams attack the portals you hold: each hour, each one has a small chance to fall (and its links go with it). The **Defense** upgrade and **Team Level 10** make that less likely.
+Enemy teams attack the portals you hold: each hour, each one has a small chance to fall (and its links and fields go with it). More Uplinks, Firewalls, the **Defense** upgrade and **Team Level 10** make that less likely.
 
-**Energy** pays for hacks (5 / 10 / 15), captures (20) and links (10). It refills by itself, and energy cells top it up.
+### Gear
+
+Open it with **🎒** at the top. You start with 6 Uplinks, 4 Pulse Bombs and 1 Firewall, and get more from hacking.
+
+| Item | What it does |
+| --- | --- |
+| 📶 Uplink | Claims a neutral portal, or adds a level to your team's portal |
+| 💥 Pulse Bomb | Knocks 2 Uplinks off an enemy portal |
+| 🧱 Firewall | Helps your team's portal resist attacks (2 per portal) |
+| 🔑 Portal Key | Lets you link to that portal; used up when you do |
+
+**Energy** pays for hacks (5 / 10 / 15), Pulse Bombs (10), captures (20), deploying Uplinks and Firewalls (5) and links (10). It refills by itself, and Tech Cubes top it up.
 
 ### Missions
 
@@ -150,11 +176,12 @@ Your scanner also sees more as you rank up: Rare portals from Level 11, Epic fro
 | Advanced Hack | 35 |
 | Expert Hack | 75 |
 | Enemy Portal Capture | 50 |
+| Tech Cube (picked up) | 5 |
 | Squad Mission | 75 |
 | Legendary Mission | 250 |
 | Weekly Team Objective | 500 |
 
-Portal cores are paid when you discover the portal.
+Portal cores are paid when you discover the portal. Tech Cubes aren't in the original table: they were added so the yellow cubes are worth picking up.
 
 ### Portal reward table
 
@@ -252,7 +279,7 @@ Explore → Discover → Hack → Earn XP → Level Up → Unlock → Upgrade Co
 
 ## How it works
 
-- **The world:** there's no server. The globe is cut into cells about 120 m across, and each cell's portal is generated from its coordinates with a seeded random number generator, so everyone in the same place sees the same portals. A few portals change hands every day. Energy cells reroll every 10 minutes and Nexus signals every hour.
+- **The world:** there's no server. The globe is cut into cells about 120 m across, and each cell's portal is generated from its coordinates with a seeded random number generator, so everyone in the same place sees the same portals. A few portals change hands every day. Tech Cubes reroll every 10 minutes and Nexus signals every hour.
 - **Other players:** your squadmates, the rest of your team and the other teams are simulated. Team progress, event scores and attacks on your portals come from seeds, so they're the same every time you look.
 - **Your progress** is saved on your phone (`localStorage`).
 - **The 3D view** is drawn on a 2D canvas with no 3D library: every point is projected through a simple perspective camera, and the crystals are flat-shaded solids drawn back to front.
@@ -286,7 +313,7 @@ Stay aware of your surroundings. Don't go onto private property, and never play 
 | `css/style.css` | All the styling |
 | `js/core.js` | Seeded random numbers and small helpers |
 | `js/data.js` | **Every number in the progression system:** XP and Tech Core rewards, caps, the level table, ranks, unlocks, upgrades, cosmetics, missions, objectives, team levels, Prestige |
-| `js/world.js` | Generates portals, energy cells and Nexus signals from real coordinates |
+| `js/world.js` | Generates portals, Tech Cubes and Nexus signals from real coordinates |
 | `js/state.js` | Your save and the game rules |
 | `js/compass.js` | The 3D Sci-Fi Compass: camera, projection, and drawing the disc, portals, links and you |
 | `js/hack.js` | The hacking puzzle |

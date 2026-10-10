@@ -405,6 +405,25 @@ window.PH = window.PH || {};
     ctx.strokeStyle = rgba(rc, 0.9);
     ctx.lineWidth = 1.5;
     ctx.stroke();
+    // Uplink slots: 8 around the base, lit for each one deployed.
+    if (!f.territory) {
+      for (let i = 0; i < D.MAX_UPLINKS; i++) {
+        const a = (i / D.MAX_UPLINKS) * TAU + Math.PI / 8;
+        const u = proj(x + Math.cos(a) * sz * 1.9, y + Math.sin(a) * sz * 1.9, 0.08);
+        if (!u) continue;
+        const on = i < (p.uplinks || 0);
+        ctx.fillStyle = on ? rgba(col, 1) : 'rgba(255, 255, 255, 0.12)';
+        ctx.beginPath(); ctx.arc(u[0], u[1], Math.max(1.5, u[3] * (on ? 0.09 : 0.06)), 0, TAU); ctx.fill();
+      }
+    }
+    if (p.firewalls) {
+      ctx.strokeStyle = rgba([255, 140, 80], 0.7);
+      ctx.lineWidth = 2;
+      for (let k = 0; k < p.firewalls; k++) {
+        groundPath(circlePts(sz * (2.5 + k * 0.35), 0.1, 28).map((q) => [q[0] + x, q[1] + y, q[2]]));
+        ctx.stroke();
+      }
+    }
     if (p.ready && !f.territory) {
       ctx.strokeStyle = rgba(ring, 0.5 + 0.5 * Math.sin(f.t * 4));
       groundPath(circlePts(sz * 2.3, 0, 28).map((q) => [q[0] + x, q[1] + y, 0]));
@@ -463,6 +482,14 @@ window.PH = window.PH || {};
     }
     ctx.shadowBlur = 0;
 
+    if (p.key && !f.territory) {
+      const k = proj(x, y, zc - sz * 2.2);
+      if (k) {
+        ctx.font = `${Math.round(clamp(k[3] * 0.45, 8, 14))}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('🔑', k[0] + k[3] * sz * 1.4, k[1]);
+      }
+    }
     if (p.mine) {
       ctx.fillStyle = '#fff';
       const t = proj(x, y, zc + sz * 2.4);
@@ -496,7 +523,7 @@ window.PH = window.PH || {};
     if (!c) return;
     ctx.shadowColor = '#FFE65A';
     ctx.shadowBlur = 10;
-    drawSolid(cube(0.18, f.t * 1.5 + y), x, y, z, [255, 225, 80], 'rgba(255, 250, 200, 0.9)');
+    drawSolid(cube(0.26, f.t * 1.5 + y), x, y, z, [255, 214, 60], 'rgba(255, 250, 200, 0.95)');
     ctx.shadowBlur = 0;
     const g = proj(x, y, 0);
     if (g) {
@@ -632,6 +659,17 @@ window.PH = window.PH || {};
       }
     }
 
+    // Control fields: translucent triangles just above the ground.
+    for (const tri of f.fields || []) {
+      const pts = tri.map((ll) => toWorld(f, ll)).map((w) => [w[0], w[1], 0.04]);
+      groundPath([...pts, pts[0]]);
+      ctx.fillStyle = rgba(team, 0.16 + 0.05 * Math.sin(f.t * 2));
+      ctx.fill();
+      ctx.strokeStyle = rgba(team, 0.4);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
     // Links (drawn under the portals).
     for (const l of f.links) {
       const a = toWorld(f, l.a), b = toWorld(f, l.b);
@@ -659,6 +697,21 @@ window.PH = window.PH || {};
       it.depth = p ? p[2] : -1;
     }
     items.filter((it) => it.depth > 0).sort((a, b) => b.depth - a.depth).forEach((it) => it.draw());
+    // Pulse Bomb blasts: an expanding shockwave dome.
+    for (const b of f.blasts || []) {
+      const age = f.t - b.t;
+      if (age < 0 || age > 1.2) continue;
+      const [x, y] = toWorld(f, b);
+      const k = age / 1.2;
+      ctx.strokeStyle = `rgba(255, 120, 90, ${1 - k})`;
+      ctx.lineWidth = 3;
+      for (let j = 0; j < 3; j++) {
+        const rr = 0.4 + k * 3.2 * (1 - j * 0.25);
+        groundPath(circlePts(rr, j * 0.6 * (1 - k), 32).map((q) => [q[0] + x, q[1] + y, q[2]]));
+        ctx.stroke();
+      }
+    }
+
     // Nearest things win taps.
     hits.reverse();
 

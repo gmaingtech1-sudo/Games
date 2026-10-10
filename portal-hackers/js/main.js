@@ -25,7 +25,10 @@ window.PH = window.PH || {};
     walkTo: null,
     setWalk(ll) { game.walkTo = ll; },
     setWalkMode,
+    collect,
+    blast(p) { blasts.push({ lat: p.lat, lng: p.lng, t: performance.now() / 1000 }); },
   };
+  const blasts = [];
   PH.game = game;
 
   let heading = null;
@@ -251,7 +254,17 @@ window.PH = window.PH || {};
     };
   }
 
-  // Discover what's in range, collect energy cells and Nexus signals.
+  // Pick up a Tech Cube.
+  function collect(e) {
+    const got = S.collectCube(e);
+    if (!got) return;
+    A.energy();
+    UI.toast(`🟨 Tech Cube <b class="cores">+${got.cores} ⬢</b>${got.energy ? ` · 🔋+${got.energy}` : ''}`);
+    game.nearby.energy = game.nearby.energy.filter((x) => x.id !== e.id);
+    UI.hud();
+  }
+
+  // Discover what's in range, pick up Tech Cubes, lock onto Nexus signals.
   function scanTick() {
     if (gps.tooFast || PH.hack.running) return;
     const pos = game.pos;
@@ -259,13 +272,8 @@ window.PH = window.PH || {};
     for (const p of game.nearby.portals) {
       if (!S.discovered(p) && W.distM(pos, p) <= sr) S.discover(p);
     }
-    // Energy cells wait on the compass until you have room for them.
     for (const e of game.nearby.energy) {
-      if (S.save.energy < S.maxEnergy() && !S.save.energyTaken[e.id] && W.distM(pos, e) <= D.RANGE.interact) {
-        const got = S.takeEnergy(e);
-        A.energy();
-        UI.toast(`🔋 +${got} energy`);
-      }
+      if (!S.save.energyTaken[e.id] && W.distM(pos, e) <= D.RANGE.interact) collect(e);
     }
     for (const sg of game.nearby.signals) {
       if (!S.save.signals[sg.id] && W.distM(pos, sg) <= D.RANGE.interact) S.discoverSignal(sg);
@@ -279,7 +287,10 @@ window.PH = window.PH || {};
   function onCompassTap(ent) {
     A.tap();
     if (ent.kind === 'portal') UI.portalSheet(ent.id);
-    else if (ent.kind === 'energy') UI.energySheet(ent);
+    else if (ent.kind === 'energy') {
+      if (W.distM(game.pos, ent) <= D.RANGE.interact) collect(ent);
+      else UI.cubeSheet(ent);
+    }
     else if (ent.kind === 'signal') UI.signalSheet(ent);
   }
 
@@ -357,7 +368,10 @@ window.PH = window.PH || {};
         kind: 'portal', id: p.id, lat: p.lat, lng: p.lng, rarity: p.rarity,
         known: S.discovered(p), owner,
         mine: !!(r.mine && owner === team),
-        breached: r.breach > now,
+        breached: r.breach > now || r.neutral > now,
+        uplinks: owner ? S.uplinksOf(p, now) : 0,
+        firewalls: S.firewallsOf(p),
+        key: S.keyCount(p.id) > 0,
         defending: s.defense && s.defense.id === p.id,
         ready: S.discovered(p) && dist <= D.RANGE.interact && !(r.hackAt > now),
       };
@@ -367,8 +381,16 @@ window.PH = window.PH || {};
       const a = W.portalById(l.a), b = W.portalById(l.b);
       if (a && b && (W.distM(game.pos, a) < range * 1.5 || W.distM(game.pos, b) < range * 1.5)) links.push({ a, b });
     }
+    const fields = [];
+    for (const fl of s.fields) {
+      const a = W.portalById(fl.a), b = W.portalById(fl.b), c = W.portalById(fl.c);
+      if (a && b && c && W.distM(game.pos, a) < range * 3) fields.push([a, b, c]);
+    }
+    while (blasts.length && t / 1000 - blasts[0].t > 1.2) blasts.shift();
     C.draw({
       t: t / 1000,
+      fields,
+      blasts,
       pos: game.pos,
       heading,
       follow: s.settings.rotate && heading != null,

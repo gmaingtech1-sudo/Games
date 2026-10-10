@@ -59,6 +59,7 @@ window.PH = window.PH || {};
     link: () => { tone(300, 0.35, { to: 1200, type: 'sine', vol: 0.12 }); buzz(25); },
     levelUp: () => { [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, 0.3, { delay: i * 0.1, type: 'triangle', vol: 0.12 })); buzz([40, 60, 40, 60, 80]); },
     signal: () => { for (let i = 0; i < 4; i++) tone(200 + i * 220, 0.5, { delay: i * 0.12, vol: 0.08 }); buzz([20, 30, 20]); },
+    bomb: () => { tone(900, 0.5, { to: 60, type: 'sawtooth', vol: 0.14 }); tone(120, 0.6, { delay: 0.05, type: 'square', vol: 0.08 }); buzz([60, 40, 120]); },
     bad: () => tone(220, 0.2, { type: 'square', vol: 0.06 }),
   };
 })(window.PH);

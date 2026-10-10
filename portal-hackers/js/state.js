@@ -70,10 +70,13 @@ window.PH = window.PH || {};
       title: null, frame: false, portalFx: false, stars: 0,
       ach: {},
       stats: { discovered: 0, hacked: 0, captured: 0, defended: 0, squad: 0, nexusEvents: 0, eventsWon: 0, links: 0, signals: 0, legendary: 0, meters: 0, maxed: 0, lost: 0 },
-      portals: {},           // id → { disc, hackAt, owner, mine, heldAt, checked, breach }
+      portals: {},           // id → { disc, hackAt, owner, mine, heldAt, checked, breach, uplinks, fw, neutral, from }
       links: [],             // [{ a, b }]
+      fields: [],            // [{ a, b, c }] control fields: triangles of links
+      inv: Object.assign({}, D.START_ITEMS),
+      keys: {},              // portal id → how many keys
       signals: {},           // id → discovered time
-      energyTaken: {},       // energy cell id → time
+      energyTaken: {},       // Tech Cube id → time
       caps: { day: '', dayXP: 0, week: '', weekXP: 0 },
       daily: null,
       squad: { window: -1, offer: [], active: null },
@@ -284,14 +287,32 @@ window.PH = window.PH || {};
     return true;
   }
 
-  function takeEnergy(cell) {
-    if (save.energyTaken[cell.id]) return 0;
-    save.energyTaken[cell.id] = Date.now();
+  // Tech Cubes: always worth picking up. Energy (as much as fits) and Tech Cores.
+  function collectCube(cube) {
+    if (save.energyTaken[cube.id]) return null;
+    save.energyTaken[cube.id] = Date.now();
     const before = save.energy;
     save.energy = Math.min(maxEnergy(), save.energy + D.ENERGY.cell(save.up.energy));
+    save.cores += D.CORES.cube;
     persist();
-    return save.energy - before;
+    return { energy: save.energy - before, cores: D.CORES.cube };
   }
+
+  /* ------------------ Gear ------------------ */
+
+  const itemCount = (k) => save.inv[k] || 0;
+
+  function giveItem(k, n) {
+    save.inv[k] = Math.min(D.ITEM_CAP, itemCount(k) + n);
+  }
+
+  function useItem(k) {
+    if (itemCount(k) <= 0) return false;
+    save.inv[k]--;
+    return true;
+  }
+
+  const keyCount = (id) => save.keys[id] || 0;
 
   /* ------------------ Portals ------------------ */
 
@@ -306,6 +327,34 @@ window.PH = window.PH || {};
   const visible = (p) => level() >= D.RARITY[p.rarity].level;
   const discovered = (p) => !!(save.portals[p.id] && save.portals[p.id].disc);
 
+  // How many Uplinks hold a portal up. Portals nobody has touched get theirs
+  // from the world seed; neutral portals have none.
+  function uplinksOf(p, now) {
+    const r = save.portals[p.id];
+    if (r && r.uplinks != null) return r.uplinks;
+    if (!ownerOf(p, now)) return 0;
+    const [lo, hi] = D.BASE_UPLINKS[p.rarity];
+    return randInt(lo, hi, rng(`up:${p.id}:${Math.floor((now || Date.now()) / 86400e3)}`));
+  }
+  const firewallsOf = (p) => (save.portals[p.id] && save.portals[p.id].fw) || 0;
+
+  // An enemy portal with no Uplinks left goes neutral, and for 10 minutes the
+  // one who emptied it counts as capturing it from its team.
+  function knockOut(p, n) {
+    const now = Date.now();
+    const r = rec(p.id);
+    const owner = ownerOf(p, now);
+    r.uplinks = Math.max(0, uplinksOf(p, now) - n);
+    if (r.uplinks === 0) {
+      r.fw = 0;
+      r.owner = null;
+      r.mine = false;
+      r.neutral = now + D.COOLDOWN.neutral;
+      r.from = owner;
+      return true;
+    }
+    return false;
+  }
   function discover(p) {
     const r = rec(p.id);
     if (r.disc) return false;
@@ -383,17 +432,33 @@ window.PH = window.PH || {};
     let doubled = false;
     if (Math.random() < 0.04 * save.up.quantum) { cores *= 2; doubled = true; }
     addCores(cores);
+    // Gear drops.
+    const drops = {};
+    const [lo, hi] = D.DROPS[tier];
+    const n = randInt(lo, hi);
+    for (let i = 0; i < n; i++) {
+      const k = PH.util.weighted(D.ITEM_ORDER, (x) => D.DROP_WEIGHT[x]);
+      drops[k] = (drops[k] || 0) + 1;
+      giveItem(k, 1);
+    }
+    let key = false;
+    if (Math.random() < D.KEY_CHANCE[tier]) { save.keys[p.id] = keyCount(p.id) + 1; key = true; }
+    // Sabotage: a hack on an enemy portal knocks out some of its Uplinks.
     const owner = ownerOf(p, now);
-    let breached = false;
-    if (owner && owner !== save.team) { r.breach = now + D.COOLDOWN.breach; breached = true; }
-    if (p.rarity === 'nexus') { r.breach = now + D.COOLDOWN.breach; breached = true; }
+    let sabotaged = 0, neutralized = false, breached = false;
+    if (owner && owner !== save.team) {
+      sabotaged = Math.min(D.SABOTAGE[tier], uplinksOf(p, now));
+      neutralized = knockOut(p, D.SABOTAGE[tier]);
+    }
+    if (p.rarity === 'nexus' && !owner) { r.breach = now + D.COOLDOWN.breach; breached = true; }
     progressEvent('hack');
     if (tier === 'expert' && ['epic', 'legendary', 'nexus'].includes(p.rarity)) progressEvent('hackElite');
     eventPts(H.pts);
     persist();
-    return { ok: true, xp, cores, doubled, breached };
+    return { ok: true, xp, cores, doubled, breached, drops, key, sabotaged, neutralized };
   }
 
+  // Capturing = deploying the first Uplink on a neutral portal.
   function canCapture(p, dist) {
     const now = Date.now();
     const owner = ownerOf(p, now);
@@ -401,16 +466,22 @@ window.PH = window.PH || {};
     if (owner === save.team) return { ok: false, text: 'Already held by your team' };
     if (dist > D.RANGE.interact) return { ok: false, text: `Get within ${D.RANGE.interact} m` };
     if (!discovered(p)) return { ok: false, text: 'Discover it first' };
-    if ((owner || p.rarity === 'nexus') && !(r.breach > now)) return { ok: false, text: p.rarity === 'nexus' ? 'Breach it with an Expert Hack first' : 'Breach its shields with a hack first' };
+    if (owner) return { ok: false, text: `Knock out its ${uplinksOf(p, now)} Uplinks first (Pulse Bombs or a hack)` };
+    if (p.rarity === 'nexus' && !(r.breach > now)) return { ok: false, text: 'Breach it with an Expert Hack first' };
+    if (itemCount('uplink') <= 0) return { ok: false, text: 'You need an Uplink. Hack portals for more' };
     if (save.energy < D.ENERGY.cost.capture) return { ok: false, text: `Needs ${D.ENERGY.cost.capture} energy` };
     return { ok: true };
   }
 
   function capture(p) {
     const now = Date.now();
-    const owner = ownerOf(p, now);
-    spend(D.ENERGY.cost.capture);
     const r = rec(p.id);
+    const owner = r.neutral > now ? r.from : null;   // you just emptied it
+    spend(D.ENERGY.cost.capture);
+    useItem('uplink');
+    r.uplinks = 1;
+    r.fw = 0;
+    r.neutral = 0;
     r.owner = save.team;
     r.mine = true;
     r.heldAt = now;
@@ -420,6 +491,7 @@ window.PH = window.PH || {};
     let xp, cores = 0, text;
     if (p.rarity === 'nexus') {
       const R = D.RARITY.nexus;
+      r.uplinks = 1;
       xp = award(randInt(R.xp[0], R.xp[1]), `Captured ${p.name}`);
       cores = randInt(R.cores[0], R.cores[1]);
       text = `⚫ ${p.name} is yours`;
@@ -439,6 +511,65 @@ window.PH = window.PH || {};
     return { xp, cores, text };
   }
 
+  function canDeploy(p, dist) {
+    if (ownerOf(p) !== save.team) return 'Only on your team\'s portals';
+    if (dist > D.RANGE.interact) return `Get within ${D.RANGE.interact} m`;
+    if (uplinksOf(p) >= D.MAX_UPLINKS) return 'All 8 Uplink slots are full';
+    if (itemCount('uplink') <= 0) return 'No Uplinks. Hack portals for more';
+    if (save.energy < D.ENERGY.cost.deploy) return `Needs ${D.ENERGY.cost.deploy} energy`;
+    return null;
+  }
+
+  function deploy(p) {
+    const r = rec(p.id);
+    r.uplinks = uplinksOf(p) + 1;
+    useItem('uplink');
+    spend(D.ENERGY.cost.deploy);
+    eventPts(D.EVENT_PTS.deploy);
+    persist();
+    return r.uplinks;
+  }
+
+  function canFirewall(p, dist) {
+    if (ownerOf(p) !== save.team) return 'Only on your team\'s portals';
+    if (dist > D.RANGE.interact) return `Get within ${D.RANGE.interact} m`;
+    if (firewallsOf(p) >= D.MAX_FIREWALLS) return 'Both Firewall slots are full';
+    if (itemCount('firewall') <= 0) return 'No Firewalls. Hack portals for more';
+    if (save.energy < D.ENERGY.cost.firewall) return `Needs ${D.ENERGY.cost.firewall} energy`;
+    return null;
+  }
+
+  function installFirewall(p) {
+    const r = rec(p.id);
+    if (r.uplinks == null) r.uplinks = uplinksOf(p);
+    r.fw = firewallsOf(p) + 1;
+    useItem('firewall');
+    spend(D.ENERGY.cost.firewall);
+    persist();
+    return r.fw;
+  }
+
+  function canBomb(p, dist) {
+    const owner = ownerOf(p);
+    if (!owner || owner === save.team) return 'Only enemy portals';
+    if (!discovered(p)) return 'Discover it first';
+    if (dist > D.RANGE.interact) return `Get within ${D.RANGE.interact} m`;
+    if (itemCount('bomb') <= 0) return 'No Pulse Bombs. Hack portals for more';
+    if (save.energy < D.ENERGY.cost.bomb) return `Needs ${D.ENERGY.cost.bomb} energy`;
+    return null;
+  }
+
+  function bomb(p) {
+    const before = uplinksOf(p);
+    useItem('bomb');
+    spend(D.ENERGY.cost.bomb);
+    save.stats.bombs++;
+    const neutral = knockOut(p, D.BOMB_HITS);
+    eventPts(D.EVENT_PTS.bomb);
+    persist();
+    return { hit: Math.min(before, D.BOMB_HITS), left: uplinksOf(p), neutral };
+  }
+
   const held = () => Object.keys(save.portals).filter((id) => save.portals[id].mine && save.portals[id].owner === save.team);
 
   // Enemy teams attack the portals you hold. Each hour, each portal has a
@@ -451,14 +582,18 @@ window.PH = window.PH || {};
     const lost = [];
     for (const id of held()) {
       const r = save.portals[id];
+      // Every Uplink and Firewall makes the portal harder to take.
+      const pp = p * Math.max(0.15, 1 - 0.07 * (r.uplinks || 1)) * (1 - 0.3 * (r.fw || 0));
       const from = Math.max((r.checked || hour) + 1, hour - 72);
       for (let h = from; h <= hour; h++) {
         if (save.defense && save.defense.id === id) continue;
         const roll = rng(`atk:${id}:${r.heldAt}:${h}`);
-        if (roll() < p) {
+        if (roll() < pp) {
           const foes = Object.keys(D.TEAMS).filter((t) => t !== save.team);
           r.owner = pick(foes, roll);
           r.mine = false;
+          r.uplinks = randInt(1, 4, roll);
+          r.fw = 0;
           lost.push({ id, by: r.owner });
           break;
         }
@@ -469,6 +604,7 @@ window.PH = window.PH || {};
       save.stats.lost += lost.length;
       const gone = new Set(lost.map((x) => x.id));
       save.links = save.links.filter((l) => !gone.has(l.a) && !gone.has(l.b));
+      save.fields = save.fields.filter((f) => !gone.has(f.a) && !gone.has(f.b) && !gone.has(f.c));
       emit('lost', { lost });
       persist();
     }
@@ -525,6 +661,7 @@ window.PH = window.PH || {};
     if (a.id === b.id) return 'Pick another portal';
     if (ownerOf(a) !== save.team || ownerOf(b) !== save.team) return 'Both portals must be held by your team';
     if (!discovered(b)) return 'Discover it first';
+    if (keyCount(b.id) <= 0) return `You need a Portal Key to ${b.name}. Hack it to get one`;
     if (W.distM(posLL, a) > D.RANGE.interact) return `Stand within ${D.RANGE.interact} m of the first portal`;
     if (W.distM(a, b) > linkRange()) return `Out of link range (${linkRange()} m)`;
     if (save.links.length >= maxLinks()) return `You can hold ${maxLinks()} links. Upgrade Network for more`;
@@ -553,17 +690,32 @@ window.PH = window.PH || {};
     return seen.size;
   }
 
+  const linked = (x, y) => save.links.some((l) => (l.a === x && l.b === y) || (l.a === y && l.b === x));
+
   function link(a, b) {
     spend(D.ENERGY.cost.link);
+    save.keys[b.id] = keyCount(b.id) - 1;
+    if (save.keys[b.id] <= 0) delete save.keys[b.id];
     save.links.push({ a: a.id, b: b.id });
     save.stats.links++;
     weeklyMine('network', 1);
+    // A link that closes triangles raises control fields.
+    const ids = new Set();
+    for (const l of save.links) { ids.add(l.a); ids.add(l.b); }
+    let fields = 0;
+    for (const c of ids) {
+      if (c === a.id || c === b.id || !linked(a.id, c) || !linked(b.id, c)) continue;
+      save.fields.push({ a: a.id, b: b.id, c });
+      fields++;
+    }
+    save.stats.fields += fields;
     const n = networkSize(a.id);
-    const xp = n >= 3 ? award(D.XP.link3, `Connected a network of ${n} portals`) : award(D.XP.link2, 'Connected 2 portals');
+    const xp = fields ? award(D.XP.link3, `Control field raised (${n} portals connected)`)
+      : n >= 3 ? award(D.XP.link3, `Connected a network of ${n} portals`) : award(D.XP.link2, 'Connected 2 portals');
     progressEvent('link');
     eventPts(D.EVENT_PTS.link);
     persist();
-    return { xp, n };
+    return { xp, n, fields };
   }
 
   /* ------------------ Missions: events feed them ------------------ */
@@ -870,12 +1022,23 @@ window.PH = window.PH || {};
 
   PH.state = {
     get save() { return save; },
-    start(s) { save = s; checkLevel(); },
+    start(s) {
+      save = s;
+      // Saves from before gear and fields existed.
+      if (!save.inv) save.inv = Object.assign({}, D.START_ITEMS);
+      if (!save.keys) save.keys = {};
+      if (!save.fields) save.fields = [];
+      if (save.stats.fields == null) save.stats.fields = 0;
+      if (save.stats.bombs == null) save.stats.bombs = 0;
+      checkLevel();
+    },
     fresh, load, persist, reset,
     on(fn) { listener = fn; },
     level, rank, has, progress, award, addCores, rewardText, capRoom,
     upgrade, scanRange, signalRange, maxEnergy, linkRange, maxLinks, hackParams, teamLevel, teamFP,
-    takeEnergy, ownerOf, visible, discovered, discover, discoverSignal,
+    collectCube, itemCount, keyCount, uplinksOf, firewallsOf,
+    canDeploy, deploy, canFirewall, installFirewall, canBomb, bomb,
+    ownerOf, visible, discovered, discover, discoverSignal,
     tiersFor, canHack, startHack, finishHack, canCapture, capture, held, simulateAttacks,
     canDefend, startDefense, stopDefense, tickDefense,
     canLink, link, networkSize,

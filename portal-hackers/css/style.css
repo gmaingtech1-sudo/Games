@@ -82,7 +82,7 @@ b.cores { color: var(--cores); }
   display: grid; place-items: center; font-size: 17px;
 }
 .round-btn.on { border-color: var(--team); box-shadow: 0 0 12px var(--team); }
-.icon-btn { width: 36px; height: 36px; border: 0; background: transparent; font-size: 20px; }
+.icon-btn { width: 32px; height: 36px; border: 0; background: transparent; font-size: 20px; }
 
 /* ------------------ HUD ------------------ */
 
@@ -94,12 +94,12 @@ b.cores { color: var(--cores); }
 }
 
 .hud { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.agent { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--glass); border-radius: 14px; padding: 5px 12px 5px 6px; min-width: 0; }
+.agent { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--glass); border-radius: 14px; padding: 5px 10px 5px 6px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
 .rank-icon { font-size: 22px; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--team) 20%, transparent); }
-.agent-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.agent-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; overflow: hidden; }
 .agent-text b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
-.agent-text small { font-size: 11px; color: var(--team); letter-spacing: 0.08em; white-space: nowrap; }
-.hud-res { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.agent-text small { font-size: 11px; color: var(--team); letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.hud-res { display: flex; align-items: center; gap: 6px; font-size: 14px; flex: none; }
 .hud-res span { display: flex; align-items: center; gap: 3px; }
 .hud-res span b { font-variant-numeric: tabular-nums; }
 .hud-res span:nth-child(2) { color: var(--cores); }
@@ -338,3 +338,15 @@ dl.profile.sub dd { color: var(--ink); }
   .next-card ul { display: none; }
   .next-card small { display: none; }
 }
+
+/* ------------------ Gear and portal strength ------------------ */
+
+.btn-danger { background: linear-gradient(180deg, #FF6A5A, #B3263A); color: #fff; border-color: transparent; }
+.btn-danger small { color: rgba(255, 255, 255, 0.8); }
+.tiers.two { grid-template-columns: 1fr 1fr; margin-bottom: 4px; }
+.uplinks { display: inline-flex; gap: 3px; vertical-align: middle; }
+.uplinks i { width: 9px; height: 12px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); }
+.uplinks i.on { background: var(--uc); box-shadow: 0 0 6px var(--uc); }
+.p-ups { color: var(--ink) !important; font-size: 13px !important; }
+.hint { margin: -4px 0 8px; }
+.r-dist.big { font-size: 20px; font-weight: 700; color: var(--ink); }

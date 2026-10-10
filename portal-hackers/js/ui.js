@@ -86,7 +86,7 @@ window.PH = window.PH || {};
     const pr = S.progress();
     const rk = S.rank();
     $('hud-name').textContent = displayName();
-    $('hud-rank').textContent = `${rk.name} · Lv ${pr.level}`;
+    $('hud-rank').textContent = `Lv ${pr.level} · ${rk.name}`;
     $('hud-rank-icon').textContent = rk.icon;
     $('hud-energy').textContent = `${s.energy}/${S.maxEnergy()}`;
     $('hud-cores').textContent = fmt(s.cores);
@@ -193,6 +193,11 @@ window.PH = window.PH || {};
     sheet(() => portalHTML(p));
   }
 
+  function uplinkBar(n, owner) {
+    const col = owner ? D.TEAMS[owner].color : 'var(--muted)';
+    return `<span class="uplinks" style="--uc:${col}">${Array.from({ length: D.MAX_UPLINKS }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
+  }
+
   function portalHTML(p) {
     const s = S.save;
     const now = Date.now();
@@ -201,6 +206,7 @@ window.PH = window.PH || {};
     const known = S.discovered(p);
     const owner = S.ownerOf(p, now);
     const r = s.portals[p.id] || {};
+    const ups = S.uplinksOf(p, now);
     let out = `<div class="p-head" style="--rc:${R.color}">
       <span class="p-icon">${R.icon}</span>
       <div><h2>${known ? esc(p.name) : 'Unknown signal'}</h2>
@@ -211,29 +217,45 @@ window.PH = window.PH || {};
       out += walkBtn(p);
       return out;
     }
-    out += `<div class="p-meta"><span>Held by ${ownerLabel(owner)}${r.mine && owner === s.team ? ' · <b>yours</b>' : ''}</span>
-      <span>Worth ${fmt(R.xp[0])}–${fmt(R.xp[1])} XP · ${fmt(R.cores[0])}–${fmt(R.cores[1])} ⬢</span></div>`;
+    out += `<div class="p-meta"><span>Held by ${ownerLabel(owner)}${r.mine && owner === s.team ? ' · <b>yours</b>' : ''}${owner ? ` · <b>L${ups}</b>` : ''}</span>
+      <span class="p-ups">${uplinkBar(ups, owner)} ${ups}/${D.MAX_UPLINKS} Uplinks${S.firewallsOf(p) ? ` · ${'🧱'.repeat(S.firewallsOf(p))} Firewall` : ''}</span>
+      <span>🔑 ${S.keyCount(p.id)} key${S.keyCount(p.id) === 1 ? '' : 's'} · Worth ${fmt(R.xp[0])}–${fmt(R.xp[1])} XP · ${fmt(R.cores[0])}–${fmt(R.cores[1])} ⬢</span></div>`;
 
     // Hack.
     const cd = r.hackAt && r.hackAt > now ? r.hackAt - now : 0;
-    out += `<h3>Hack${cd ? ` · ready in ${fmtTime(cd)}` : ''}</h3><div class="tiers">`;
+    const enemy = owner && owner !== s.team;
+    out += `<h3>Hack${cd ? ` · ready in ${fmtTime(cd)}` : ''}</h3><p class="small muted hint">Drops gear and often a key${enemy ? '. On an enemy portal it also <b>sabotages</b> Uplinks' : ''}.</p><div class="tiers">`;
     for (const t of S.tiersFor(p)) {
       const why = S.canHack(p, t.tier, dist);
       out += `<button class="tier ${t.allowed ? '' : 'locked'}" type="button" data-act="hack" data-arg="${p.id}|${t.tier}" ${why ? 'disabled' : ''}>
-        <b>${t.H.name}</b><small>${t.allowed ? `+${fmt(D.XP.hack[t.tier])} XP · +${D.CORES.hack[t.tier]} ⬢ · 🔋${t.H.energy}` : esc(t.lockText)}</small>
+        <b>${t.H.name}</b><small>${t.allowed ? `+${fmt(D.XP.hack[t.tier])} XP · ${D.DROPS[t.tier][0]}–${D.DROPS[t.tier][1]} items${enemy ? ` · 💥${D.SABOTAGE[t.tier]}` : ''} · 🔋${t.H.energy}` : esc(t.lockText)}</small>
         ${why && t.allowed ? `<small class="why">${esc(why)}</small>` : ''}</button>`;
     }
     out += '</div>';
-    if (r.breach > now) out += `<p class="good small">Shields down for ${fmtTime(r.breach - now)}: capture it now!</p>`;
+    if (r.breach > now) out += `<p class="good small">Nexus wards down for ${fmtTime(r.breach - now)}: deploy an Uplink now!</p>`;
 
-    // Capture.
-    if (owner !== s.team) {
+    if (enemy) {
+      // Attack.
+      const why = S.canBomb(p, dist);
+      out += `<h3>Attack</h3><button class="btn btn-danger wide" type="button" data-act="bomb" data-arg="${p.id}" ${why ? 'disabled' : ''}>💥 Fire Pulse Bomb <small>Knocks out ${D.BOMB_HITS} Uplinks · ${S.itemCount('bomb')} left · 🔋${D.ENERGY.cost.bomb}</small></button>`;
+      if (why) out += `<p class="why center">${esc(why)}</p>`;
+      out += `<p class="small muted center">Knock out all ${ups} Uplinks and it goes neutral. Then deploy one of yours to capture it: <b class="xp">+${D.XP.captureEnemy} XP</b> <b class="cores">+${D.CORES.captureEnemy} ⬢</b></p>`;
+    } else if (!owner) {
+      // Capture.
       const c = S.canCapture(p, dist);
+      const fromEnemy = r.neutral > now;
       const xp = p.rarity === 'nexus' ? `${fmt(R.xp[0])}–${fmt(R.xp[1])} XP · ${fmt(R.cores[0])}–${fmt(R.cores[1])} ⬢`
-        : owner ? `+${D.XP.captureEnemy} XP · +${D.CORES.captureEnemy} ⬢` : `+${D.XP.captureNeutral} XP`;
-      out += `<button class="btn btn-main wide" type="button" data-act="capture" data-arg="${p.id}" ${c.ok ? '' : 'disabled'}>🏴 Capture <small>${xp} · 🔋${D.ENERGY.cost.capture}</small></button>`;
+        : fromEnemy ? `+${D.XP.captureEnemy} XP · +${D.CORES.captureEnemy} ⬢` : `+${D.XP.captureNeutral} XP`;
+      if (fromEnemy) out += `<p class="good small center">You knocked it out! Capture it within ${fmtTime(r.neutral - now)} to count it as taken from ${esc(D.TEAMS[r.from].name)}.</p>`;
+      out += `<button class="btn btn-main wide" type="button" data-act="capture" data-arg="${p.id}" ${c.ok ? '' : 'disabled'}>📶 Deploy Uplink to capture <small>${xp} · 🔋${D.ENERGY.cost.capture}</small></button>`;
       if (!c.ok) out += `<p class="why center">${esc(c.text)}</p>`;
     } else {
+      // Build it up.
+      out += '<h3>Fortify</h3><div class="tiers two">';
+      const dw = S.canDeploy(p, dist), fw = S.canFirewall(p, dist);
+      out += `<button class="tier" type="button" data-act="deploy" data-arg="${p.id}" ${dw ? 'disabled' : ''}><b>📶 Deploy Uplink</b><small>Level up · ${S.itemCount('uplink')} left · 🔋${D.ENERGY.cost.deploy}</small>${dw ? `<small class="why">${esc(dw)}</small>` : ''}</button>`;
+      out += `<button class="tier" type="button" data-act="firewall" data-arg="${p.id}" ${fw ? 'disabled' : ''}><b>🧱 Install Firewall</b><small>Resists attacks · ${S.itemCount('firewall')} left · 🔋${D.ENERGY.cost.firewall}</small>${fw ? `<small class="why">${esc(fw)}</small>` : ''}</button>`;
+      out += '</div>';
       // Defend.
       if (s.defense && s.defense.id === p.id) {
         out += `<button class="btn wide" type="button" data-act="stopDefend">🛡️ Stop defending <small>${Math.floor(s.defense.acc / 60e3)} min held</small></button>`;
@@ -245,7 +267,7 @@ window.PH = window.PH || {};
       // Link.
       if (S.has('linking')) {
         const ok = dist <= D.RANGE.interact;
-        out += `<button class="btn wide" type="button" data-act="linkStart" data-arg="${p.id}" ${ok ? '' : 'disabled'}>🔗 Connect to another portal <small>2 portals: +${D.XP.link2} XP · network of 3+: +${D.XP.link3} XP</small></button>`;
+        out += `<button class="btn wide" type="button" data-act="linkStart" data-arg="${p.id}" ${ok ? '' : 'disabled'}>🔗 Link to another portal <small>Needs its key · +${D.XP.link2} XP · close a triangle for a control field: +${D.XP.link3} XP</small></button>`;
         if (!ok) out += `<p class="why center">Stand within ${D.RANGE.interact} m to link from here</p>`;
       } else {
         out += `<p class="muted small center">🔗 Portal Linking opens at Level ${D.GATES.linking.level}</p>`;
@@ -278,8 +300,11 @@ window.PH = window.PH || {};
     const ok = await PH.hack.start({ title: D.HACKS[tier].name, sub: `${D.RARITY[p.rarity].icon} ${p.name}`, params });
     const res = S.finishHack(p, tier, ok);
     if (res.ok) {
-      toast(`💻 ${D.HACKS[tier].name} complete ${gain(res.xp, res.cores)}${res.doubled ? ' <small>⚛️ Quantum double cores!</small>' : ''}${res.breached ? '<br><small>Shields down: capture it within 5 minutes</small>' : ''}`, 'good');
-      if (res.breached) portalSheet(id);
+      const got = Object.keys(res.drops).map((k) => `${D.ITEMS[k].icon}×${res.drops[k]}`).concat(res.key ? ['🔑×1'] : []).join(' ');
+      toast(`💻 ${D.HACKS[tier].name} complete ${gain(res.xp, res.cores)}${res.doubled ? ' <small>⚛️ Quantum double cores!</small>' : ''}<br><small>Gear: ${got}</small>`
+        + (res.sabotaged ? `<br><small>💥 Sabotage: ${res.sabotaged} Uplink${res.sabotaged > 1 ? 's' : ''} knocked out${res.neutralized ? '. It\'s neutral: deploy an Uplink!' : ''}</small>` : '')
+        + (res.breached ? '<br><small>Nexus wards down: deploy an Uplink within 5 minutes</small>' : ''), 'good');
+      if (res.neutralized || res.breached) portalSheet(id);
     } else {
       toast('Hack failed. The portal locks you out for 1 minute.', 'bad');
     }
@@ -293,6 +318,40 @@ window.PH = window.PH || {};
     const res = S.capture(p);
     A.capture();
     toast(`🏴 ${esc(res.text)} ${gain(res.xp, res.cores)}`, 'good');
+    redraw();
+    hud();
+  };
+
+  actions.bomb = (id) => {
+    const p = W.portalById(id);
+    const why = S.canBomb(p, W.distM(G().pos, p));
+    if (why) { toast(esc(why), 'bad'); return; }
+    const res = S.bomb(p);
+    A.bomb();
+    G().blast(p);
+    toast(res.neutral ? `💥 Direct hit! ${esc(p.name)} is neutral. Deploy an Uplink to capture it.` : `💥 ${res.hit} Uplink${res.hit > 1 ? 's' : ''} knocked out · ${res.left} left`, res.neutral ? 'good' : '');
+    redraw();
+    hud();
+  };
+
+  actions.deploy = (id) => {
+    const p = W.portalById(id);
+    const why = S.canDeploy(p, W.distM(G().pos, p));
+    if (why) { toast(esc(why), 'bad'); return; }
+    const n = S.deploy(p);
+    A.ping();
+    toast(`📶 Uplink deployed: ${esc(p.name)} is now L${n}`);
+    redraw();
+    hud();
+  };
+
+  actions.firewall = (id) => {
+    const p = W.portalById(id);
+    const why = S.canFirewall(p, W.distM(G().pos, p));
+    if (why) { toast(esc(why), 'bad'); return; }
+    S.installFirewall(p);
+    A.ping();
+    toast(`🧱 Firewall installed on ${esc(p.name)}`);
     redraw();
     hud();
   };
@@ -311,8 +370,10 @@ window.PH = window.PH || {};
     G().linkFrom = p;
     close();
     const options = linkOptions(p);
+    const withKey = options.filter((b) => S.keyCount(b.id) > 0);
     if (!options.length) toast(`No team portals you've discovered within ${S.linkRange()} m. Capture more nearby first.`, 'bad');
-    else toast(`🔗 Tap a team portal within ${S.linkRange()} m to link it (${options.length} in range)`);
+    else if (!withKey.length) toast(`🔗 ${options.length} team portal${options.length > 1 ? 's' : ''} in range, but you have no keys to them. Hack them for keys.`, 'bad');
+    else toast(`🔗 Tap a team portal you have a key to (${withKey.length} in range)`);
     hud();
   };
 
@@ -327,15 +388,49 @@ window.PH = window.PH || {};
     const res = S.link(a, b);
     A.link();
     G().linkFrom = null;
-    toast(`🔗 ${res.n >= 3 ? `Network of ${res.n} portals` : '2 portals connected'} ${gain(res.xp)}`, 'good');
+    toast(`🔗 ${res.fields ? `Control field raised!` : res.n >= 3 ? `Network of ${res.n} portals` : '2 portals connected'} ${gain(res.xp)}`, 'good');
     hud();
   }
 
-  function energySheet(e) {
+  function cubeSheet(e) {
     sheet(() => {
       const d = W.distM(G().pos, e);
-      return `<div class="p-head" style="--rc:#FFE65A"><span class="p-icon">🔋</span><div><h2>Energy cell</h2><small>${fmtDist(d)} away</small></div></div>
-        <p class="muted">Walk within ${D.RANGE.interact} m to collect it automatically: +${D.ENERGY.cell(S.save.up.energy)} energy (only when you're not full). Energy cells reappear every 10 minutes.</p>${walkBtn(e)}`;
+      const near = d <= D.RANGE.interact;
+      return `<div class="p-head" style="--rc:#FFE65A"><span class="p-icon">🟨</span><div><h2>Tech Cube</h2><small>${fmtDist(d)} away</small></div></div>
+        <p class="muted">Worth <b class="cores">+${D.CORES.cube} ⬢</b> and up to +${D.ENERGY.cell(S.save.up.energy)} energy. Walk within ${D.RANGE.interact} m and it's picked up for you. Tech Cubes come back every 10 minutes.</p>
+        ${near ? `<button class="btn btn-main wide" type="button" data-act="cube" data-arg="${e.id}">🟨 Pick it up</button>` : walkBtn(e)}`;
+    });
+  }
+  actions.cube = (id) => {
+    const e = G().nearby.energy.find((x) => x.id === id);
+    if (e) G().collect(e);
+    close();
+  };
+
+  /* ------------------ Gear ------------------ */
+
+  function gearSheet() {
+    sheet(() => {
+      const s = S.save;
+      let out = '<h2>Gear</h2><p class="muted small">Hack portals for more. Successful hacks drop 2–7 items and often a key to that portal.</p><div class="list">';
+      for (const k of D.ITEM_ORDER) {
+        const it = D.ITEMS[k];
+        out += `<div class="mission"><span class="r-icon">${it.icon}</span><span><b>${it.name}</b><small>${esc(it.text)}</small></span><span class="r-dist big">${S.itemCount(k)}</span></div>`;
+      }
+      out += '</div><h3>🔑 Portal keys</h3>';
+      const ids = Object.keys(s.keys).filter((id) => s.keys[id] > 0);
+      if (!ids.length) out += '<p class="muted small">No keys yet. Hack a portal to get a key to it. You need a key to link to a portal.</p>';
+      else {
+        out += '<div class="list">';
+        for (const id of ids) {
+          const p = W.portalById(id);
+          if (!p) continue;
+          out += `<button class="row" type="button" data-act="openPortal" data-arg="${id}"><span class="r-icon">${D.RARITY[p.rarity].icon}</span><span><b>${esc(p.name)}</b><small>${ownerLabel(S.ownerOf(p))} · ${fmtDist(W.distM(G().pos, p))}</small></span><span class="r-dist">×${s.keys[id]}</span></button>`;
+        }
+        out += '</div>';
+      }
+      out += `<h3>Your network</h3><p class="small">${S.held().length} portals held · ${s.links.length}/${S.maxLinks()} links · ${s.fields.length} control field${s.fields.length === 1 ? '' : 's'}</p>`;
+      return out;
     });
   }
 
@@ -678,7 +773,7 @@ window.PH = window.PH || {};
       out += table(['Source', 'Tech Cores'], [
         ['Common Portal', C.discover.common], ['Rare Portal', C.discover.rare], ['Epic Portal', C.discover.epic], ['Legendary Portal', C.discover.legendary],
         ['Basic Hack', C.hack.basic], ['Advanced Hack', C.hack.advanced], ['Expert Hack', C.hack.expert],
-        ['Enemy Portal Capture', C.captureEnemy], ['Squad Mission', C.squad], ['Legendary Mission', C.legendaryMission], ['Weekly Team Objective', C.weeklyObjective],
+        ['Enemy Portal Capture', C.captureEnemy], ['Tech Cube (picked up)', C.cube], ['Squad Mission', C.squad], ['Legendary Mission', C.legendaryMission], ['Weekly Team Objective', C.weeklyObjective],
       ]);
     } else if (guideTab === 'portals') {
       out += table(['Portal', 'XP', 'Tech Cores', 'Difficulty'], D.RARITY_ORDER.map((k) => {
@@ -696,11 +791,14 @@ window.PH = window.PH || {};
         <ul class="howto">
           <li><b>Every action → XP.</b> Discover, hack, capture, defend and link portals, and finish missions.</li>
           <li><b>Every level → reward.</b> Every 5 levels → a major unlock. Every 10 levels → a new rank.</li>
-          <li><b>The compass.</b> Portals appear at their real bearing and distance. "?" blips are portals you haven't discovered: walk within scanner range. The dashed ring is your reach (${D.RANGE.interact} m) for hacking, capturing, defending and linking.</li>
-          <li><b>Hacking.</b> Watch the code flash across the nodes, then tap it back in order before time runs out.</li>
-          <li><b>Capturing.</b> Neutral portals can be captured straight away. Enemy portals need a successful hack first to drop their shields for 5 minutes.</li>
-          <li><b>Holding portals.</b> Enemy teams attack the portals you hold. The Defense upgrade helps them hold, and a portal you're defending can't fall.</li>
-          <li><b>Energy.</b> Hacks, captures and links use energy. It refills over time, and ⚡ energy cells on the compass give more.</li>
+          <li><b>The compass.</b> A 3D disc around you. Portals stand at their real bearing and distance. "?" are portals you haven't discovered: walk within scanner range. The dashed ring is your reach (${D.RANGE.interact} m).</li>
+          <li><b>Tech Cubes.</b> The yellow cubes. Walk within reach (or tap one in reach) to pick it up: +${D.CORES.cube} Tech Cores and energy.</li>
+          <li><b>Hacking.</b> Watch the code flash across the nodes, then tap it back in order. A successful hack drops gear (📶 Uplinks, 💥 Pulse Bombs, 🧱 Firewalls) and often a 🔑 key to that portal.</li>
+          <li><b>Portals.</b> Each portal holds up to 8 Uplinks; that's its level (L1–L8). Deploy an Uplink on a neutral portal to capture it, and more to level up your team's portals. Firewalls help them hold.</li>
+          <li><b>Taking enemy portals.</b> Knock out all their Uplinks with Pulse Bombs, or sabotage them with hacks (Basic 1, Advanced 2, Expert 3). Then it's neutral: deploy an Uplink to capture it.</li>
+          <li><b>Links and control fields.</b> Link two of your team's portals with a key to the far one. Close a triangle of links to raise a control field.</li>
+          <li><b>Holding portals.</b> Enemy teams attack the portals you hold. More Uplinks, Firewalls and the Defense upgrade help them hold, and a portal you're defending can't fall.</li>
+          <li><b>Energy.</b> Hacks, attacks, deploying and linking use energy. It refills over time, and Tech Cubes top it up.</li>
           <li><b>Level 50 → Nexus Master. After that → Prestige.</b></li>
         </ul>`;
     }
@@ -743,6 +841,7 @@ window.PH = window.PH || {};
     $('btn-profile').addEventListener('click', () => { A.tap(); profileSheet('profile'); });
     $('hud-agent').addEventListener('click', () => { A.tap(); profileSheet('profile'); });
     $('hud-menu').addEventListener('click', () => { A.tap(); menuSheet(); });
+    $('hud-gear').addEventListener('click', () => { A.tap(); gearSheet(); });
     $('next-card').addEventListener('click', () => { A.tap(); guideSheet('levels'); });
     $('hk-abort').addEventListener('click', () => PH.hack.cancel());
     $('active').addEventListener('click', (e) => {
@@ -775,5 +874,5 @@ window.PH = window.PH || {};
     }
   }
 
-  PH.ui = { bind, onEvent, hud, toast, close, isOpen, portalSheet, energySheet, signalSheet, scanSheet, guideSheet, menuSheet };
+  PH.ui = { bind, onEvent, hud, toast, close, isOpen, portalSheet, cubeSheet, gearSheet, signalSheet, scanSheet, guideSheet, menuSheet };
 })(window.PH);

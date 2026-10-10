@@ -33,6 +33,7 @@ window.PH = window.PH || {};
     squad: 75,
     legendaryMission: 250,
     weeklyObjective: 500,
+    cube: 5,
   };
 
   /* ------------------ Portals ------------------ */
@@ -304,7 +305,7 @@ window.PH = window.PH || {};
   /* ------------------ Team events ------------------ */
 
   const EVENT = { every: 2 * 3600e3, length: 30 * 60e3 };
-  const EVENT_PTS = { discover: 5, capture: 30, link: 20, defendMin: 3, signal: 25 };
+  const EVENT_PTS = { discover: 5, capture: 30, link: 20, defendMin: 3, signal: 25, bomb: 8, deploy: 4 };
 
   /* ------------------ Achievements (kept through Prestige) ------------------ */
 
@@ -333,12 +334,37 @@ window.PH = window.PH || {};
 
   const ENERGY = {
     base: 100, perLevel: 20,
-    cost: { capture: 20, link: 10 },
+    cost: { capture: 20, link: 10, bomb: 10, deploy: 5, firewall: 5 },
     regenMs: (l) => (30 - 2 * l) * 1000,
     cell: (l) => 15 + 5 * l,
   };
 
-  const COOLDOWN = { hack: 5 * 60e3, fail: 60e3, breach: 5 * 60e3 };
+  const COOLDOWN = { hack: 5 * 60e3, fail: 60e3, breach: 5 * 60e3, neutral: 10 * 60e3 };
+
+  /* ------------------ Gear (dropped by hacks) ------------------ */
+
+  // Like Ingress, portals are held with gear you get from hacking. Unlike
+  // Ingress, a successful hack on an enemy portal also sabotages it.
+  const ITEMS = {
+    uplink:   { name: 'Uplink',     icon: '📶', text: 'Deploy on a portal. The first one claims a neutral portal; each one after makes your team\'s portal a level stronger (up to 8).' },
+    bomb:     { name: 'Pulse Bomb', icon: '💥', text: 'Fire it at an enemy portal in reach to knock out 2 of its Uplinks.' },
+    firewall: { name: 'Firewall',   icon: '🧱', text: 'Install on your team\'s portal (up to 2): it holds out against enemy attacks much longer.' },
+    key:      { name: 'Portal Key', icon: '🔑', text: 'A key to one portal. You need one to link to that portal, and linking uses it up.' },
+  };
+  const ITEM_ORDER = ['uplink', 'bomb', 'firewall'];
+  const ITEM_CAP = 99;
+  const START_ITEMS = { uplink: 6, bomb: 4, firewall: 1 };
+  // Items a successful hack drops, [min, max], and the chance of a key to that portal.
+  const DROPS = { basic: [2, 3], advanced: [3, 5], expert: [5, 7] };
+  const DROP_WEIGHT = { uplink: 45, bomb: 40, firewall: 15 };
+  const KEY_CHANCE = { basic: 0.5, advanced: 0.75, expert: 1 };
+  // Uplinks a successful hack knocks off an enemy portal.
+  const SABOTAGE = { basic: 1, advanced: 2, expert: 3 };
+  const BOMB_HITS = 2;
+  const MAX_UPLINKS = 8;
+  const MAX_FIREWALLS = 2;
+  // Uplinks on a portal nobody has touched, [min, max] by rarity.
+  const BASE_UPLINKS = { common: [1, 4], rare: [2, 5], epic: [3, 6], legendary: [5, 8], nexus: [0, 0] };
 
   PH.data = {
     XP, CAPS, CORES, RARITY, RARITY_ORDER, HACKS, TIER_ORDER, TEAMS, RANKS, rankOf,
@@ -348,5 +374,6 @@ window.PH = window.PH || {};
     DAILY, DAILY_BONUS, SQUAD, SQUAD_MINUTES, LEGENDARY_STAGES, OBJECTIVES,
     TEAM_PERKS, TEAM_MAX, teamFPFor, teamLevelFor, EVENT, EVENT_PTS, ACHIEVEMENTS,
     RANGE, ENERGY, COOLDOWN,
+    ITEMS, ITEM_ORDER, ITEM_CAP, START_ITEMS, DROPS, DROP_WEIGHT, KEY_CHANCE, SABOTAGE, BOMB_HITS, MAX_UPLINKS, MAX_FIREWALLS, BASE_UPLINKS,
   };
 })(window.PH);
