@@ -394,14 +394,21 @@ window.PH = window.PH || {};
       const bob = Math.sin(f.t * 2 + x) * 0.15;
       const s = proj(x, y, 1 + bob);
       if (!s) return;
-      ctx.strokeStyle = 'rgba(200, 220, 255, 0.25)';
+      // Not discovered yet, but you can see which team holds it from afar.
+      const tc = p.owner ? col : [200, 225, 255];
+      ctx.strokeStyle = rgba(tc, p.owner ? 0.5 : 0.25);
+      ctx.lineWidth = 1.2;
+      groundPath(circlePts(0.45, 0, 18).map((q) => [q[0] + x, q[1] + y, 0]));
+      ctx.stroke();
       ctx.beginPath(); ctx.moveTo(base[0], base[1]); ctx.lineTo(s[0], s[1]); ctx.stroke();
-      ctx.font = `700 ${Math.round(clamp(s[3] * 0.9, 9, 30))}px "Audiowide", sans-serif`;
+      ctx.font = `700 ${Math.round(clamp(s[3] * 0.9, 11, 30))}px "Audiowide", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = `rgba(200, 225, 255, ${0.5 + 0.3 * Math.sin(f.t * 3 + x)})`;
+      if (p.owner) { ctx.shadowColor = rgba(tc, 1); ctx.shadowBlur = 8; }
+      ctx.fillStyle = rgba(tc, (p.owner ? 0.75 : 0.5) + 0.25 * Math.sin(f.t * 3 + x));
       ctx.fillText('?', s[0], s[1]);
-      hits.push({ x: s[0], y: s[1], r: Math.max(22, s[3] * 0.8), ent: p });
+      ctx.shadowBlur = 0;
+      hits.push({ x: s[0], y: s[1], r: Math.max(30, s[3] * 0.8), ent: p });
       return;
     }
 
@@ -568,11 +575,47 @@ window.PH = window.PH || {};
     }
   }
 
+  // The part of segment a→b inside the disc, as [k0, k1] along it, or null.
+  function clipToDisc(a, b, R) {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const A = dx * dx + dy * dy, B = 2 * (a[0] * dx + a[1] * dy), C = a[0] * a[0] + a[1] * a[1] - R * R;
+    if (A < 1e-9) return C <= 0 ? [0, 1] : null;
+    const disc = B * B - 4 * A * C;
+    if (disc <= 0) return null;
+    const r = Math.sqrt(disc);
+    const k0 = Math.max(0, (-B - r) / (2 * A)), k1 = Math.min(1, (-B + r) / (2 * A));
+    return k0 < k1 ? [k0, k1] : null;
+  }
+
+  // A convex polygon cut down to the disc (approximated by a 48-gon).
+  const DISC = Array.from({ length: 48 }, (_, i) => [Math.cos((i / 48) * TAU), Math.sin((i / 48) * TAU)]);
+  function clipPolyToDisc(poly, R) {
+    let out = poly;
+    for (let i = 0; i < DISC.length && out.length; i++) {
+      const p = [DISC[i][0] * R, DISC[i][1] * R], q = [DISC[(i + 1) % DISC.length][0] * R, DISC[(i + 1) % DISC.length][1] * R];
+      const side = (v) => (q[0] - p[0]) * (v[1] - p[1]) - (q[1] - p[1]) * (v[0] - p[0]);
+      const inp = out; out = [];
+      for (let j = 0; j < inp.length; j++) {
+        const u = inp[j], v = inp[(j + 1) % inp.length];
+        const su = side(u), sv = side(v);
+        if (su >= 0) out.push(u);
+        if ((su >= 0) !== (sv >= 0)) {
+          const t = su / (su - sv);
+          out.push([u[0] + (v[0] - u[0]) * t, u[1] + (v[1] - u[1]) * t, u[2]]);
+        }
+      }
+    }
+    return out;
+  }
+
   function drawLink(f, a, b, team, mine) {
+    // Only the stretch over the disc: a link to a far portal runs off its edge.
+    const cut = clipToDisc(a, b, RING * 1.04);
+    if (!cut) return;
     const pts = [];
     const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
     for (let i = 0; i <= 24; i++) {
-      const k = i / 24;
+      const k = cut[0] + (cut[1] - cut[0]) * (i / 24);
       pts.push([a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, 1.2 + Math.sin(k * Math.PI) * Math.min(4, d * 0.25)]);
     }
     ctx.shadowColor = rgba(team, 1);
@@ -672,7 +715,8 @@ window.PH = window.PH || {};
     // Other teams' fields are fainter; yours pulse gently.
     for (const fl of f.fields || []) {
       const col = fl.team ? rgb(D.TEAMS[fl.team].color) : team;
-      const pts = fl.pts.map((ll) => toWorld(f, ll)).map((w) => [w[0], w[1], 0.04]);
+      const pts = clipPolyToDisc(fl.pts.map((ll) => toWorld(f, ll)).map((w) => [w[0], w[1], 0.04]), RING * 1.04);
+      if (pts.length < 3) continue;
       groundPath([...pts, pts[0]]);
       ctx.fillStyle = rgba(col, fl.mine ? 0.16 + 0.05 * Math.sin(f.t * 2) : 0.1);
       ctx.fill();

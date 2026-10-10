@@ -124,30 +124,39 @@ window.PH = window.PH || {};
 
   const short = (n) => (n >= 1000 ? `${Math.round(n / 100) / 10}k`.replace('.0k', 'k') : String(n));
 
+  const ARROWS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const arrow = (deg) => ARROWS[Math.round(deg / 45) % 8];
+
   // The nearest portal, so it's one tap away even when the compass is busy.
   let nearId = null;
   function nearBar() {
     const g = G();
     const list = g && g.nearby ? g.nearby.portals : [];
-    let best = null, bd = Infinity;
+    // The nearest portal if you're in reach of it; otherwise the nearest enemy
+    // portal, so there's always something to go and hack.
+    let best = null, bd = Infinity, foe = null, fd = Infinity;
     for (const p of list) {
       const d = W.distM(g.pos, p);
       if (d < bd) { bd = d; best = p; }
+      const o = S.ownerOf(p);
+      if (o && o !== S.save.team && d < fd) { fd = d; foe = p; }
     }
+    const hunting = !!(foe && bd > D.RANGE.interact && foe !== best);
+    if (hunting) { best = foe; bd = fd; }
     const el = $('near');
     if (!best) { el.hidden = true; nearId = null; return; }
     nearId = best.id;
     const R = D.RARITY[best.rarity];
     const known = S.discovered(best);
-    const owner = known ? S.ownerOf(best) : null;
+    const owner = S.ownerOf(best);
     const reach = bd <= D.RANGE.interact;
-    const held = !known ? 'Unknown signal' : owner ? `${D.TEAMS[owner].name}${owner === S.save.team ? ' (your team)' : ''}` : 'Neutral';
+    const held = owner && owner !== S.save.team ? `⚔ ${D.TEAMS[owner].name}` : owner ? `${D.TEAMS[owner].name} (your team)` : 'Neutral';
     el.hidden = false;
     el.classList.toggle('reach', reach);
     el.style.setProperty('--nc', owner ? D.TEAMS[owner].color : R.color);
     el.setAttribute('aria-label', `Nearest portal: ${known ? best.name : 'unknown signal'}, ${fmtDist(bd)} away. Open it`);
     el.innerHTML = `<span class="near-ic" aria-hidden="true">${R.icon}</span>
-      <span class="near-tx"><b>${known ? esc(best.name) : 'Unknown signal'}</b><small>${R.name} · ${esc(held)} · ${fmtDist(bd)}</small></span>
+      <span class="near-tx"><b>${known ? esc(best.name) : 'Undiscovered portal'}</b><small>${hunting ? 'Nearest enemy · ' : ''}${R.name} · ${esc(held)} · ${fmtDist(bd)} ${arrow(W.bearing(g.pos, best))}</small></span>
       <span class="near-go">${reach ? 'HACK' : 'OPEN'} ›</span>`;
   }
 
@@ -238,10 +247,11 @@ window.PH = window.PH || {};
     const ups = S.uplinksOf(p, now);
     let out = `<div class="p-head" style="--rc:${R.color}">
       <span class="p-icon">${R.icon}</span>
-      <div><h2>${known ? esc(p.name) : 'Unknown signal'}</h2>
+      <div><h2>${known ? esc(p.name) : 'Undiscovered portal'}</h2>
       <small>${R.name} portal · ${R.diff} · ${fmtDist(dist)} away</small></div></div>`;
     if (!known) {
-      out += `<p class="muted">Walk within your scanner range (${S.scanRange()} m) to discover it.</p>
+      out += `<div class="p-meta"><span>Held by ${ownerLabel(owner)}${owner && owner !== s.team ? ' · <b>enemy portal</b>' : ''}</span></div>
+        <p class="muted">Walk within your scanner range (${S.scanRange()} m) to discover it, then get within ${D.RANGE.interact} m to hack it.</p>
         <p class="tbl-note">Discovering it: <b class="xp">+${fmt(D.XP.discover[p.rarity] || 0)} XP</b> <b class="cores">+${fmt(D.CORES.discover[p.rarity] || 0)} ⬢</b></p>`;
       out += walkBtn(p);
       return out;
@@ -816,7 +826,7 @@ window.PH = window.PH || {};
         const R = D.RARITY[k];
         return [`${R.icon} ${R.name}`, `${fmt(R.xp[0])}–${fmt(R.xp[1])}`, `${fmt(R.cores[0])}–${fmt(R.cores[1])}`, R.diff];
       }));
-      out += `<p class="tbl-note">A portal's range is what it pays across discovering, hacking and capturing it. Your scanner sees Rare portals from Level ${D.RARITY.rare.level}, Epic from ${D.RARITY.epic.level}, Legendary from ${D.RARITY.legendary.level} and Nexus portals from ${D.RARITY.nexus.level}. A Nexus portal pays its whole range in one roll when you capture it.</p>`;
+      out += `<p class="tbl-note">A portal's range is what it pays across discovering, hacking and capturing it. Every portal shows on your compass from Level 1. You can capture Rare portals from Level ${D.RARITY.rare.level}, Epic from ${D.RARITY.epic.level}, Legendary from ${D.RARITY.legendary.level} and Nexus portals from ${D.RARITY.nexus.level}. A Nexus portal pays its whole range in one roll when you capture it.</p>`;
       out += '<h3>Hacks</h3>' + table(['Hack', 'Opens', 'Code', 'Grid', 'Energy'], D.TIER_ORDER.map((t) => {
         const H = D.HACKS[t];
         return [H.name, `Level ${H.level}`, `${H.len} nodes`, `${H.grid}×${H.grid}`, `🔋${H.energy}`];

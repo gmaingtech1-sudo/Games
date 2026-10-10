@@ -91,7 +91,7 @@
       ${R.icon} ${R.name} portal · ${R.diff}<br>
       Held by <b style="color:${teamColor(o)}">${o ? D.TEAMS[o].name : 'Neutral'}</b>${o && ups != null ? ` · L${ups} (${ups}/8 Uplinks)` : ''}${rec && rec.mine && o === me.team ? ' · <b>yours</b>' : ''}<br>
       Worth ${fmt(R.xp[0])}–${fmt(R.xp[1])} XP${keys ? ` · 🔑 ×${keys}` : ''}<br>
-      ${me && lvl < R.level ? `<small>Your scanner sees it from Level ${R.level}</small><br>` : ''}
+      ${me && lvl < R.level ? `<small>You can capture it from Level ${R.level}</small><br>` : ''}
       ${me && me.home ? `<small>${fmtDist(W.distM(me.home, p))} from your last position</small><br>` : ''}
       <small>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small>`;
   }

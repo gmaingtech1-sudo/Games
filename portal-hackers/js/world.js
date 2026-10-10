@@ -75,7 +75,7 @@ window.PH = window.PH || {};
     cell = { key, j, i, lngSize, portal: null, offset: Math.floor(r() * ENERGY_MS) };
 
     const nexus = hash(`nexus:${key}`) % 90 === 0;
-    if (nexus || r() < 0.36) {
+    if (nexus || r() < 0.62) {
       const p = at();
       const rarity = nexus ? 'nexus' : weighted(['common', 'rare', 'epic', 'legendary'], (x) => ({ common: 60, rare: 25, epic: 11, legendary: 4 }[x]), r);
       cell.portal = {
@@ -94,7 +94,7 @@ window.PH = window.PH || {};
   function baseOwner(portal, now) {
     if (portal.rarity === 'nexus') return null;
     const r0 = rng(`own:${portal.id}`);
-    let owner = r0() < 0.34 ? null : pick(['N', 'P', 'E'], r0);
+    let owner = r0() < 0.24 ? null : pick(['N', 'P', 'E'], r0);
     const r1 = rng(`own:${portal.id}:${Math.floor(now / DAY)}`);
     if (r1() < 0.12) owner = r1() < 0.3 ? null : pick(['N', 'P', 'E'], r1);
     return owner;

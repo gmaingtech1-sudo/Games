@@ -40,7 +40,7 @@ The compass is a 3D holographic disc on the ground around you, seen from above a
 
 | On the compass | What it is |
 | --- | --- |
-| **?** | A portal you haven't discovered. Walk within your scanner range (the solid ring) to discover it. |
+| **?** | A portal you haven't discovered, coloured by the team that holds it (grey = neutral), so you can spot enemy portals from afar. Walk within your scanner range (the solid ring) to discover it. |
 | Dots around a portal | Its 8 **Uplink** slots, lit for each one deployed. Orange rings are **Firewalls**, and 🔑 means you have a key to it. |
 | Translucent triangles | **Control fields**. Yours are brighter; other teams' are fainter, in their colour. |
 | Crystals | Portals. The shape is its rarity: 4-sided Common, 3-sided Rare, 6-sided Epic, 5-sided Legendary (with taller beams for rarer portals). The colour is the team that holds it (grey = neutral), and the base ring is its rarity colour. A ★ above it means it's yours. |
@@ -49,7 +49,7 @@ The compass is a 3D holographic disc on the ground around you, seen from above a
 | Violet ripples and pillar | A 🌌 **Nexus signal** (Level 30+). Walk to it for 750 XP. Each lasts an hour. |
 | Dashed ring | Your reach (45 m). You hack, attack, capture and defend from inside it. Linking works at any distance. |
 
-Tap a portal to open it. The bar under the compass always shows the **nearest portal**, its team and how far away it is: tap it to open that portal (it says **HACK** once you're in reach).
+Tap a portal to open it. The bar under the compass shows the portal you're in reach of or, when you aren't near one, the **nearest enemy portal**, with its team, distance and direction: tap it to open that portal (it says **HACK** once you're in reach).
 
 **⤢** widens the radar. From Level 20, **🗺️ Territory map** zooms out to a kilometre, tilts the camera to look down from above, and shows who holds every portal.
 
@@ -219,9 +219,9 @@ What the rewards do:
 | Levels | Rank | Unlocks |
 | --- | --- | --- |
 | 1–10 | 🔭 SCOUT | Basic compass, portal scanner, basic hacking, portal linking, team, squad, Common portals |
-| 11–20 | 💻 HACKER | Advanced hacks, Rare portals, portal defense, territory map |
-| 21–30 | ⚡ OPERATIVE | Epic portals, bigger link networks, Quantum scanner |
-| 31–40 | 🌌 NEXUS AGENT | Legendary portals, Legendary missions, Nexus technology |
+| 11–20 | 💻 HACKER | Advanced hacks, capture Rare portals, portal defense, territory map |
+| 21–30 | ⚡ OPERATIVE | Capture Epic portals, bigger link networks, Quantum scanner |
+| 31–40 | 🌌 NEXUS AGENT | Capture Legendary portals, Legendary missions, Nexus technology |
 | 41–50 | 👑 NEXUS MASTER | Master hacking, the last skins and cosmetics, Prestige |
 
 Every 5 levels there's a major unlock:
@@ -239,7 +239,7 @@ Every 5 levels there's a major unlock:
 | 45 | Master Hacking (half cooldowns, one more mistake forgiven) |
 | 50 | Nexus Master rank, Prestige |
 
-Your scanner also sees more as you rank up: Rare portals from Level 11, Epic from 21, Legendary from 31 and Nexus from 40. Advanced Hacks open at Level 11 and Expert Hacks at Level 17.
+Every portal shows on your compass from Level 1, and you can hack and attack any of them that your hacks allow. Capturing (and deploying Uplinks on) rarer portals opens as you rank up: Rare portals from Level 11, Epic from 21, Legendary from 31 and Nexus from 40. Advanced Hacks open at Level 11 and Expert Hacks at Level 17.
 
 ### Tech Cores
 

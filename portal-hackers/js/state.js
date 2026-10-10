@@ -331,7 +331,10 @@ window.PH = window.PH || {};
     return W.baseOwner(p, now || Date.now());
   }
 
-  const visible = (p) => level() >= D.RARITY[p.rarity].level;
+  // Every portal shows on the compass from Level 1, like Ingress. Rarity
+  // decides which hack it needs and the level you can capture it from.
+  const visible = () => true;
+  const canOwnRarity = (p) => level() >= D.RARITY[p.rarity].level;
   const discovered = (p) => !!(save.portals[p.id] && save.portals[p.id].disc);
 
   // How many Uplinks hold a portal up. Portals nobody has touched get theirs
@@ -473,6 +476,7 @@ window.PH = window.PH || {};
     if (owner === save.team) return { ok: false, text: 'Already held by your team' };
     if (dist > D.RANGE.interact) return { ok: false, text: `Get within ${D.RANGE.interact} m` };
     if (!discovered(p)) return { ok: false, text: 'Discover it first' };
+    if (!canOwnRarity(p)) return { ok: false, text: `You can capture ${D.RARITY[p.rarity].name} portals from Level ${D.RARITY[p.rarity].level}` };
     if (owner) return { ok: false, text: `Knock out its ${uplinksOf(p, now)} Uplinks first (Pulse Bombs or a hack)` };
     if (p.rarity === 'nexus' && !r.breach) return { ok: false, text: 'Breach it with an Expert Hack first' };
     if (itemCount('uplink') <= 0) return { ok: false, text: 'You need an Uplink. Hack portals for more' };
@@ -521,6 +525,7 @@ window.PH = window.PH || {};
   function canDeploy(p, dist) {
     if (ownerOf(p) !== save.team) return 'Only on your team\'s portals';
     if (dist > D.RANGE.interact) return `Get within ${D.RANGE.interact} m`;
+    if (!canOwnRarity(p)) return `You can deploy on ${D.RARITY[p.rarity].name} portals from Level ${D.RARITY[p.rarity].level}`;
     if (uplinksOf(p) >= D.MAX_UPLINKS) return 'All 8 Uplink slots are full';
     if (itemCount('uplink') <= 0) return 'No Uplinks. Hack portals for more';
     if (save.energy < D.ENERGY.cost.deploy) return `Needs ${D.ENERGY.cost.deploy} energy`;
