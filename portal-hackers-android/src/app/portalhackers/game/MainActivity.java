@@ -2,16 +2,21 @@ package app.portalhackers.game;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlarmManager;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowInsets;
 import android.widget.FrameLayout;
 import android.view.WindowManager;
 import android.webkit.GeolocationPermissions;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -45,6 +50,8 @@ public class MainActivity extends Activity {
     private static final int NIGHT = Color.rgb(0x03, 0x08, 0x14);
 
     private static final int ASK_LOCATION = 1;
+    private static final int ASK_NOTIFY = 2;
+    private static final String POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS";
 
     // Closes the hack puzzle, the Intel map, team chat or an open panel;
     // says whether it did.
@@ -94,6 +101,7 @@ public class MainActivity extends Activity {
 
         web.setWebViewClient(new GameClient());
         web.setWebChromeClient(new LocationClient());
+        web.addJavascriptInterface(new Bridge(), "PHNative");
 
         // Android 15+ draws every app edge to edge, under the status bar,
         // the navigation bar and the keyboard. Pad the game in by those
@@ -146,6 +154,11 @@ public class MainActivity extends Activity {
 
     @Override
     public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
+        if (code == ASK_NOTIFY) {
+            boolean ok = results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED;
+            web.evaluateJavascript("window.PH && PH.notify && PH.notify.answer(" + ok + ")", null);
+            return;
+        }
         if (code != ASK_LOCATION || pendingGeo == null) return;
         boolean granted = false;
         for (int r : results) if (r == PackageManager.PERMISSION_GRANTED) granted = true;
@@ -154,6 +167,75 @@ public class MainActivity extends Activity {
         pendingGeo.invoke(pendingGeoOrigin, granted, false);
         pendingGeo = null;
         pendingGeoOrigin = null;
+    }
+
+    // The pending intents here are never filled in later, so they're immutable.
+    static int pendingFlags() {
+        return PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0);
+    }
+
+    private PendingIntent reminder(int slot, String title, String body) {
+        Intent i = new Intent(this, NotifyReceiver.class);
+        i.putExtra("slot", slot);
+        if (title != null) i.putExtra("title", title);
+        if (body != null) i.putExtra("body", body);
+        return PendingIntent.getBroadcast(this, 2000 + slot, i, pendingFlags());
+    }
+
+    private boolean canNotify() {
+        return Build.VERSION.SDK_INT < 33 || checkSelfPermission(POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /** Exposed to the page as window.PHNative, for reminders while the app is closed. */
+    private final class Bridge {
+        @JavascriptInterface
+        public boolean notifyAllowed() {
+            return canNotify();
+        }
+
+        // Answers later through PH.notify.answer(granted).
+        @JavascriptInterface
+        public void askNotify() {
+            if (canNotify()) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        web.evaluateJavascript("window.PH && PH.notify && PH.notify.answer(true)", null);
+                    }
+                });
+                return;
+            }
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    requestPermissions(new String[] { POST_NOTIFICATIONS }, ASK_NOTIFY);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void schedule(int slot, String title, String body, double minutes) {
+            if (slot < 0 || slot >= NotifyReceiver.SLOTS) return;
+            AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+            if (am == null) return;
+            long at = System.currentTimeMillis() + Math.max(60000, Math.round(minutes * 60000));
+            try {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, reminder(slot, title, body));
+            } catch (Exception e) {
+                // some phones restrict alarms further; the reminder just won't fire
+            }
+        }
+
+        // Back in the game: drop pending reminders and any still showing.
+        @JavascriptInterface
+        public void cancelAll() {
+            AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            for (int slot = 0; slot < NotifyReceiver.SLOTS; slot++) {
+                if (am != null) am.cancel(reminder(slot, null, null));
+                if (nm != null) nm.cancel(100 + slot);
+            }
+        }
     }
 
     private boolean hasLocation() {

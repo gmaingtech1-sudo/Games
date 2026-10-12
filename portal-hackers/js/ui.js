@@ -861,6 +861,7 @@ window.PH = window.PH || {};
         <button class="row" type="button" data-act="walkMode"><span class="r-icon">${st.walk === 'gps' ? '📍' : '🏠'}</span><span><b>Moving: ${st.walk === 'gps' ? 'my location' : 'tap to walk'}</b><small>Tap to switch</small></span></button>
         <button class="row" type="button" data-act="rotate"><span class="r-icon">🧭</span><span><b>Compass turns with phone: ${st.rotate ? 'on' : 'off'}</b><small>Uses the compass sensor when there is one</small></span></button>
         <button class="row" type="button" data-act="sound"><span class="r-icon">${st.sound ? '🔊' : '🔇'}</span><span><b>Sound and vibration: ${st.sound ? 'on' : 'off'}</b></span></button>
+        ${PH.notify.available() ? `<button class="row" type="button" data-act="notify"><span class="r-icon">${PH.notify.on() ? '🔔' : '🔕'}</span><span><b>Reminders: ${PH.notify.on() ? 'on' : 'off'}</b><small>${st.notify && !PH.notify.allowed() ? 'Blocked in your phone settings: tap to allow' : 'Full energy, team events and daily missions, while the app is closed'}</small></span></button>` : ''}
         <button class="row" type="button" data-act="share"><span class="r-icon">📣</span><span><b>Share my captures in team chat: ${st.share ? 'on' : 'off'}</b><small>Posts when you capture a portal, raise a field or rank up</small></span></button>
         ${S.save.muted.length ? `<button class="row" type="button" data-act="unmute"><span class="r-icon">🔈</span><span><b>Unblock everyone in chat</b><small>${S.save.muted.length} blocked</small></span></button>` : ''}
         <button class="row" type="button" data-act="world"><span class="r-icon">🌍</span><span><b>World standings</b><small>Which team leads the cycle, and the top agents</small></span></button>
@@ -882,6 +883,16 @@ window.PH = window.PH || {};
   actions.walkMode = () => { G().setWalkMode(S.save.settings.walk === 'gps' ? 'tap' : 'gps'); redraw(); };
   actions.rotate = () => { S.save.settings.rotate = !S.save.settings.rotate; S.persist(); redraw(); };
   actions.sound = () => { S.save.settings.sound = !S.save.settings.sound; A.enabled = S.save.settings.sound; S.persist(); redraw(); };
+  actions.notify = () => {
+    if (PH.notify.on()) { S.save.settings.notify = false; S.persist(); redraw(); return; }
+    PH.notify.ask((granted) => {
+      S.save.settings.notify = granted;
+      S.persist();
+      redraw();
+      if (granted) toast('🔔 Reminders on. You\'ll hear from us when your energy is full, a team event starts or your daily missions need finishing.', 'good');
+      else toast('Notifications are blocked. Allow them in your phone\'s Settings → Apps → Portal Hackers → Notifications, then try again.', 'warn');
+    });
+  };
   actions.share = () => { S.save.settings.share = !S.save.settings.share; S.persist(); redraw(); };
   actions.shop = () => shopSheet();
   actions.unmute = () => { S.save.muted = []; S.persist(); redraw(); };

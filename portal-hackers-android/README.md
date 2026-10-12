@@ -10,6 +10,7 @@ Portal Hackers: Nexus as a regular Android app: download the APK, install it, an
 2. Android will say it can't install apps from that source. Tap **Settings**, turn on **Allow from this source**, and go back.
 3. Tap **Install**. If Play Protect warns that it doesn't recognize the app, tap **More details → Install anyway**. It often warns about apps that don't come from the Play Store.
 4. Open **Portal Hackers**, sign up, pick your team and avatar, then tap **Use my location**. Android asks once for location access. If you say no, you tap the compass to walk instead. You can turn location on later in **Settings → Apps → Portal Hackers → Permissions**.
+5. Optional: **☰ → Reminders** turns on notifications for full energy, team events and daily missions while the app is closed. Android asks for permission the first time. Until then, Android lists the app's notifications as **Blocked**, which is normal.
 
 Works on Android 7.0 and newer, as long as Android System WebView is up to date (the Play Store updates it automatically). On phones with a compass sensor the radar turns with the phone; without one, north stays up.
 
@@ -30,8 +31,9 @@ It's the same game as the web version in [`../portal-hackers`](../portal-hackers
 
 | File | What it does |
 | --- | --- |
-| `src/app/portalhackers/game/MainActivity.java` | The native side: WebView setup, serving the game files, location permission, back button |
-| `AndroidManifest.xml` | App name, icon, permissions (location, internet for fonts and team chat, vibration), portrait screen |
+| `src/app/portalhackers/game/MainActivity.java` | The native side: WebView setup, serving the game files, location permission, back button, reminder scheduling |
+| `src/app/portalhackers/game/NotifyReceiver.java` | Posts a scheduled reminder while the app is closed |
+| `AndroidManifest.xml` | App name, icon, permissions (location, internet for fonts and team chat, vibration, notifications for optional reminders), portrait screen |
 | `res/` | Launcher icons (including the Android 8+ adaptive icon and the Android 13+ themed icon) and the dark theme |
 | `build.sh` | Builds `dist/portal-hackers.apk` |
 | `build-aab.sh` | Builds `dist/portal-hackers.aab`, the App Bundle for Google Play |

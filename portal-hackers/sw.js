@@ -1,7 +1,7 @@
 /* Portal Hackers: Nexus — offline support. Serves the cached game instantly and refreshes
    the cache in the background, so updates land on the next launch. Fonts
    come from another site and are left to the browser's own cache. */
-const CACHE = 'portal-hackers-v12';
+const CACHE = 'portal-hackers-v13';
 const SHELL = [
   './',
   'index.html',
@@ -13,6 +13,7 @@ const SHELL = [
   'js/accounts.js',
   'js/score.js',
   'js/state.js',
+  'js/notify.js',
   'js/audio.js',
   'js/compass.js',
   'js/hack.js',

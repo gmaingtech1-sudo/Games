@@ -115,6 +115,10 @@ Open it with **🎒** at the top. You start with 6 Uplinks, 4 Pulse Bombs and 1 
 
 **Energy** pays for hacks (5 / 10 / 15), Pulse Bombs (10), captures (20), deploying Uplinks and Firewalls (5) and links (10). It refills by itself, and Tech Cubes top it up.
 
+### Reminders (Android app)
+
+**☰ → Reminders** turns on notifications while the app is closed. When you leave the game it schedules at most one of each: your energy is full again (if you were 30 or more short), the next team event is starting, and, at 7 pm, a nudge if today's daily missions aren't finished. Opening the game clears them. Android asks for permission the first time; until you turn them on, Android lists the app's notifications as Blocked. Everything is scheduled on the phone, with no server.
+
 ### Accounts
 
 - **Sign up** with a username (3–16 letters, numbers, `-` or `_`) and a password (6+ characters). **Log in** again with them any time.
@@ -402,6 +406,7 @@ Stay aware of your surroundings. Don't go onto private property, and never play 
 | `js/vendor/peerjs.min.js` | PeerJS 1.x (MIT licence, see `PEERJS-LICENSE`) |
 | `js/compass.js` | The 3D Sci-Fi Compass: camera, projection, and drawing the disc, portals, links and you |
 | `js/hack.js` | The hacking puzzle |
+| `js/notify.js` | Reminders while the Android app is closed |
 | `js/ui.js` | The HUD, progress card, nearest-portal bar and all the panels |
 | `js/audio.js` | Synthesized sound effects and vibration |
 | `js/main.js` | Start-up, onboarding, GPS and tap-to-walk, the game loop |

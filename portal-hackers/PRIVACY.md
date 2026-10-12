@@ -7,6 +7,7 @@ This policy covers the Portal Hackers: Nexus game, both the Android app (package
 ## What stays on your phone
 
 - **Your location.** If you choose **Use my location**, the game reads your phone's GPS to place you on the map and work out which portals are near you. Your location is used only on your phone. It is never sent to us or to anyone else. You can play without it (**Play at home**), and you can turn location access off at any time in your phone's settings.
+- **Reminders (Android app).** If you turn on **☰ → Reminders**, the app asks Android for permission to show notifications and schedules them on your phone (full energy, a team event starting, unfinished daily missions). They're created on the phone itself: nothing is sent to us or to any server. Turn them off in the menu or in your phone's settings.
 - **Your account.** Your username and password are stored only on your phone. The password is never stored as you typed it: it's salted and hashed (PBKDF2-SHA256). Accounts don't exist anywhere else, so we can't see them, recover them or reset them.
 - **Your progress.** Your level, items, portals, settings, profile and a copy of your recent team chat messages are saved on your phone.
 
