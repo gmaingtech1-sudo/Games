@@ -63,6 +63,35 @@ window.PC = window.PC || {};
     src.start(t);
   }
 
+  // A voice with a pitch contour: points are [time, frequency] pairs,
+  // shaped by a band-pass "mouth" so it sounds more like an animal.
+  function voice(o) {
+    const c = ensure();
+    if (!c) return;
+    const t = c.currentTime + (o.delay || 0);
+    const pts = o.pts;
+    const dur = pts[pts.length - 1][0];
+    const osc = c.createOscillator();
+    osc.type = o.type || 'sawtooth';
+    osc.frequency.setValueAtTime(pts[0][1], t);
+    for (let i = 1; i < pts.length; i++) osc.frequency.linearRampToValueAtTime(pts[i][1], t + pts[i][0]);
+    const f = c.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = o.q || 2;
+    f.frequency.setValueAtTime(o.formant || 1200, t);
+    if (o.formant2) f.frequency.linearRampToValueAtTime(o.formant2, t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(o.vol || 0.3, t + 0.03);
+    g.gain.setValueAtTime(o.vol || 0.3, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(f);
+    f.connect(g);
+    g.connect(master);
+    osc.start(t);
+    osc.stop(t + dur + 0.05);
+  }
+
   function buzz(pattern) {
     if (on) PC.host.haptic(pattern);
   }
@@ -95,5 +124,46 @@ window.PC = window.PC || {};
       buzz([20, 60, 20, 60, 40]);
     },
     tap() { tone({ f: 660, dur: 0.05, type: 'triangle', vol: 0.1 }); buzz(5); },
+
+    // Animal voices
+    bark() {
+      [0, 0.2].forEach((d, i) => {
+        if (i && Math.random() < 0.4) return;
+        voice({ delay: d, pts: [[0, 240], [0.04, 420], [0.13, 190]], formant: 900, formant2: 500, q: 1.4, vol: 0.5 });
+        noise({ delay: d, dur: 0.1, freq: 800, vol: 0.25 });
+      });
+      buzz(15);
+    },
+    meow() {
+      const p = 480 + Math.random() * 160;
+      voice({ pts: [[0, p], [0.12, p * 1.45], [0.32, p * 1.2], [0.5, p * 0.8]], formant: 900, formant2: 1800, q: 3, vol: 0.4, type: 'sawtooth' });
+      buzz(8);
+    },
+    purr() {
+      // a low rumble pulsing about 25 times a second
+      const c = ensure();
+      if (!c) return;
+      const t = c.currentTime;
+      const osc = c.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = 26;
+      const f = c.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = 180;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.35, t + 0.08);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+      osc.connect(f);
+      f.connect(g);
+      g.connect(master);
+      osc.start(t);
+      osc.stop(t + 0.55);
+      buzz(4);
+    },
+    hiss() { noise({ dur: 0.45, freq: 4500, vol: 0.35 }); buzz(30); },
+    squeak() { tone({ f: 1400 + Math.random() * 300, f2: 2100, dur: 0.09, type: 'square', vol: 0.07 }); tone({ f: 2000, f2: 1300, dur: 0.08, delay: 0.09, type: 'square', vol: 0.06 }); },
+    thump() { tone({ f: 120, f2: 60, dur: 0.12, type: 'sine', vol: 0.4 }); buzz(10); },
+    pounce() { noise({ dur: 0.15, freq: 1800, vol: 0.2 }); buzz(12); },
   };
 })(window.PC);

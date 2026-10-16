@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Pet Cam</title>
-<meta name="description" content="An AR pet that lives in your camera. Drop it on the floor, pet it, feed it, play fetch and take photos together.">
+<meta name="description" content="A real-looking AR dog, cat or bunny that lives in your camera. Pet it with your finger, hand-feed it, play with toys, play fetch and take photos together.">
 <meta name="theme-color" content="#1B1830">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Pet Cam">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,7 +31,7 @@
       <div id="hud-level" class="hud-level">Friendship 1</div>
     </div>
     <div class="hud-meters" aria-label="Pet needs">
-      <div class="meter" data-stat="food"><span class="meter-icon" aria-hidden="true">🍪</span><span class="meter-bar"><i></i></span><span class="sr">Food</span></div>
+      <div class="meter" data-stat="food"><span class="meter-icon" aria-hidden="true">🍖</span><span class="meter-bar"><i></i></span><span class="sr">Food</span></div>
       <div class="meter" data-stat="fun"><span class="meter-icon" aria-hidden="true">🎾</span><span class="meter-bar"><i></i></span><span class="sr">Fun</span></div>
       <div class="meter" data-stat="energy"><span class="meter-icon" aria-hidden="true">🌙</span><span class="meter-bar"><i></i></span><span class="sr">Energy</span></div>
     </div>
@@ -44,11 +44,11 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <nav class="dock" aria-label="Actions">
-    <button id="btn-treat" class="dock-btn" type="button"><span class="dock-emoji" aria-hidden="true">🍪</span>Treat</button>
+    <button id="btn-treat" class="dock-btn" type="button"><span id="treat-emoji" class="dock-emoji" aria-hidden="true">🍖</span><span id="treat-label">Treat</span></button>
     <button id="btn-ball" class="dock-btn" type="button"><span class="dock-emoji" aria-hidden="true">🎾</span>Ball</button>
     <button id="btn-photo" class="shutter" type="button" aria-label="Take a photo"><span></span></button>
+    <button id="btn-toy" class="dock-btn" type="button"><span id="toy-emoji" class="dock-emoji" aria-hidden="true">🧸</span><span id="toy-label">Toy</span></button>
     <button id="btn-call" class="dock-btn" type="button"><span class="dock-emoji" aria-hidden="true">📣</span>Call</button>
-    <button id="btn-nap" class="dock-btn" type="button"><span class="dock-emoji" aria-hidden="true">💤</span><span id="nap-label">Nap</span></button>
   </nav>
 
   <div id="flash" class="flash"></div>
@@ -72,6 +72,7 @@
     <h2 id="menu-title">Mochi</h2>
     <p id="menu-stats" class="menu-stats"></p>
     <div class="menu-list">
+      <button id="menu-nap" class="btn" type="button">Nap time</button>
       <button id="menu-sound" class="btn" type="button">Sound: on</button>
       <button id="menu-place" class="btn" type="button">Place pet again</button>
       <button id="menu-new" class="btn btn-danger" type="button">Adopt a new pet</button>
@@ -84,7 +85,7 @@
 <section id="setup" class="setup">
   <div class="setup-inner">
     <h1 class="logo">Pet Cam</h1>
-    <p class="tagline">A tiny pet that lives in your camera.</p>
+    <p class="tagline">A real puppy, kitten or bunny that lives in your camera.</p>
 
     <div id="welcome-back" class="welcome" hidden>
       <canvas id="welcome-pet" width="240" height="220" aria-hidden="true"></canvas>
@@ -95,11 +96,11 @@
 
     <form id="adopt" class="adopt" hidden>
       <fieldset>
-        <legend>Pick a buddy</legend>
+        <legend>Pick a pet</legend>
         <div id="species-list" class="species-list"></div>
       </fieldset>
       <fieldset>
-        <legend>Pick a color</legend>
+        <legend>Pick a coat</legend>
         <div id="color-list" class="color-list"></div>
       </fieldset>
       <label class="name-field">
@@ -116,6 +117,7 @@
 <script src="js/host.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/ar.js"></script>
+<script src="js/art.js"></script>
 <script src="js/pet.js"></script>
 <script src="js/main.js"></script>
 <script>

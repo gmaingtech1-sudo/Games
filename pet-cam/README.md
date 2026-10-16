@@ -1,26 +1,37 @@
 # Pet Cam
 
-An AR pet that lives in your phone's camera. Point your phone at the floor, tap, and your pet pops out into your room. Turn around and it stays where you left it. Pet it, toss it treats, play fetch, and take photos together.
+A real-looking dog, cat or bunny that lives in your phone's camera. Point your phone at the floor, tap, and your pet walks out into your room. Turn around and it stays where you left it. Play with it with your finger: stroke it, hand-feed it, wave a toy for it to chase, play fetch, and take photos together.
 
 It's plain HTML, CSS and JavaScript. There's no build step, nothing to install, and no AR library. The camera feed stays on your phone. There's also an installable Android app in [`../pet-cam-android`](../pet-cam-android).
 
-## Playing
+## The pets
+
+| Pet | Coats | What it's like |
+| --- | --- | --- |
+| **Dog** | Golden, Black Lab, Chocolate, Husky, Dalmatian, Beagle | Wags its tail, barks and tilts its head when you tap it, rolls over for belly rubs, plays tug of war, and fetches the ball. |
+| **Cat** | Orange Tabby, Gray Tabby, Black, White, Tuxedo, Calico | Stalks the laser dot and pounces, purrs when you stroke it (until it's had enough), grooms itself, bats the ball around, and sometimes ignores you when you call. |
+| **Bunny** | White, Brown, Gray, Dutch | Hops around, twitches its nose, nibbles leaves, stands up for treats, does happy jumps, and flops over when it's content. |
+
+They walk on four legs, sit facing you, sniff the floor, lie down, and curl up to sleep. Their eyes follow your finger.
+
+## Playing with your finger
 
 | Action | How |
 | --- | --- |
 | Put your pet down | Point at the floor until you see the white ring, then tap the floor. |
-| Pet | Stroke your pet with a finger. Hearts float up and **Fun** goes up. |
-| Giggle | Tap your pet. Too many taps in a row make it dizzy. |
-| Move | Tap the floor and your pet walks there. |
-| Treat | Tap **Treat** to toss a cookie. Your pet runs over and eats it (**Food** goes up). |
-| Fetch | Tap **Ball**, then flick up on the screen to throw. A harder flick throws farther. You can also tap a spot on the floor to throw it there. Your pet chases the ball and brings it back. |
+| Pet | Stroke your pet with your finger. Keep stroking a dog and it rolls onto its back for a belly rub. |
+| Tap | Tap your pet: dogs bark, cats meow, bunnies twitch their ears. Too many pokes and a cat swats you. |
+| Toy | Tap **Toy** (**Laser** for cats, **Leaf** for bunnies), then drag your finger on the floor. Your pet chases it. Dogs grab the toy and play tug of war, cats crouch, wiggle and pounce, and bunnies nibble the leaf. |
+| Treat | Tap **Treat** (**Carrot** for bunnies), then put your finger on the floor. Your pet follows the treat and begs. Hold still near it and it eats from your hand, or let go to drop the treat on the floor. |
+| Fetch | Tap **Ball**, then flick up on the screen to throw. A harder flick throws farther. Dogs bring it back; cats bat it around; bunnies nudge it with their nose. |
+| Move | Tap the floor and your pet walks there (a cat might not bother). |
 | Call | Tap **Call** and your pet comes back in front of you. It also comes back by itself if you look away for a while. |
-| Nap | Tap **Nap** when **Energy** is low. Your pet wakes up by itself when rested, or tap it to wake it. |
+| Nap | Pets nap on their own when they're tired. You can also use **Nap time** in the menu. Tap a sleeping pet to wake it. |
 | Photo | Tap the big round button to take a photo of your pet in your room, then save or share it. |
 
-If your pet is out of view, an arrow at the edge of the screen points to it. A thought bubble shows what it wants (a cookie, the ball, or sleep). Every time you play together, **Friendship** goes up. Food, fun and energy slowly go down while the app is closed, but never all the way to zero.
+If your pet is out of view, an arrow at the edge of the screen points to it. A thought bubble shows what it wants (a treat, playtime, or sleep). Every time you play together, **Friendship** goes up. Food, fun and energy slowly go down while the app is closed, but never all the way to zero.
 
-There are four kinds (Mochi, Kitty, Bunny, Pup) and seven colors.
+Pets adopted in the earlier version (Mochi, Kitty, Bunny, Pup) come back as a dog, cat or bunny with the same name, friendship and stats.
 
 ## How the AR works
 
@@ -58,8 +69,9 @@ Then open <http://localhost:8000>. Browsers only allow the camera on `localhost`
 | `js/host.js` | Where saves, vibration and photos go: the browser, or the Android app when running inside it |
 | `js/audio.js` | Sound effects made with WebAudio (no audio files), plus vibration |
 | `js/ar.js` | Camera, motion sensors, the floor-to-screen projection maths, and the pretend room |
-| `js/pet.js` | The pet's needs, friendship levels and saving, plus the drawings for each kind |
-| `js/main.js` | The pet's behaviour, ball physics, treats, touch input, photos and the HUD |
+| `js/art.js` | The drawings: each kind of pet in every pose (walking, sitting, sniffing, sleeping, belly-up, begging), coats and markings, treats and toys |
+| `js/pet.js` | The pet's needs, friendship levels and saving |
+| `js/main.js` | How each kind of pet behaves, finger play (toys, hand-feeding, petting), ball physics, photos and the HUD |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Installable app + offline support |
 
 Progress is saved in the browser's `localStorage`.
@@ -68,7 +80,8 @@ If you change the game, run `./build.sh` in `../pet-cam-android` so the Android 
 
 ### Tuning
 
-- Pet size, and how close or far it wanders: `PET_H`, `NEAR` and `FAR` in `js/main.js`.
+- Pet sizes (in meters): `SPECIES` in `js/art.js`. Coats and markings: `COATS` in the same file.
+- How fast each kind walks and runs: `MOVES` in `js/main.js`. How far it wanders: `FAR`.
 - How high you hold the phone, and the camera's field of view: `EYE` and `LONG_FOV` in `js/ar.js`.
 - How fast needs drop: `AWAKE_RATE` / `SLEEP_RATE` in `js/pet.js` (points per real hour, meters go 0–100).
 - When you change any file, bump `CACHE` in `sw.js` so installed copies pick up the update.
