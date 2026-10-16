@@ -12,6 +12,12 @@ Small games for phones. Each one lives in its own folder.
 | [Cosmos 360](cosmos-360/) | A to-scale universe to explore in 360°. Look around by dragging or moving your phone, fly to real planets and moons where they are today, scan them for your logbook, and jump to Alpha Centauri, TRAPPIST-1 and the black hole at the centre of the Milky Way. |
 | [Starforge](starforge/) | A space shooter where you build your own starfighter. Pick its hull, wings, engine, weapon and special, paint it, then blast through waves of enemy ships and bosses to earn credits for better parts. |
 
+## PC games
+
+| Game | Description |
+| --- | --- |
+| [Wayfarer](wayfarer/) | A space exploration game for PC made with Unity and Blender, in the spirit of No Man's Sky. Fly seamlessly from alien planets into space, mine and survive, scan procedurally generated plants and animals, dock at space stations and jump across a procedurally generated galaxy. The models are built by Blender Python scripts. |
+
 ## Books
 
 | Book | Description |
