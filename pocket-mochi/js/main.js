@@ -2879,7 +2879,6 @@
     const settle = () => {
       if (!sleepover || sleepover.state !== 'active' || !friend) return;
       if (!s.asleep) onSleep();
-      sleepover.rewarded = true;
       s.counts.sleepovers += 1;
       toast(`Sleepover with ${sleepover.name}! Sweet dreams.`, 3400);
       save();
@@ -2896,8 +2895,12 @@
         const free = mode === 'home' && els.scrim.hidden && !s.asleep
           && !(duel && duel.state !== 'done') && !(sleepover && sleepover.state !== 'done');
         if (sleepover && sleepover.state === 'inviting') {
-          // both asked at once: the host starts it
-          if (PM.online.role === 'host') beginSleepover();
+          // both asked at once: the host starts it and tells the guest to
+          // start too, same as a duel's seeded 'start' message would
+          if (PM.online.role === 'host') {
+            PM.online.send({ t: 'sleepover', a: 'accept' });
+            beginSleepover();
+          }
           return;
         }
         if (!free) { PM.online.send({ t: 'sleepover', a: 'busy' }); return; }
