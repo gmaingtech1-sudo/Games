@@ -41,6 +41,13 @@ class CreateCaseViewModel(
         private set
 
     private var original: Investigation? = null
+
+    /** The form as it was when the screen opened, to tell whether anything has changed. */
+    private var initialForm = form
+
+    /** True when the user has typed or picked something that isn't saved yet. */
+    val hasUnsavedChanges: Boolean
+        get() = !isLoading && savedCaseId == null && form != initialForm
     private var isSaving = false
     private var showErrors = false // Only nag about empty fields after the first Save tap.
 
@@ -53,6 +60,7 @@ class CreateCaseViewModel(
                 } else {
                     original = investigation
                     form = CaseForm.from(investigation)
+                    initialForm = form
                 }
                 isLoading = false
             }

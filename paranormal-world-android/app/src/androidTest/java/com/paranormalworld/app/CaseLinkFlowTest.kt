@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -102,5 +103,38 @@ class CaseLinkFlowTest {
             composeRule.onAllNodes(hasText(caseTitle)).fetchSemanticsNodes().isEmpty()
         }
         composeRule.onNodeWithText("CaseLink").assertExists()
+    }
+
+    @Test
+    fun leavingAFormWithUnsavedChangesAsksFirst() {
+        val hasEmptyState = composeRule.onAllNodes(hasText("Create a case")).fetchSemanticsNodes().isNotEmpty()
+        val newCaseButton = if (hasEmptyState) "Create a case" else "New case"
+
+        // Nothing typed: Back leaves straight away, no question.
+        tap(newCaseButton, scroll = false)
+        waitForText("Save case")
+        composeRule.onNodeWithContentDescription("Back").performClick()
+        waitForText("CaseLink")
+        assertTrue(composeRule.onAllNodes(hasText("Discard changes?")).fetchSemanticsNodes().isEmpty())
+
+        // Something typed: Back asks first.
+        tap(newCaseButton, scroll = false)
+        waitForText("Save case")
+        typeInto("Case title *", "Unsaved draft")
+        composeRule.onNodeWithContentDescription("Back").performClick()
+        waitForText("Discard changes?")
+
+        // "Keep editing" stays on the form with the text still there.
+        composeRule.onNode(hasText("Keep editing") and hasAnyAncestor(isDialog())).performClick()
+        composeRule.onNodeWithText("Unsaved draft").assertExists()
+
+        // "Discard" leaves without saving.
+        composeRule.onNodeWithContentDescription("Back").performClick()
+        waitForText("Discard changes?")
+        composeRule.onNode(hasText("Discard") and hasAnyAncestor(isDialog())).performClick()
+        waitForText("CaseLink")
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodes(hasText("Unsaved draft")).fetchSemanticsNodes().isEmpty()
+        }
     }
 }

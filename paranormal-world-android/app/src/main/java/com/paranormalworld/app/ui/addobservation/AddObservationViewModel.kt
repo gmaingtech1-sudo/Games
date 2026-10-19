@@ -43,6 +43,13 @@ class AddObservationViewModel(
         private set
 
     private var original: Observation? = null
+
+    /** The form as it was when the screen opened, to tell whether anything has changed. */
+    private var initialForm = form
+
+    /** True when the user has typed or picked something that isn't saved yet. */
+    val hasUnsavedChanges: Boolean
+        get() = !isLoading && !isSaved && form != initialForm
     private var isSaving = false
     private var showErrors = false
 
@@ -67,6 +74,7 @@ class AddObservationViewModel(
                     notFound = true
                 }
             }
+            initialForm = form
             isLoading = false
         }
     }

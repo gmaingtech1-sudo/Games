@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.paranormalworld.app.data.ObservationCategory
 import com.paranormalworld.app.ui.components.FormTextField
+import com.paranormalworld.app.ui.components.rememberGuardedBack
 import com.paranormalworld.app.ui.theme.ParanormalWorldTheme
 import java.time.Instant
 import java.time.LocalDate
@@ -78,6 +79,8 @@ fun AddObservationRoute(
     LaunchedEffect(isSaved) {
         if (isSaved) onSaved()
     }
+    // Back asks "Discard changes?" first if anything has been typed.
+    val guardedBack = rememberGuardedBack(viewModel.hasUnsavedChanges, onBack)
     AddObservationScreen(
         isEditing = viewModel.isEditing,
         isLoading = viewModel.isLoading,
@@ -87,7 +90,7 @@ fun AddObservationRoute(
         errors = viewModel.errors,
         onFormChange = viewModel::onFormChange,
         onSaveClick = viewModel::save,
-        onBack = onBack,
+        onBack = guardedBack,
     )
 }
 

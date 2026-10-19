@@ -14,8 +14,8 @@ android {
         applicationId = "com.paranormalworld.app"
         minSdk = 26 // Android 8.0 and newer
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         // Runs the tests in app/src/androidTest on a phone or emulator.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
