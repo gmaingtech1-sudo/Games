@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -28,7 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -45,12 +43,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.paranormalworld.app.data.CaseStatus
+import com.paranormalworld.app.ui.components.FormTextField
 import com.paranormalworld.app.ui.theme.ParanormalWorldTheme
 import java.time.Instant
 import java.time.LocalDate
@@ -189,33 +187,6 @@ private fun CaseFormFields(
         }
         Spacer(Modifier.height(16.dp))
     }
-}
-
-@Composable
-private fun FormTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    error: String?,
-    helper: String? = null,
-    singleLine: Boolean = true,
-    capitalization: KeyboardCapitalization = KeyboardCapitalization.Sentences,
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        isError = error != null,
-        // The error replaces the helper text, so the user sees what to fix right under the field.
-        supportingText = (error ?: helper)?.let { message -> { Text(message) } },
-        singleLine = singleLine,
-        minLines = if (singleLine) 1 else 4,
-        keyboardOptions = KeyboardOptions(
-            capitalization = capitalization,
-            imeAction = if (singleLine) ImeAction.Next else ImeAction.Default,
-        ),
-        modifier = Modifier.fillMaxWidth(),
-    )
 }
 
 private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)

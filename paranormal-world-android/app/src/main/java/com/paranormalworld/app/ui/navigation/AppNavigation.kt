@@ -12,6 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.paranormalworld.app.ui.addobservation.AddObservationRoute
 import com.paranormalworld.app.ui.casedetail.CaseDetailRoute
 import com.paranormalworld.app.ui.createcase.CreateCaseRoute
 import com.paranormalworld.app.ui.home.HomeRoute
@@ -19,14 +20,19 @@ import com.paranormalworld.app.ui.home.HomeRoute
 /** Every screen's address. A route with {caseId} carries the case's id along with it. */
 object Routes {
     const val ARG_CASE_ID = "caseId"
+    const val ARG_OBSERVATION_ID = "observationId"
 
     const val HOME = "home"
     const val NEW_CASE = "cases/new"
     const val CASE_DETAIL = "cases/{$ARG_CASE_ID}"
     const val EDIT_CASE = "cases/{$ARG_CASE_ID}/edit"
+    const val ADD_OBSERVATION = "cases/{$ARG_CASE_ID}/observations/new"
+    const val EDIT_OBSERVATION = "observations/{$ARG_OBSERVATION_ID}/edit"
 
     fun caseDetail(caseId: Long) = "cases/$caseId"
     fun editCase(caseId: Long) = "cases/$caseId/edit"
+    fun addObservation(caseId: Long) = "cases/$caseId/observations/new"
+    fun editObservation(observationId: Long) = "observations/$observationId/edit"
 }
 
 private val caseIdArgument = listOf(navArgument(Routes.ARG_CASE_ID) { type = NavType.LongType })
@@ -57,10 +63,10 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
             CaseDetailRoute(
                 onBack = { navController.popIfCurrent(entry) },
                 onEditClick = { navController.navigate(Routes.editCase(it)) { launchSingleTop = true } },
-                // Placeholders until Stages 5 and 6 add these screens.
                 onAddObservationClick = {
-                    Toast.makeText(context, "Adding observations arrives in Stage 5", Toast.LENGTH_SHORT).show()
+                    navController.navigate(Routes.addObservation(it)) { launchSingleTop = true }
                 },
+                // Placeholder until Stage 6 adds the timeline.
                 onTimelineClick = {
                     Toast.makeText(context, "The timeline arrives in Stage 6", Toast.LENGTH_SHORT).show()
                 },
@@ -68,6 +74,22 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
         }
         composable(Routes.EDIT_CASE, arguments = caseIdArgument) { entry ->
             CreateCaseRoute(
+                onBack = { navController.popIfCurrent(entry) },
+                onSaved = { navController.popIfCurrent(entry) },
+            )
+        }
+        composable(Routes.ADD_OBSERVATION, arguments = caseIdArgument) { entry ->
+            AddObservationRoute(
+                onBack = { navController.popIfCurrent(entry) },
+                onSaved = { navController.popIfCurrent(entry) },
+            )
+        }
+        // Reached from the timeline in Stage 6.
+        composable(
+            Routes.EDIT_OBSERVATION,
+            arguments = listOf(navArgument(Routes.ARG_OBSERVATION_ID) { type = NavType.LongType }),
+        ) { entry ->
+            AddObservationRoute(
                 onBack = { navController.popIfCurrent(entry) },
                 onSaved = { navController.popIfCurrent(entry) },
             )
