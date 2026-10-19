@@ -7,6 +7,23 @@ explanations. It never labels anything as proof.
 Built with Kotlin, Jetpack Compose and Material 3. Everything is stored on the phone; there are
 no accounts, cloud services or API keys.
 
+**Download:** [`dist/paranormal-world.apk`](dist/paranormal-world.apk) (version 1.0.0)
+
+## Installing it
+
+1. Open the APK on your phone (from your browser's downloads, the Files app, or wherever you downloaded it).
+2. Android will say it can't install apps from that source. Tap **Settings**, turn on **Allow from this source**, and go back.
+3. Tap **Install**. If Play Protect warns that it doesn't recognize the app, tap **More details → Install anyway**. It often warns about apps that don't come from the Play Store.
+4. Open **Paranormal World** from your home screen.
+
+Works on Android 8.0 and newer.
+
+**Updating:** install a newer APK right over the old one. Your cases stay, because every release is
+signed with the same key (`signing.keystore`). Uninstalling the app deletes your cases.
+
+If you installed a build from Android Studio or from a GitHub Actions run before, uninstall that one
+first: those are signed with a different (debug) key, so Android won't install this one over it.
+
 ## Build stages
 
 The app is built in small stages, each one buildable and testable on its own.
@@ -68,6 +85,10 @@ The empty Home screen has an **Add a demo case (sample data)** button. Everythin
 marked `[DEMO]` and set at a fictional location, so it can't be mistaken for a real case.
 
 ## Building
+
+To make the signed APK: `./gradlew assembleRelease` (it lands in `app/build/outputs/apk/release/`).
+On GitHub, running the workflow by hand (**Actions → Paranormal World Android → Run workflow**)
+builds it and commits it to `dist/paranormal-world.apk`.
 
 Open this `paranormal-world-android` folder (not the repository root) in Android Studio and
 press **Run**. From a terminal: `./gradlew assembleDebug` (`gradlew.bat assembleDebug` on Windows).
