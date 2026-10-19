@@ -1,5 +1,5 @@
 # Builds the Paranormal World Android app on every push that changes it,
-# runs Android lint, and uploads the debug APK so it can be downloaded and installed.
+# runs the unit tests and Android lint, and uploads the debug APK so it can be downloaded and installed.
 name: Paranormal World Android
 
 on:
@@ -24,6 +24,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build debug APK
         run: ./gradlew assembleDebug
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest
       - name: Lint
         run: ./gradlew lintDebug
       - uses: actions/upload-artifact@v4

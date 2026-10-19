@@ -46,6 +46,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
 
+    implementation(libs.androidx.navigation.compose)
+
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
@@ -56,6 +58,9 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.core)
+
+    // Unit tests that run on your computer (app/src/test), no phone needed.
+    testImplementation(libs.junit)
 
     // Only used by Android Studio's preview pane, never shipped in the release app.
     debugImplementation(libs.androidx.ui.tooling)
