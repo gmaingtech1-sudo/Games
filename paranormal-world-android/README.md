@@ -16,8 +16,8 @@ The app is built in small stages, each one buildable and testable on its own.
 | 1 | Project setup, dark theme, Home screen with the empty state | Done |
 | 2 | Room database: investigations and observations tables, DAOs, repository; Home lists saved cases; demo case button | Done |
 | 3 | Navigation and the Create/Edit Case screen, with validation and unit tests | Done |
-| 4 | Case Detail screen | Next |
-| 5 | Add/Edit Observation screen | |
+| 4 | Case Detail screen | Done |
+| 5 | Add/Edit Observation screen | Next |
 | 6 | Case Timeline screen: chronological, edit and delete with confirmation | |
 | 7 | Final polish and testing | |
 
@@ -41,6 +41,8 @@ paranormal-world-android/
             ├── data/            Room entities, DAOs, database, CaseRepository
             ├── ui/navigation/   Routes and the NavHost that switches screens
             ├── ui/createcase/   Create/Edit Case screen, its ViewModel and form validation
+            ├── ui/casedetail/   Case Detail screen and its ViewModel
+            ├── ui/components/   Small pieces of UI shared by several screens
             ├── ui/theme/        Colours, text styles, the Material 3 theme
             └── ui/home/         HomeScreen and HomeViewModel
 ```

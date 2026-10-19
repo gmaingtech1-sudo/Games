@@ -29,7 +29,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -37,7 +36,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -46,6 +44,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.paranormalworld.app.data.CaseStatus
 import com.paranormalworld.app.data.Investigation
+import com.paranormalworld.app.ui.components.IconLine
+import com.paranormalworld.app.ui.components.StatusChip
 import com.paranormalworld.app.ui.theme.ParanormalWorldTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -176,38 +176,6 @@ private fun CaseCard(case: Investigation, onClick: () -> Unit) {
             Spacer(Modifier.height(4.dp))
             IconLine(Icons.Filled.DateRange, case.date.format(dateFormatter))
         }
-    }
-}
-
-@Composable
-private fun IconLine(icon: ImageVector, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.size(6.dp))
-        Text(
-            text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun StatusChip(status: CaseStatus) {
-    val open = status == CaseStatus.OPEN
-    Surface(
-        shape = MaterialTheme.shapes.small,
-        color = if (open) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-        border = if (open) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-    ) {
-        Text(
-            status.label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-        )
     }
 }
 

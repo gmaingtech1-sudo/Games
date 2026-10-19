@@ -1,6 +1,8 @@
 package com.paranormalworld.app.ui.navigation
 
+import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
@@ -10,6 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.paranormalworld.app.ui.casedetail.CaseDetailRoute
 import com.paranormalworld.app.ui.createcase.CreateCaseRoute
 import com.paranormalworld.app.ui.home.HomeRoute
 
@@ -19,32 +22,51 @@ object Routes {
 
     const val HOME = "home"
     const val NEW_CASE = "cases/new"
+    const val CASE_DETAIL = "cases/{$ARG_CASE_ID}"
     const val EDIT_CASE = "cases/{$ARG_CASE_ID}/edit"
 
+    fun caseDetail(caseId: Long) = "cases/$caseId"
     fun editCase(caseId: Long) = "cases/$caseId/edit"
 }
+
+private val caseIdArgument = listOf(navArgument(Routes.ARG_CASE_ID) { type = NavType.LongType })
 
 /** Decides which screen is showing, and moves between them. */
 @Composable
 fun AppNavigation(navController: NavHostController = rememberNavController()) {
+    val context = LocalContext.current
     NavHost(navController = navController, startDestination = Routes.HOME) {
         composable(Routes.HOME) {
             HomeRoute(
                 onCreateCaseClick = { navController.navigate(Routes.NEW_CASE) { launchSingleTop = true } },
-                // Stage 3: tapping a case opens it for editing. Stage 4 opens its details instead.
-                onCaseClick = { navController.navigate(Routes.editCase(it.id)) { launchSingleTop = true } },
+                onCaseClick = { navController.navigate(Routes.caseDetail(it.id)) { launchSingleTop = true } },
             )
         }
         composable(Routes.NEW_CASE) { entry ->
             CreateCaseRoute(
                 onBack = { navController.popIfCurrent(entry) },
-                onSaved = { navController.popIfCurrent(entry) },
+                // Open the new case, and take "New case" off the back stack so Back goes Home.
+                onSaved = { caseId ->
+                    navController.navigate(Routes.caseDetail(caseId)) {
+                        popUpTo(Routes.NEW_CASE) { inclusive = true }
+                    }
+                },
             )
         }
-        composable(
-            Routes.EDIT_CASE,
-            arguments = listOf(navArgument(Routes.ARG_CASE_ID) { type = NavType.LongType }),
-        ) { entry ->
+        composable(Routes.CASE_DETAIL, arguments = caseIdArgument) { entry ->
+            CaseDetailRoute(
+                onBack = { navController.popIfCurrent(entry) },
+                onEditClick = { navController.navigate(Routes.editCase(it)) { launchSingleTop = true } },
+                // Placeholders until Stages 5 and 6 add these screens.
+                onAddObservationClick = {
+                    Toast.makeText(context, "Adding observations arrives in Stage 5", Toast.LENGTH_SHORT).show()
+                },
+                onTimelineClick = {
+                    Toast.makeText(context, "The timeline arrives in Stage 6", Toast.LENGTH_SHORT).show()
+                },
+            )
+        }
+        composable(Routes.EDIT_CASE, arguments = caseIdArgument) { entry ->
             CreateCaseRoute(
                 onBack = { navController.popIfCurrent(entry) },
                 onSaved = { navController.popIfCurrent(entry) },
