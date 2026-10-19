@@ -4,6 +4,7 @@ import { FactionBadge, XpBar } from '../components/Bits.jsx';
 
 export default function Profile({ player, actions }) {
   const [name, setName] = useState(player.name);
+  const [confirming, setConfirming] = useState(false);
   const s = player.stats;
   const cleared = MISSIONS.filter((m) => player.completed[m.id]).length;
 
@@ -11,10 +12,6 @@ export default function Profile({ player, actions }) {
     const clean = name.trim();
     if (clean && clean !== player.name) actions.rename(clean);
     else setName(player.name);
-  };
-
-  const reset = () => {
-    if (confirm('Delete all RiftWorld progress on this phone? This cannot be undone.')) actions.reset();
   };
 
   return (
@@ -75,7 +72,17 @@ export default function Profile({ player, actions }) {
       </div>
 
       <p className="muted small">Progress saves automatically on this phone.</p>
-      <button className="btn btn-danger" onClick={reset}>Reset progress</button>
+      {confirming ? (
+        <div className="card confirm-card">
+          <p>Delete all RiftWorld progress on this phone? This cannot be undone.</p>
+          <div className="faction-switch">
+            <button className="btn btn-ghost" onClick={() => setConfirming(false)}>Keep it</button>
+            <button className="btn btn-danger" onClick={actions.reset}>Delete</button>
+          </div>
+        </div>
+      ) : (
+        <button className="btn btn-danger" onClick={() => setConfirming(true)}>Reset progress</button>
+      )}
     </div>
   );
 }

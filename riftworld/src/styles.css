@@ -505,3 +505,5 @@ input { font: inherit; }
   10%, 85% { opacity: 1; transform: none; }
   100% { opacity: 0; }
 }
+.confirm-card { border-color: var(--red); display: flex; flex-direction: column; gap: 10px; }
+.confirm-card p { margin: 0; }
