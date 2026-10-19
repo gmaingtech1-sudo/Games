@@ -130,9 +130,19 @@ class CaseRepositoryTest {
     fun deletingACaseDeletesItsObservations() = runBlocking {
         val caseId = repository.createInvestigation(newCase())
         val observationId = repository.addObservation(newObservation(caseId, "Knock", observedAt = 1))
-        // The app has no "delete case" button yet, so delete the row directly to check the CASCADE rule.
-        database.openHelper.writableDatabase.execSQL("DELETE FROM investigations WHERE id = ?", arrayOf<Any>(caseId))
+        repository.deleteInvestigation(repository.getInvestigation(caseId)!!)
+        assertNull(repository.getInvestigation(caseId))
         assertNull(repository.getObservation(observationId))
+    }
+
+    @Test
+    fun deletingACaseLeavesOtherCasesAlone() = runBlocking {
+        val keep = repository.createInvestigation(newCase("Keep"))
+        val keepObservation = repository.addObservation(newObservation(keep, "Kept", observedAt = 1))
+        val delete = repository.createInvestigation(newCase("Delete"))
+        repository.deleteInvestigation(repository.getInvestigation(delete)!!)
+        assertEquals(listOf("Keep"), repository.observeInvestigations().first().map { it.title })
+        assertEquals(listOf(keepObservation), repository.observeObservations(keep).first().map { it.id })
     }
 
     @Test

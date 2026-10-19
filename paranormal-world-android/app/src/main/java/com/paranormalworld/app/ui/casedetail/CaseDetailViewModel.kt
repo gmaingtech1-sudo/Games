@@ -1,5 +1,8 @@
 package com.paranormalworld.app.ui.casedetail
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.createSavedStateHandle
@@ -14,6 +17,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 sealed interface CaseDetailUiState {
     data object Loading : CaseDetailUiState
@@ -25,7 +29,11 @@ sealed interface CaseDetailUiState {
  * Watches one case and its observations. Because both are Flows, the screen updates
  * by itself after the case is edited or an observation is added.
  */
-class CaseDetailViewModel(repository: CaseRepository, val caseId: Long) : ViewModel() {
+class CaseDetailViewModel(private val repository: CaseRepository, val caseId: Long) : ViewModel() {
+
+    /** Becomes true once the case has been deleted; the screen then goes back to Home. */
+    var isDeleted by mutableStateOf(false)
+        private set
 
     val uiState: StateFlow<CaseDetailUiState> = combine(
         repository.observeInvestigation(caseId),
@@ -41,6 +49,15 @@ class CaseDetailViewModel(repository: CaseRepository, val caseId: Long) : ViewMo
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = CaseDetailUiState.Loading,
     )
+
+    /** Permanently deletes this case and its observations. The screen asks the user to confirm first. */
+    fun deleteCase() {
+        val state = uiState.value as? CaseDetailUiState.Loaded ?: return
+        viewModelScope.launch {
+            repository.deleteInvestigation(state.investigation)
+            isDeleted = true
+        }
+    }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

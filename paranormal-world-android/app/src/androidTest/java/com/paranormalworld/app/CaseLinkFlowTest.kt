@@ -4,6 +4,7 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -15,7 +16,7 @@ import org.junit.runner.RunWith
 
 /**
  * Taps through the main CaseLink journey in the real app, like a person would:
- * create a case, add an observation, see it on the timeline, then delete it.
+ * create a case, add an observation, see it on the timeline, delete it, then delete the case.
  *
  * It uses the app's real database, so run it on an emulator, not on a phone with real cases.
  */
@@ -42,7 +43,7 @@ class CaseLinkFlowTest {
     }
 
     @Test
-    fun createCaseAddObservationThenDeleteIt() {
+    fun createCaseAddObservationThenDeleteBoth() {
         val caseTitle = "UI test case ${System.currentTimeMillis()}"
 
         // Home: the empty state's button on a fresh install, otherwise the floating button.
@@ -82,5 +83,24 @@ class CaseLinkFlowTest {
         waitForText("Delete this observation?")
         composeRule.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
         waitForText("No observations yet")
+
+        // Back on Case Detail, delete the whole case. Cancel first: nothing should change.
+        composeRule.onNodeWithContentDescription("Back").performClick()
+        waitForText("Case details")
+        tap("Delete case")
+        waitForText("Delete this case?")
+        composeRule.onNode(hasText("Cancel") and hasAnyAncestor(isDialog())).performClick()
+        composeRule.onNodeWithText(caseTitle).assertExists()
+
+        tap("Delete case")
+        waitForText("Delete this case?")
+        composeRule.onNode(hasText("Delete case") and hasAnyAncestor(isDialog())).performClick()
+
+        // Back on Home, and the case is gone.
+        waitForText("Paranormal World")
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodes(hasText(caseTitle)).fetchSemanticsNodes().isEmpty()
+        }
+        composeRule.onNodeWithText("CaseLink").assertExists()
     }
 }

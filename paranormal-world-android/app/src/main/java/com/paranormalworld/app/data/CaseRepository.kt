@@ -31,6 +31,11 @@ class CaseRepository(
         investigationDao.update(investigation.copy(updatedAt = clock()))
     }
 
+    /** Permanently deletes a case and all of its observations. */
+    suspend fun deleteInvestigation(investigation: Investigation) {
+        investigationDao.delete(investigation)
+    }
+
     fun observeObservations(investigationId: Long): Flow<List<Observation>> =
         observationDao.observeForInvestigation(investigationId)
 

@@ -20,6 +20,7 @@ The app is built in small stages, each one buildable and testable on its own.
 | 5 | Add/Edit Observation screen, with validation and unit tests | Done |
 | 6 | Case Timeline screen: chronological, edit and delete with confirmation | Done |
 | 7 | Device tests on an emulator: database tests and a tap-through of the main journey | Done |
+| + | Delete a case (with its observations) from Case Detail, after confirmation | Done |
 
 ## Project layout
 
@@ -54,7 +55,7 @@ paranormal-world-android/
 | Kind | Where | Run with | What they check |
 | --- | --- | --- | --- |
 | Unit tests | `app/src/test/` | `./gradlew testDebugUnitTest` | Form validation, saving and editing forms, grouping the timeline by day. Run on your computer, no phone needed. |
-| Device tests | `app/src/androidTest/` | `./gradlew connectedDebugAndroidTest` | The real Room database (saving, timestamps, chronological order, delete, cascade, demo labels) and a tap-through: create a case, add an observation, see it on the timeline, delete it. |
+| Device tests | `app/src/androidTest/` | `./gradlew connectedDebugAndroidTest` | The real Room database (saving, timestamps, chronological order, delete, cascade, demo labels) and a tap-through: create a case, add an observation, see it on the timeline, delete it, then delete the case. |
 
 **Run device tests on an emulator, not on your own phone.** The tap-through test uses the app's real
 database, and Gradle uninstalls the app when the tests finish, which deletes its saved cases.

@@ -17,10 +17,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,10 +35,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -61,15 +69,21 @@ fun CaseDetailRoute(
     onEditClick: (caseId: Long) -> Unit,
     onAddObservationClick: (caseId: Long) -> Unit,
     onTimelineClick: (caseId: Long) -> Unit,
+    onDeleted: () -> Unit,
     viewModel: CaseDetailViewModel = viewModel(factory = CaseDetailViewModel.Factory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isDeleted = viewModel.isDeleted
+    LaunchedEffect(isDeleted) {
+        if (isDeleted) onDeleted()
+    }
     CaseDetailScreen(
         uiState = uiState,
         onBack = onBack,
         onEditClick = { onEditClick(viewModel.caseId) },
         onAddObservationClick = { onAddObservationClick(viewModel.caseId) },
         onTimelineClick = { onTimelineClick(viewModel.caseId) },
+        onDeleteCaseConfirmed = viewModel::deleteCase,
     )
 }
 
@@ -81,7 +95,11 @@ fun CaseDetailScreen(
     onEditClick: () -> Unit,
     onAddObservationClick: () -> Unit,
     onTimelineClick: () -> Unit,
+    onDeleteCaseConfirmed: () -> Unit,
 ) {
+    // Saved so the "are you sure?" dialog survives turning the phone.
+    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -118,10 +136,48 @@ fun CaseDetailScreen(
                 observationCount = uiState.observationCount,
                 onAddObservationClick = onAddObservationClick,
                 onTimelineClick = onTimelineClick,
+                onDeleteClick = { showDeleteDialog = true },
                 modifier = contentModifier,
             )
         }
     }
+
+    if (showDeleteDialog && uiState is CaseDetailUiState.Loaded) {
+        DeleteCaseDialog(
+            caseTitle = uiState.investigation.title,
+            observationCount = uiState.observationCount,
+            onConfirm = {
+                showDeleteDialog = false
+                onDeleteCaseConfirmed()
+            },
+            onDismiss = { showDeleteDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun DeleteCaseDialog(caseTitle: String, observationCount: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val observationsText = when (observationCount) {
+        0 -> ""
+        1 -> " Its 1 observation will be deleted too."
+        else -> " All $observationCount of its observations will be deleted too."
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+        title = { Text("Delete this case?") },
+        text = { Text("\"$caseTitle\" will be permanently removed.$observationsText This can't be undone.") },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ),
+            ) { Text("Delete case") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)
@@ -136,6 +192,7 @@ private fun CaseDetailContent(
     observationCount: Int,
     onAddObservationClick: () -> Unit,
     onTimelineClick: () -> Unit,
+    onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -216,6 +273,19 @@ private fun CaseDetailContent(
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
+        // Kept at the bottom, away from the everyday buttons, and red so it isn't tapped by mistake.
+        OutlinedButton(
+            onClick = onDeleteClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+        ) {
+            Icon(Icons.Filled.Delete, contentDescription = null)
+            Spacer(Modifier.size(8.dp))
+            Text("Delete case", style = MaterialTheme.typography.titleMedium)
+        }
         Spacer(Modifier.height(8.dp))
     }
 }
@@ -241,6 +311,7 @@ private fun CaseDetailPreview() {
             onEditClick = {},
             onAddObservationClick = {},
             onTimelineClick = {},
+            onDeleteCaseConfirmed = {},
         )
     }
 }

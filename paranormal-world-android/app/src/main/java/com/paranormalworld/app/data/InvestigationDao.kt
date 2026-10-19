@@ -1,6 +1,7 @@
 package com.paranormalworld.app.data
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
@@ -25,4 +26,8 @@ interface InvestigationDao {
 
     @Update
     suspend fun update(investigation: Investigation)
+
+    /** Deletes the case. Its observations go with it (see the CASCADE rule on Observation). */
+    @Delete
+    suspend fun delete(investigation: Investigation)
 }

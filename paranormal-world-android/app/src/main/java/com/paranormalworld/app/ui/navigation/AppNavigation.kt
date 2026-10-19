@@ -67,6 +67,8 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
                     navController.navigate(Routes.addObservation(it)) { launchSingleTop = true }
                 },
                 onTimelineClick = { navController.navigate(Routes.timeline(it)) { launchSingleTop = true } },
+                // After deleting, go back to Home (the case no longer exists to come back to).
+                onDeleted = { navController.popBackStack(Routes.HOME, inclusive = false) },
             )
         }
         composable(Routes.EDIT_CASE, arguments = caseIdArgument) { entry ->
