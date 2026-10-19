@@ -18,8 +18,8 @@ The app is built in small stages, each one buildable and testable on its own.
 | 3 | Navigation and the Create/Edit Case screen, with validation and unit tests | Done |
 | 4 | Case Detail screen | Done |
 | 5 | Add/Edit Observation screen, with validation and unit tests | Done |
-| 6 | Case Timeline screen: chronological, edit and delete with confirmation | Next |
-| 7 | Final polish and testing | |
+| 6 | Case Timeline screen: chronological, edit and delete with confirmation | Done |
+| 7 | Final polish and testing | Next |
 
 ## Project layout
 
@@ -43,6 +43,7 @@ paranormal-world-android/
             ├── ui/createcase/   Create/Edit Case screen, its ViewModel and form validation
             ├── ui/casedetail/   Case Detail screen and its ViewModel
             ├── ui/addobservation/  Add/Edit Observation screen, its ViewModel and validation
+            ├── ui/timeline/     Case Timeline screen and its ViewModel
             ├── ui/components/   Small pieces of UI shared by several screens
             ├── ui/theme/        Colours, text styles, the Material 3 theme
             └── ui/home/         HomeScreen and HomeViewModel
