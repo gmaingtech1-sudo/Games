@@ -16,6 +16,9 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+
+        // Runs the tests in app/src/androidTest on a phone or emulator.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -61,6 +64,13 @@ dependencies {
 
     // Unit tests that run on your computer (app/src/test), no phone needed.
     testImplementation(libs.junit)
+
+    // Tests that run on a phone or emulator (app/src/androidTest).
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.test.manifest)
 
     // Only used by Android Studio's preview pane, never shipped in the release app.
     debugImplementation(libs.androidx.ui.tooling)
