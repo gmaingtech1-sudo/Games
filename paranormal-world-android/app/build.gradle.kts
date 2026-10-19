@@ -15,14 +15,26 @@ android {
         minSdk = 26 // Android 8.0 and newer
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
 
         // Runs the tests in app/src/androidTest on a phone or emulator.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Every release APK is signed with the same key (signing.keystore), so a newer APK installs
+    // over an older one and keeps the saved cases. Android refuses updates signed with a different key.
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("signing.keystore")
+            storePassword = "paranormalworld"
+            keyAlias = "paranormalworld"
+            keyPassword = "paranormalworld"
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
