@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Used before Compose starts drawing, and for the launcher icon. -->
+    <color name="navy_background">#FF0B1426</color>
+    <color name="teal_highlight">#FF2EC4B6</color>
+</resources>

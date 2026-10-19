@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The real colours come from Compose (ui/theme/Theme.kt). This XML theme only makes
+         sure the window is navy while the app starts, so there's no white flash. -->
+    <style name="Theme.ParanormalWorld" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/navy_background</item>
+    </style>
+</resources>
