@@ -14,12 +14,12 @@ The app is built in small stages, each one buildable and testable on its own.
 | Stage | What it adds | Status |
 | --- | --- | --- |
 | 1 | Project setup, dark theme, Home screen with the empty state | Done |
-| 2 | Room database: investigations and observations tables, DAOs, repository | Next |
-| 3 | Navigation and the Create/Edit Case screen, with validation | |
+| 2 | Room database: investigations and observations tables, DAOs, repository; Home lists saved cases; demo case button | Done |
+| 3 | Navigation and the Create/Edit Case screen, with validation | Next |
 | 4 | Case Detail screen | |
 | 5 | Add/Edit Observation screen | |
 | 6 | Case Timeline screen: chronological, edit and delete with confirmation | |
-| 7 | Clearly marked demo data, final polish | |
+| 7 | Final polish and testing | |
 
 ## Project layout
 
@@ -37,11 +37,18 @@ paranormal-world-android/
         ├── res/                 Strings, colours, launcher icon, startup theme
         └── java/com/paranormalworld/app/
             ├── MainActivity.kt  Starts the app and shows the Compose UI
+            ├── ParanormalWorldApp.kt  Creates the database once, when the app starts
+            ├── data/            Room entities, DAOs, database, CaseRepository
             ├── ui/theme/        Colours, text styles, the Material 3 theme
-            └── ui/home/         HomeScreen
+            └── ui/home/         HomeScreen and HomeViewModel
 ```
 
-Later stages add `data/` (database) and one folder per screen under `ui/`.
+Later stages add one folder per screen under `ui/`.
+
+## Demo data
+
+The empty Home screen has an **Add a demo case (sample data)** button. Everything it creates is
+marked `[DEMO]` and set at a fictional location, so it can't be mistaken for a real case.
 
 ## Building
 
@@ -53,5 +60,6 @@ Every push that changes this folder is also built by the
 [Paranormal World Android workflow](../.github/workflows/paranormal-world-android.yml), which
 runs lint and attaches the debug APK to the run.
 
-Versions: Android Gradle Plugin 8.7.3, Gradle 8.11.1, Kotlin 2.0.21, Compose BOM 2024.12.01,
+Versions: Android Gradle Plugin 8.7.3, Gradle 8.11.1, Kotlin 2.0.21, KSP 2.0.21-1.0.28, Room 2.6.1,
+Compose BOM 2024.12.01,
 compileSdk/targetSdk 35, minSdk 26 (Android 8.0).
