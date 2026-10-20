@@ -17,3 +17,9 @@ Small games for phones. Each one lives in its own folder.
 | Book | Description |
 | --- | --- |
 | [The Magic Sword](the-magic-sword/) | A fantasy adventure in twelve chapters. Leo Smith is scared of almost everything, but when his grandad vanishes through a little door at the back of the forge, Leo takes the family's magic sword and goes after him. |
+
+## Videos
+
+| Video | Description |
+| --- | --- |
+| [Halloween Special: End Credits](halloween-special-credits/) | Spooky rolling end credits for the Halloween Special, starring Luke Nixon, Lexus, Tai and Ben, with camera and editing by Raz. |
