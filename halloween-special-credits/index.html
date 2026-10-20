@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ParanormalADHDhunters Credits</title>
-<meta name="description" content="Rolling end credits for the ParanormalADHDhunters Halloween Special.">
+<meta name="description" content="Rolling end credits for the ParanormalADHDhunters Halloween Special, 30 East Drive.">
 <meta name="theme-color" content="#0b0712">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -107,6 +107,14 @@
     color: var(--ghost); text-shadow: 0 0 16px rgba(185, 169, 214, .6);
     letter-spacing: 1px; overflow-wrap: anywhere;
   }
+  .episode {
+    font-family: "Creepster", "Cinzel", cursive;
+    font-size: clamp(30px, 8.5vw, 60px); line-height: 1.05; margin: 18px 0 0;
+    color: var(--bone); text-shadow: 0 0 16px rgba(255, 179, 71, .55);
+    letter-spacing: 1px;
+  }
+  .episode::before, .episode::after { content: "\201C"; color: var(--ember); }
+  .episode::after { content: "\201D"; }
   .subtitle {
     font-size: clamp(14px, 3.6vw, 20px); letter-spacing: .4em; text-transform: uppercase;
     color: var(--ghost); margin: 12px 0 0;
@@ -158,6 +166,7 @@
   <div class="roll" id="roll">
     <p class="show">Paranormal<wbr>ADHD<wbr>hunters</p>
     <h1 class="title">Halloween<br>Special</h1>
+    <p class="episode">30 East Drive</p>
     <p class="subtitle">🎃 The End Credits 🎃</p>
 
     <section class="block headliner">
