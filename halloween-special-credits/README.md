@@ -1,6 +1,6 @@
-# Halloween Special: End Credits
+# ParanormalADHDhunters Halloween Special: End Credits
 
-Rolling end credits for our Halloween Special, set in a moonlit graveyard with bats, fog and glowing jack-o'-lanterns. Open [index.html](index.html) in a browser (it works on phones too) and screen-record it to drop it on the end of the video.
+Rolling end credits for the ParanormalADHDhunters Halloween Special, set in a moonlit graveyard with bats, fog and glowing jack-o'-lanterns. Open [index.html](index.html) in a browser (it works on phones too) and screen-record it to drop it on the end of the video.
 
 | Role | Name |
 | --- | --- |

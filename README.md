@@ -22,4 +22,4 @@ Small games for phones. Each one lives in its own folder.
 
 | Video | Description |
 | --- | --- |
-| [Halloween Special: End Credits](halloween-special-credits/) | Spooky rolling end credits for the Halloween Special, starring Luke Nixon, Lexus, Tai and Ben, with camera and editing by Raz. |
+| [ParanormalADHDhunters Halloween Special: End Credits](halloween-special-credits/) | Spooky rolling end credits for the ParanormalADHDhunters Halloween Special, starring Luke Nixon, Lexus, Tai and Ben, with camera and editing by Raz. |
