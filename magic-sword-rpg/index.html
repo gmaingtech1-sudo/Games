@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#070b1f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="description" content="Magic Sword RPG: a 2D fantasy adventure for phones. Leo Smith, the Magic Sword, and the world of Embers.">
+  <title>Magic Sword RPG</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="game"></div>
+  <div id="error-box" hidden></div>
+  <noscript>Magic Sword RPG needs JavaScript turned on.</noscript>
+
+  <!-- Shows any error on screen, so you can see it on a phone without dev tools. -->
+  <script>
+    window.addEventListener('error', function (e) {
+      var box = document.getElementById('error-box');
+      var file = (e.filename || '').split('/').pop();
+      box.textContent = 'Something went wrong:\n' + e.message + (file ? '\n(' + file + ', line ' + e.lineno + ')' : '') +
+        '\n\nTap here to reload.';
+      box.hidden = false;
+      box.onclick = function () { location.reload(); };
+    });
+  </script>
+
+  <!-- Phaser 3 game engine (stored in lib/ so the game works offline) -->
+  <script src="lib/phaser.min.js"></script>
+
+  <!-- Settings and game data: edit these to change the game -->
+  <script src="js/config.js"></script>
+  <script src="js/data/weapons.js"></script>
+  <script src="js/data/items.js"></script>
+  <script src="js/data/enemies.js"></script>
+  <script src="js/data/skills.js"></script>
+  <script src="js/data/quests.js"></script>
+  <script src="js/data/world.js"></script>
+
+  <!-- Game systems -->
+  <script src="js/state.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/ui.js"></script>
+
+  <!-- Screens (Phaser scenes) -->
+  <script src="js/scenes/BootScene.js"></script>
+  <script src="js/scenes/MenuScene.js"></script>
+  <script src="js/scenes/WorldScene.js"></script>
+  <script src="js/scenes/HudScene.js"></script>
+  <script src="js/scenes/BattleScene.js"></script>
+  <script src="js/scenes/DialogScene.js"></script>
+  <script src="js/scenes/PauseScene.js"></script>
+  <script src="js/scenes/panels.js"></script>
+
+  <!-- Starts the game -->
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "Magic Sword RPG",
+  "short_name": "Magic Sword",
+  "description": "A 2D fantasy adventure for phones. Explore Ashbrook with Leo Smith, battle monsters, level up and discover the power of the Magic Sword.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070b1f",
+  "theme_color": "#070b1f",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

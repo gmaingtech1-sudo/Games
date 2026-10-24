@@ -1,0 +1,45 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #070b1f;
+  color: #eaf2ff;
+  font-family: "Trebuchet MS", "Segoe UI", Roboto, sans-serif;
+  /* Stops the page from scrolling, zooming or selecting text while you play */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+#game {
+  width: 100%;
+  height: 100%;
+}
+
+#game canvas {
+  display: block;
+}
+
+#error-box {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  top: 16px;
+  padding: 16px;
+  border: 2px solid #ff7a7a;
+  border-radius: 12px;
+  background: #2a0b14;
+  color: #ffe1e1;
+  font-size: 16px;
+  white-space: pre-wrap;
+  z-index: 10;
+}
+
+#error-box[hidden] {
+  display: none;
+}
