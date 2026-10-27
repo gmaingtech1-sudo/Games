@@ -55,8 +55,21 @@
 
   /* ---------- Balls ---------- */
 
+  // Each ball carries its velocity (mm/s) and its spin, ω (rad/s). Axes:
+  // x across the table, y down it, z down into the cloth, so the ball touches
+  // the cloth at (0, 0, R) from its centre. q is the ball's orientation, used
+  // only to draw it rolling.
   function ball(id, x, y) {
-    return { id, x, y, vx: 0, vy: 0, on: true, follow: 0, side: 0, spun: false, pocket: -1 };
+    return { id, x, y, vx: 0, vy: 0, wx: 0, wy: 0, wz: 0, on: true, pocket: -1, q: randomQuat() };
+  }
+
+  function randomQuat() {
+    const u = Math.random();
+    const a = Math.random() * Math.PI * 2;
+    const b = Math.random() * Math.PI * 2;
+    const s1 = Math.sqrt(1 - u);
+    const s2 = Math.sqrt(u);
+    return [s1 * Math.sin(a), s1 * Math.cos(a), s2 * Math.sin(b), s2 * Math.cos(b)];
   }
 
   function clone(balls) {
@@ -69,7 +82,7 @@
     const rows = [['R'], ['Y', 'R'], ['R', '8', 'Y'], ['Y', 'R', 'Y', 'R'], ['R', 'Y', 'Y', 'R', 'Y']];
     const flip = Math.random() < 0.5;
     const swap = Math.random() < 0.5;
-    const gap = D + 0.15;
+    const gap = D + 0.05;
     const dy = gap * Math.sqrt(3) / 2;
     const apexY = TABLE.SPOT.y + 2 * dy;
     const balls = [];
@@ -80,7 +93,7 @@
       const col = flip ? k - j : j;
       const t = c === '8' ? '8' : swap ? (c === 'R' ? 'Y' : 'R') : c;
       const id = t === '8' ? 8 : t === 'R' ? red++ : yel++;
-      const jit = () => (Math.random() - 0.5) * 0.1;
+      const jit = () => (Math.random() - 0.5) * 0.04;
       balls[id] = ball(id, W / 2 + (col - k / 2) * gap + jit(), apexY - k * dy + jit());
     }));
     return balls;
@@ -88,59 +101,82 @@
 
   /* ---------- Simulation ---------- */
 
-  const E_BALL = 0.95;           // ball-to-ball restitution
-  const E_CUSH = 0.74;           // cushion restitution
-  const CUSH_GRIP = 0.94;        // speed kept along a cushion
-  const ROLL_A = 300;            // rolling resistance, mm/s²
-  const ROLL_B = 0.42;           // plus a little in proportion to speed, 1/s
-  const STOP = 6;
-  const NATURAL = 2 / 7;         // follow a rolling ball carries
-  const GRIP = 2.4;              // how fast the cloth turns slide into roll
-  const DRAW = 0.62;             // how much follow / draw the cue ball keeps through a collision
-  const SIDE = 0.4;              // how much side bends a cushion rebound
+  // Real-world figures for pool balls on a napped cloth.
+  const G = 9810;                // gravity, mm/s²
+  const MU_SLIDE = 0.2;          // cloth friction while a ball skids
+  const MU_ROLL = 0.014;         // rolling resistance
+  const SPIN_DECAY = 11;         // how fast side spin dies away, rad/s²
+  const E_BALL = 0.94;           // ball-to-ball restitution
+  const MU_BALL = 0.06;          // ball-to-ball friction: throw and spin transfer
+  const MU_CUSH = 0.2;           // cushion friction
+  const NOSE = 0.27;             // cushion nose height above the ball's centre, × R
+  const NOSE_C = Math.sqrt(1 - NOSE * NOSE);
+  const TIP = 0.55;              // furthest the tip can strike from centre without a miscue, × R
+  const SQUIRT = 0.03;           // how far side pushes the cue ball off line, radians at full side
+  const STOP = 5;                // mm/s
+  const SLIP = 2;                // mm/s of skid that counts as rolling
   const SINK = 12;               // a ball this far past the cushion line has dropped
 
   function events(sounds) {
     return { first: null, cushionAfter: false, cushionBalls: new Set(), potted: [], cue: false, sounds: sounds ? [] : null };
   }
 
-  // Hit the cue ball. spin.x is side (+ = right), spin.y is follow (+) or draw (−).
+  // Strike the cue ball. spin.x is where the tip lands left (−) or right (+)
+  // of centre, spin.y below (−, draw) or above (+, follow), both as a share of
+  // the most you can use; 0.8 of each reach is the edge of the spin control.
   function strike(balls, dir, speed, spin) {
     const c = balls[0];
-    c.vx = dir.x * speed;
-    c.vy = dir.y * speed;
-    c.follow = speed * spin.y * 0.9;
-    c.side = spin.x;
-    c.spun = true;
+    const a = spin.x * TIP;
+    const b = spin.y * TIP;
+    // Side pushes the cue ball a touch off line, away from the side struck.
+    const ang = Math.atan2(dir.y, dir.x) - a * SQUIRT / TIP;
+    const dx = Math.cos(ang);
+    const dy = Math.sin(ang);
+    c.vx = dx * speed;
+    c.vy = dy * speed;
+    // ω = r × J / I: topspin about the axis across the line of the shot,
+    // side about the vertical.
+    const k = 2.5 * speed / R;
+    c.wx = k * b * dy;
+    c.wy = -k * b * dx;
+    c.wz = -k * a;
   }
 
+  // Skid speed of the ball's contact point over the cloth.
+  const slipX = (b) => b.vx + R * b.wy;
+  const slipY = (b) => b.vy - R * b.wx;
+
   function moving(balls) {
-    for (const b of balls) if (b.on && (b.vx || b.vy)) return true;
+    for (const b of balls) {
+      if (!b.on) continue;
+      if (b.vx || b.vy) return true;
+      if (Math.abs(slipX(b)) > SLIP || Math.abs(slipY(b)) > SLIP) return true;
+    }
     return false;
   }
 
-  // Step the table forward by dt seconds; returns whether anything is still moving.
-  function advance(balls, dt, ev) {
+  // Step the table forward by dt seconds; returns whether anything is still
+  // moving. With `turn`, balls' orientations are updated so they can be drawn rolling.
+  function advance(balls, dt, ev, turn) {
     let vmax = 0;
     for (const b of balls) {
       if (!b.on) continue;
-      const s = b.vx * b.vx + b.vy * b.vy;
+      const s = Math.max(b.vx * b.vx + b.vy * b.vy, slipX(b) ** 2 + slipY(b) ** 2);
       if (s > vmax) vmax = s;
     }
-    if (!vmax) return false;
-    const n = Math.min(90, Math.max(1, Math.ceil(Math.sqrt(vmax) * dt / 3.5)));
+    if (vmax < 1) return moving(balls);
+    const n = Math.min(120, Math.max(1, Math.ceil(Math.sqrt(vmax) * dt / 3)));
     const h = dt / n;
-    const grip = 1 - Math.exp(-GRIP * h);
-    for (let i = 0; i < n; i++) substep(balls, h, grip, ev);
+    for (let i = 0; i < n; i++) substep(balls, h, ev, turn);
     return moving(balls);
   }
 
   // Run a shot to the end (the computer uses this to try shots out).
   function simulate(balls, ev, maxT = 30) {
-    for (let t = 0; t < maxT; t += 1 / 60) if (!advance(balls, 1 / 60, ev)) break;
+    for (let t = 0; t < maxT; t += 1 / 30) if (!advance(balls, 1 / 30, ev, false)) break;
   }
 
-  function substep(balls, h, grip, ev) {
+  function substep(balls, h, ev, turn) {
     for (const b of balls) {
       if (b.on && (b.vx || b.vy)) {
         b.x += b.vx * h;
@@ -184,31 +220,43 @@
           continue;
         }
       }
-      roll(b, h, grip);
+      cloth(b, h);
+      if (turn) rotate(b, h);
       // A ball that comes to rest with its centre past the cushion line hangs
       // over the hole, so it drops.
       if (!b.vx && !b.vy && (b.x < 0 || b.x > W || b.y < 0 || b.y > L)) sink(b, ev);
     }
   }
 
+  // Two balls meet. Besides the push along the line of centres, friction
+  // between them "throws" the object ball off the cut line and passes spin on.
   function collide(a, b, nx, ny, rel, ev) {
-    // The cue ball (always `a`, as it has the lowest id) carries its spin through.
-    let ux = 0;
-    let uy = 0;
-    if (a.spun) {
-      const s = Math.hypot(a.vx, a.vy) || 1;
-      ux = a.vx / s;
-      uy = a.vy / s;
-    }
-    const j = rel * (1 + E_BALL) / 2;
-    a.vx -= nx * j; a.vy -= ny * j;
-    b.vx += nx * j; b.vy += ny * j;
-    if (a.spun) {
-      const k = Math.abs(ux * nx + uy * ny) * a.follow * DRAW;
-      a.vx += ux * k;
-      a.vy += uy * k;
-      a.spun = false;
-      a.follow = 0;
+    const jn = rel * (1 + E_BALL) / 2;
+    // Contact-point velocities: v + ω × r, with r = R·n on a and −R·n on b.
+    const cx = (a.vx - R * a.wz * ny) - (b.vx + R * b.wz * ny);
+    const cy = (a.vy + R * a.wz * nx) - (b.vy - R * b.wz * nx);
+    const cz = R * (a.wx * ny - a.wy * nx) + R * (b.wx * ny - b.wy * nx);
+    const cn = cx * nx + cy * ny;
+    const tx = cx - cn * nx;
+    const ty = cy - cn * ny;
+    const tz = cz;
+    a.vx -= nx * jn; a.vy -= ny * jn;
+    b.vx += nx * jn; b.vy += ny * jn;
+    const ts = Math.sqrt(tx * tx + ty * ty + tz * tz);
+    if (ts > 1e-6) {
+      const jt = Math.min(MU_BALL * jn, ts / 7);
+      const ux = tx / ts;
+      const uy = ty / ts;
+      const uz = tz / ts;
+      a.vx -= jt * ux; a.vy -= jt * uy;
+      b.vx += jt * ux; b.vy += jt * uy;
+      // Both balls pick up the same Δω = −(5 jt / 2R)(n × u).
+      const k = -2.5 * jt / R;
+      const ox = k * (ny * uz);
+      const oy = k * (-nx * uz);
+      const oz = k * (nx * uy - ny * ux);
+      a.wx += ox; a.wy += oy; a.wz += oz;
+      b.wx += ox; b.wy += oy; b.wz += oz;
     }
     if (ev) {
       if (ev.first === null && a.id === 0) ev.first = b.id;
@@ -216,6 +264,9 @@
     }
   }
 
+  // A cushion catches the ball a little above its equator, so the rebound
+  // depends on the ball's spin: side bends it, and running and check side
+  // speed it up or kill it.
   function cushion(b, ev) {
     for (const s of segs) {
       let t = ((b.x - s.ax) * s.ex + (b.y - s.ay) * s.ey) / s.len2;
@@ -233,21 +284,37 @@
       b.y = qy + ny * R;
       const vn = b.vx * nx + b.vy * ny;
       if (vn >= 0) continue;
-      const sp = Math.hypot(b.vx, b.vy);
-      const tx = -ny;
-      const ty = nx;
-      let vt = (b.vx * tx + b.vy * ty) * CUSH_GRIP;
-      if (b.side) {
-        // Side spin kicks the ball off towards the side it was struck on.
-        const rx = -b.vy / sp;
-        const ry = b.vx / sp;
-        vt += (rx * tx + ry * ty) * b.side * SIDE * -vn;
-        b.side *= 0.45;
+      const e = 0.84 - Math.min(0.14, -vn / 45000);
+      const jn = -(1 + e) * vn;
+      // Contact point, from the centre: towards the cushion and up.
+      const rx = -nx * R * NOSE_C;
+      const ry = -ny * R * NOSE_C;
+      const rz = -R * NOSE;
+      // Its velocity, v + ω × r, less the part along the normal.
+      const cx = b.vx + (b.wy * rz - b.wz * ry);
+      const cy = b.vy + (b.wz * rx - b.wx * rz);
+      const cz = b.wx * ry - b.wy * rx;
+      const cn = cx * nx + cy * ny;
+      const tx = cx - cn * nx;
+      const ty = cy - cn * ny;
+      const tz = cz;
+      const ts = Math.sqrt(tx * tx + ty * ty + tz * tz);
+      let px = nx * jn;
+      let py = ny * jn;
+      let pz = 0;
+      if (ts > 1e-6) {
+        const jt = Math.min(MU_CUSH * jn, ts / 3.5);
+        px -= jt * tx / ts;
+        py -= jt * ty / ts;
+        pz -= jt * tz / ts;
       }
-      const e = E_CUSH - Math.min(0.1, -vn / 40000);
-      b.vx = tx * vt - nx * vn * e;
-      b.vy = ty * vt - ny * vn * e;
-      if (b.spun) b.follow *= 0.3;
+      b.vx += px;
+      b.vy += py;
+      // Δω = (r × P) · 5 / 2R²
+      const k = 2.5 / (R * R);
+      b.wx += k * (ry * pz - rz * py);
+      b.wy += k * (rz * px - rx * pz);
+      b.wz += k * (rx * py - ry * px);
       if (ev) {
         if (b.id !== 0) ev.cushionBalls.add(b.id);
         if (ev.first !== null) ev.cushionAfter = true;
@@ -263,9 +330,9 @@
       const d = (p.x - b.x) ** 2 + (p.y - b.y) ** 2;
       if (d < bd) { bd = d; best = i; }
     });
-    if (ev && ev.sounds) ev.sounds.push({ t: 'pocket', v: Math.hypot(b.vx, b.vy), id: b.id, x: b.x, y: b.y, pocket: best });
+    if (ev && ev.sounds) ev.sounds.push({ t: 'pocket', v: Math.hypot(b.vx, b.vy), id: b.id, x: b.x, y: b.y, vx: b.vx, vy: b.vy, pocket: best });
     b.on = false;
-    b.vx = b.vy = 0;
+    b.vx = b.vy = b.wx = b.wy = b.wz = 0;
     b.pocket = best;
     if (ev) {
       ev.potted.push(b.id);
@@ -273,19 +340,64 @@
     }
   }
 
-  function roll(b, h, grip) {
-    const s = Math.hypot(b.vx, b.vy);
-    if (!s) return;
-    if (b.spun) b.follow += (NATURAL * s - b.follow) * grip;
-    const ns = s - (ROLL_A + ROLL_B * s) * h;
-    if (ns < STOP) {
-      b.vx = b.vy = 0;
-      b.follow = 0;
-      b.spun = false;
-      return;
+  // The cloth: a skidding ball is dragged by sliding friction until it rolls
+  // (losing 2/7 of its skid), then only rolling resistance slows it.
+  function cloth(b, h) {
+    const ux = slipX(b);
+    const uy = slipY(b);
+    const us = Math.sqrt(ux * ux + uy * uy);
+    if (us > SLIP) {
+      const a = MU_SLIDE * G * h;
+      if (us <= 3.5 * a) {
+        b.vx -= ux * 2 / 7;
+        b.vy -= uy * 2 / 7;
+        b.wx = b.vy / R;
+        b.wy = -b.vx / R;
+      } else {
+        const ex = ux / us;
+        const ey = uy / us;
+        b.vx -= a * ex;
+        b.vy -= a * ey;
+        b.wx += 2.5 * a * ey / R;
+        b.wy -= 2.5 * a * ex / R;
+      }
+    } else {
+      const s = Math.hypot(b.vx, b.vy);
+      if (s) {
+        const ns = s - MU_ROLL * G * h;
+        if (ns < STOP) {
+          b.vx = b.vy = b.wx = b.wy = b.wz = 0;
+          return;
+        }
+        b.vx *= ns / s;
+        b.vy *= ns / s;
+      }
+      b.wx = b.vy / R;
+      b.wy = -b.vx / R;
     }
-    b.vx *= ns / s;
-    b.vy *= ns / s;
+    if (b.wz) {
+      const d = SPIN_DECAY * h;
+      b.wz = Math.abs(b.wz) <= d ? 0 : b.wz - Math.sign(b.wz) * d;
+    }
+  }
+
+  // Turn the ball by ω·h (for drawing). q is [w, x, y, z].
+  function rotate(b, h) {
+    const w = Math.sqrt(b.wx * b.wx + b.wy * b.wy + b.wz * b.wz);
+    if (w < 1e-6) return;
+    const half = w * h / 2;
+    const s = Math.sin(half) / w;
+    const dw = Math.cos(half);
+    const dx = b.wx * s;
+    const dy = b.wy * s;
+    const dz = b.wz * s;
+    const [qw, qx, qy, qz] = b.q;
+    const nw = dw * qw - dx * qx - dy * qy - dz * qz;
+    const nx = dw * qx + dx * qw + dy * qz - dz * qy;
+    const ny = dw * qy - dx * qz + dy * qw + dz * qx;
+    const nz = dw * qz + dx * qy - dy * qx + dz * qw;
+    const m = Math.sqrt(nw * nw + nx * nx + ny * ny + nz * nz);
+    b.q = [nw / m, nx / m, ny / m, nz / m];
   }
 
   /* ---------- Sight lines ---------- */

@@ -18,8 +18,9 @@
   const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
 
   // Shot speed for a power from 0 to 1, and back.
-  const speedOf = (p) => 80 + 6700 * Math.pow(p, 1.7);
-  const powerOf = (v) => Math.min(1, Math.pow(Math.max(0, v - 80) / 6700, 1 / 1.7));
+  // Squared, so soft touches get most of the bar. Full power is a 9 m/s break.
+  const speedOf = (p) => 50 + 8950 * p * p;
+  const powerOf = (v) => Math.min(1, Math.sqrt(Math.max(0, v - 50) / 8950));
 
   // Every open pot for the balls in `on`, best first. q is a rough 0–1 ease.
   function potLines(balls, on) {
@@ -63,9 +64,12 @@
   };
 
   // Roughly how hard to hit a pot so the object ball reaches the pocket.
+  // The object ball skids off the hit (keeping 5/7 of its speed once it
+  // rolls), then rolls against the cloth's resistance; same for the cue ball.
+  const ROLL = 0.014 * 9810;
   function potSpeed(ln) {
-    const vObj = Math.sqrt(2 * 650 * (ln.dBP + 120));
-    return Math.sqrt((vObj / Math.max(0.3, ln.cos)) ** 2 + 2 * 650 * ln.dCG) * 1.05;
+    const vObj = Math.sqrt(2 * ROLL * (ln.dBP + 250)) * 1.4;
+    return Math.sqrt((vObj / Math.max(0.3, ln.cos) / 0.97) ** 2 + 2 * ROLL * ln.dCG) * 1.25;
   }
 
   // Try a shot out and score what happens.
@@ -100,7 +104,7 @@
     for (const ln of potLines(balls, pre.on).slice(0, lv.lines)) {
       const v = potSpeed(ln);
       for (const m of lv.mults) {
-        for (const s of lv.spins) cands.push({ dir: { x: ln.dx, y: ln.dy }, speed: Math.min(6700, v * m), spin: { x: 0, y: s } });
+        for (const s of lv.spins) cands.push({ dir: { x: ln.dx, y: ln.dy }, speed: Math.min(8000, v * m), spin: { x: 0, y: s } });
       }
     }
     // Safeties: thin, half and full contacts on each ball on, at gentle speeds.
@@ -112,7 +116,7 @@
       const a = Math.asin(Math.min(1, D / Math.max(dist, D)));
       for (const k of lv.safeties) {
         const ang = base + a * k * 0.95;
-        for (const v of [700 + dist * 0.6, 1300 + dist * 0.8]) {
+        for (const v of [500 + dist * 0.35, 900 + dist * 0.5]) {
           cands.push({ dir: { x: Math.cos(ang), y: Math.sin(ang) }, speed: v, spin: { x: 0, y: 0 } });
         }
       }

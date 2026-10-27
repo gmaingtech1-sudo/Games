@@ -163,16 +163,26 @@
     const dir = { x: Math.cos(G.aim), y: Math.sin(G.aim) };
     const pre = rules.prepare(st, G.balls);
     G.shot = { on: pre.on, total: pre.total, touch: rules.touchFoul(st, G.balls, dir) };
-    G.before = phys.clone(G.balls);
-    G.ev = phys.events(true);
-    G.strike = { t: performance.now(), pull: 10 + G.power * 150, x: G.balls[0].x, y: G.balls[0].y };
-    phys.strike(G.balls, dir, ai.speedOf(G.power), G.spin);
-    A.cue(G.power);
-    G.power = 0;
-    G.phase = 'rolling';
+    // The cue comes through: a quicker stroke for a harder shot.
+    G.stroke = { t: 0, dur: 0.16 - G.power * 0.1, pull: 10 + G.power * 150, power: G.power, dir, spin: G.spin };
+    G.phase = 'stroke';
     G.showAim = false;
     G.nominating = false;
     els.chips.innerHTML = '';
+    hud();
+  }
+
+  // The tip meets the ball.
+  function contact() {
+    const k = G.stroke;
+    G.stroke = null;
+    G.before = phys.clone(G.balls);
+    G.ev = phys.events(true);
+    G.strike = { t: performance.now(), pull: 0, power: k.power, x: G.balls[0].x, y: G.balls[0].y };
+    phys.strike(G.balls, k.dir, ai.speedOf(k.power), k.spin);
+    A.cue(k.power);
+    G.power = 0;
+    G.phase = 'rolling';
     hud();
   }
 
@@ -328,8 +338,14 @@
 
   function update(dt) {
     for (const a of G.anims) a.t += dt;
-    G.anims = G.anims.filter((a) => a.t < 0.3);
-    if (G.paused || !G.st) return;
+    G.anims = G.anims.filter((a) => a.t < 0.45);
+    if (G.paused || !G.st) { A.roll(0); return; }
+
+    if (G.phase === 'stroke') {
+      G.stroke.t += dt;
+      if (G.stroke.t >= G.stroke.dur) contact();
+      return;
+    }
 
     if (G.phase === 'rolling') {
       let moving = true;
@@ -337,19 +353,26 @@
       let left = Math.min(dt, 0.05);
       while (left > 0 && moving) {
         const h = Math.min(left, 1 / 60);
-        moving = phys.advance(G.balls, h, G.ev);
+        moving = phys.advance(G.balls, h, G.ev, true);
         left -= h;
       }
       for (const s of G.ev.sounds) {
         if (s.t === 'ball') A.ball(s.v);
         else if (s.t === 'cushion') A.cushion(s.v);
         else if (s.t === 'pocket') {
-          A.pocket(s.v);
-          G.anims.push({ id: s.id, x: s.x, y: s.y, pocket: s.pocket, t: 0 });
+          A.pocket(s.v, s.id);
+          G.anims.push({ id: s.id, x: s.x, y: s.y, vx: s.vx, vy: s.vy, pocket: s.pocket, t: 0 });
         }
       }
       G.ev.sounds.length = 0;
-      if (!moving) endShot();
+      // The soft rumble of balls rolling on the cloth.
+      let roll = 0;
+      for (const b of G.balls) if (b.on) roll += Math.hypot(b.vx, b.vy);
+      A.roll(roll);
+      if (!moving) {
+        A.roll(0);
+        endShot();
+      }
       return;
     }
 

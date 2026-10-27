@@ -2,7 +2,7 @@
 
 Pub pool for phones, played to the official rules of the World Eightball Pool Federation (WEPF), from the abridged January 2020 rules sheet. You get reds and yellows on a 7 ft table, a baulk line, and two visits after a foul. Play against the computer at three skill levels, or pass the phone between two players.
 
-It's plain HTML, CSS and JavaScript. There's no build step and nothing to install. The table, balls and cue are drawn in code and the sounds are synthesised, so the only image files are the app icons. After the first visit it also works offline.
+The balls skid, roll, spin, draw and throw the way real ones do. The table is lit by overhead pub lamps and sounds like the real thing. It's plain HTML, CSS and JavaScript. There's no build step and nothing to install. The table, balls and cue are drawn in code and the sounds are synthesised, so the only image files are the app icons. After the first visit it also works offline.
 
 ## Playing
 
@@ -11,11 +11,26 @@ It's plain HTML, CSS and JavaScript. There's no build step and nothing to instal
 | Aim | Touch or drag anywhere on the table. The cue points where your finger is | Click or drag on the table |
 | Fine aim | Drag sideways along the **fine aim** strip | ← / → (hold Shift for bigger steps) |
 | Power and shoot | Pull right along the power bar and let go. Slide back to zero to cancel | Drag the bar, or ↑ / ↓ to set power and Space to shoot |
-| Spin | The cue-ball button. Touch where to strike: top for follow, bottom for draw, the sides for side | Same |
+| Spin | The cue-ball button. Touch where the tip should strike: high for follow, low for draw (screw), left or right for side | Same |
 | Ball in hand | Drag the cue ball anywhere behind the baulk line | Same |
 | Pause | The pause button | Esc |
 
-The aiming line shows the ghost ball where the cue ball will make contact, the path the object ball will take, and where the cue ball will glance off. If you're lined up on a ball you're not on, the ghost ball turns red with a cross. The guide can be shortened in Settings.
+The aiming line shows the ghost ball where the cue ball will make contact, the path the object ball will take, and where the cue ball would glance off without spin. If you're lined up on a ball you're not on, the ghost ball turns red with a cross. In Settings you can shorten the guide, cut it to a single line, or turn it off.
+
+## How real it is
+
+The balls behave the way real ones do, using real-world figures for resin balls on a worsted cloth:
+
+- **Skid, then roll.** A ball struck in the middle skids first and only starts rolling after a short distance, losing 2/7 of its speed. A cue ball that's still skidding when it hits stops dead (a stun shot). One that's rolling follows through.
+- **Spin.** Where the tip strikes matters. Hit low and the backspin draws the cue ball back after contact. It wears off over distance, so long draw shots need more power, just like on a real table. Hit high and it follows. Side spin bends rebounds off the cushions and dies away as the ball rolls. Using side also pushes the cue ball slightly off line ("squirt"), so you have to allow for it.
+- **Throw.** Friction between the balls "throws" a cut object ball a degree or two off the line of centres, and passes a little spin on to it.
+- **Cushions.** The rubber catches the ball a little above its centre, so a rebound depends on speed and spin. A ball comes off slower than it went in.
+- **Pockets.** Balls can rattle in the jaws and stay out, and a ball left hanging over the hole drops.
+- **Rolling resistance.** Balls roll a long way on good cloth. It's the cushions that take their speed off.
+
+You see and hear it too. The table is lit by a row of pub lamps, which light pools on the cloth, shine on each ball and cast soft shadows from the balls and the cue. The 8 and the red spots on the cue ball turn as the balls roll and spin, so you can watch your draw and side at work. The cue comes through the ball when you shoot. The sounds are the click of the balls, the thump of the cushions, the tip, the rumble of balls rolling on the cloth, and a potted ball running down the return channel to knock into the others.
+
+For the real thing, set the aiming guide to **None** in Settings. Then you have only the cue to line up with.
 
 ## The rules
 
@@ -72,12 +87,12 @@ Then open <http://localhost:8000>. Opening `index.html` straight from the file s
 | --- | --- |
 | `index.html` | Layout: the menu, the table with its scoreboard and controls, the rules page, and the sheets for colours, spin, pause, frame over and settings |
 | `css/style.css` | All styling. Mobile-first, respects safe areas (notches) and reduced motion |
-| `js/physics.js` | The table (cushions, jaws, pockets, baulk line, spot), the rack, and the physics: ball and cushion collisions, rolling resistance, follow, draw and side, and balls dropping. Also sight lines for snookers and aiming |
+| `js/physics.js` | The table (cushions, jaws, pockets, baulk line, spot), the rack, and the physics: each ball's velocity and 3D spin, skidding and rolling on the cloth, the tip's strike (with squirt), ball-to-ball collisions with throw and spin transfer, cushion rebounds that depend on spin, and balls dropping. Also sight lines for snookers and aiming |
 | `js/rules.js` | The referee: balls on, fair breaks, legal shots, fouls, two visits, deciding colours, touching balls, total and foul snookers, loss of frame and stalemates |
 | `js/ai.js` | The computer player |
-| `js/render.js` | Draws the table, balls, aiming guide and cue, portrait or landscape |
+| `js/render.js` | Draws the lamp-lit table, shaded balls whose markings turn as they roll, their shadows, the aiming guide and the cue, portrait or landscape |
 | `js/game.js` | A match in play: frames, turns, referee calls, the shot clock, touch controls and the computer's turns |
-| `js/audio.js` | Sounds synthesised with WebAudio (no audio files) |
+| `js/audio.js` | Sounds synthesised with WebAudio (no audio files): ball clicks, cushions, the tip, rolling, pockets and the ball return |
 | `js/main.js` | The menu, settings, sheets and the main loop |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Installable app + offline support |
 
@@ -86,7 +101,8 @@ Settings and your record are saved in the browser's `localStorage`.
 ### Tuning
 
 - Table size, pocket mouths and jaws: the constants at the top of `js/physics.js` (`C` for corner pockets, `M` for middle pockets).
-- How the balls roll and bounce: `E_BALL`, `E_CUSH`, `ROLL_A`, `ROLL_B`, `DRAW` and `SIDE` in `js/physics.js`.
+- How the balls skid, roll and bounce: `MU_SLIDE`, `MU_ROLL`, `SPIN_DECAY`, `E_BALL`, `MU_BALL`, `MU_CUSH`, `NOSE`, `TIP` and `SQUIRT` in `js/physics.js`.
+- The lamps (where they hang and how high): `LAMPS` and `LAMP_H` in `js/render.js`.
 - Computer skill: `LEVELS` in `js/ai.js`.
 - Shot clock: `SHOT_TIME` and `WARN_TIME` in `js/game.js`.
 - When you change any file, bump `CACHE` in `sw.js` so installed copies pick up the update.
