@@ -368,3 +368,14 @@ button.chip { border-color: var(--brass-2); }
 .pl .grp { margin-top: 3px; min-height: 12px; }
 .pl .b { width: 10px; height: 10px; }
 .pl .tag { bottom: -8px; font-size: 9px; }
+
+/* The 3D table, seen through a lens: a touch darker towards the edges. */
+.table-wrap.three::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(ellipse 85% 75% at 50% 48%, transparent 55%, rgba(0, 0, 0, 0.42) 100%);
+}
+.ref, .chips { z-index: 2; }

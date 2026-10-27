@@ -19,7 +19,7 @@ The aiming line shows the ghost ball where the cue ball will make contact, the p
 
 ## In 3D
 
-The table is fully 3D, in a pub room with wood-panelled walls, wall lights and a dartboard. A long lamp hangs over the table, and its three shades are spotlights that cast real shadows of the balls and the cue. The balls are glossy and reflect the lamp. The cue is a real tapered cue, held with the butt raised to clear the rail, and it comes through the ball when you shoot.
+The table is fully 3D, in a pub room with wood-panelled walls, wall lights and a dartboard. The cloth is felt with a fine weave and a soft sheen. The cushions and the varnished rails have rounded edges, the pockets have rolled leather lips, and there's a cube of chalk on the rail. Each ball sits on its own soft contact shadow and reflects all three lamp shades. A long lamp hangs over the table, and its three shades are spotlights that cast real shadows of the balls and the cue. The balls are glossy and reflect the lamp. The cue is a real tapered cue, held with the butt raised to clear the rail, and it comes through the ball when you shoot.
 
 The camera button next to the spin control switches views:
 

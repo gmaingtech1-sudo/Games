@@ -302,6 +302,7 @@
     $('table3d').hidden = !three;
     $('table').hidden = three;
     $('btn-view').hidden = !three;
+    document.querySelector('.table-wrap').classList.toggle('three', three);
     if (screen === 'game') requestAnimationFrame(() => EB.render.resize());
   }
 

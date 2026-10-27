@@ -47,6 +47,7 @@
   const camPos = new T.Vector3();
   const camLook = new T.Vector3();
   const balls = [];
+  const contact = [];
   let cue = null;
   let lamp = null;
   let quality = 'high';
@@ -78,6 +79,22 @@
     const g = new T.ExtrudeGeometry(shape(pts), { depth: top - bottom, bevelEnabled: false, curveSegments: 1 });
     g.rotateX(-Math.PI / 2);
     g.translate(0, bottom, 0);
+    const m = new T.Mesh(g, mats);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    return m;
+  }
+
+  // A slab with its edges rounded over by r, keeping the outline exactly
+  // where it is at mid-height (so a cushion's nose stays where the balls
+  // bounce off it).
+  function rounded(src, bottom, top, r, mats) {
+    const g = new T.ExtrudeGeometry(src, {
+      depth: top - bottom - 2 * r, bevelEnabled: true, bevelThickness: r, bevelSize: r,
+      bevelOffset: -r, bevelSegments: 4, curveSegments: 1,
+    });
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, bottom + r, 0);
     const m = new T.Mesh(g, mats);
     m.castShadow = true;
     m.receiveShadow = true;
@@ -238,7 +255,14 @@
     scene.fog = new T.Fog(0x0B0E0C, 4000, 12000);
 
     const cloth = clothTexture();
-    const clothMat = new T.MeshStandardMaterial({ color: 0x1B7A49, map: cloth, roughness: 0.95, metalness: 0 });
+    const weave = clothTexture();
+    weave.colorSpace = T.NoColorSpace;
+    weave.repeat.set(1 / 40, 1 / 40);
+    const clothMat = new T.MeshPhysicalMaterial({
+      color: 0x146A3E, map: cloth, roughness: 0.9, metalness: 0,
+      bumpMap: weave, bumpScale: 0.6,
+      sheen: 1, sheenColor: new T.Color(0x5FC48C), sheenRoughness: 0.6,
+    });
     const slateMat = new T.MeshStandardMaterial({ color: 0x0E3020, roughness: 1 });
     const blackMat = new T.MeshBasicMaterial({ color: 0x000000 });
 
@@ -256,29 +280,63 @@
     scene.add(flat(circlePts(SPOT.x, SPOT.y, 3.5, 16), 0.3, new T.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.55 })));
 
     // Cushions: rubber under the same cloth.
-    for (const cu of cushions) scene.add(slab(cu.pts, 0, CUSH_TOP, clothMat));
+    for (const cu of cushions) scene.add(rounded(shape(cu.pts), 0, CUSH_TOP, 6, clothMat));
 
     // Rails: one frame of hardwood with the pockets cut right through it,
     // the grain running along each side and turning at the mitres.
     const darkWood = new T.MeshStandardMaterial({ color: 0x2E1408, roughness: 0.55 });
-    const wood = new T.MeshStandardMaterial({ map: woodTexture(7), roughness: 0.32 });
-    wood.map.repeat.set(1, 1);
+    const grain = woodTexture(7);
+    grain.repeat.set(1, 1);
+    const wood = new T.MeshPhysicalMaterial({
+      map: grain, roughness: 0.45, bumpMap: grain, bumpScale: 0.4,
+      clearcoat: 0.9, clearcoatRoughness: 0.12,
+    });
     const frame = new T.Shape();
     railOuter().forEach(([x, y], i) => (i ? frame.lineTo(x, -y) : frame.moveTo(x, -y)));
     const hole = new T.Path();
     railInner().forEach(([x, y], i) => (i ? hole.lineTo(x, -y) : hole.moveTo(x, -y)));
     frame.holes.push(hole);
-    const fg = new T.ExtrudeGeometry(frame, { depth: RAIL_TOP + 40, bevelEnabled: false, curveSegments: 1 });
-    fg.rotateX(-Math.PI / 2);
-    fg.translate(0, -40, 0);
-    grainUVs(fg);
-    const rails = new T.Mesh(fg, [wood, darkWood]);
+    const rails = rounded(frame, -40, RAIL_TOP, 7, [wood, wood]);
+    grainUVs(rails.geometry);
     rails.castShadow = rails.receiveShadow = true;
     scene.add(rails);
 
+    // A rolled leather lip round each pocket, where it cuts the rail.
+    const leather = new T.MeshPhysicalMaterial({ color: 0x24160E, roughness: 0.55, clearcoat: 0.4, clearcoatRoughness: 0.4 });
+    for (const p of pockets) {
+      const pts = [];
+      const rr = p.r + 2;
+      const outside = (a) => {
+        const x = p.x + Math.cos(a) * rr;
+        const y = p.y + Math.sin(a) * rr;
+        return !(x > -J && x < W + J && y > -J && y < L + J);
+      };
+      // Start from an angle inside the cushion line and go round once.
+      let a0 = 0;
+      while (outside(a0) && a0 < Math.PI * 2) a0 += 0.05;
+      for (let i = 0; i <= 180; i++) {
+        const a = a0 + (i / 180) * Math.PI * 2;
+        if (outside(a)) pts.push(v3(p.x + Math.cos(a) * rr, RAIL_TOP - 1, p.y + Math.sin(a) * rr));
+      }
+      if (pts.length < 4) continue;
+      const lip = new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), pts.length * 2, 5, 10, false), leather);
+      lip.castShadow = true;
+      lip.receiveShadow = true;
+      scene.add(lip);
+    }
+    const chalkCube = new T.Mesh(new T.BoxGeometry(22, 20, 22), [
+      ...Array(2).fill(new T.MeshStandardMaterial({ color: 0x2F64B2, roughness: 0.95 })),
+      new T.MeshStandardMaterial({ color: 0x1E4A8E, roughness: 1 }),
+      ...Array(3).fill(new T.MeshStandardMaterial({ color: 0x2F64B2, roughness: 0.95 })),
+    ]);
+    chalkCube.position.set(W + (J + RAIL) / 2 + 6, RAIL_TOP + 10, L - 290);
+    chalkCube.rotation.y = 0.5;
+    chalkCube.castShadow = true;
+    scene.add(chalkCube);
+
     // Pearl sights on the rails.
     const pearl = new T.MeshStandardMaterial({ color: 0xF2F0EA, roughness: 0.2, metalness: 0.1 });
-    const sight = (x, y) => scene.add(flat([[x, y - 7], [x + 4.5, y], [x, y + 7], [x - 4.5, y]], RAIL_TOP + 0.3, pearl));
+    const sight = (x, y) => scene.add(flat([[x, y - 7], [x + 4.5, y], [x, y + 7], [x - 4.5, y]], RAIL_TOP + 0.2, pearl));
     const m = (J + RAIL) / 2;
     for (let k = 1; k < 8; k++) if (k !== 4) { sight(-m, L * k / 8); sight(W + m, L * k / 8); }
     for (let k = 1; k < 4; k++) { sight(W * k / 4, -m); sight(W * k / 4, L + m); }
@@ -312,17 +370,32 @@
     walls();
     lights();
 
-    // The balls.
-    const sphere = new T.SphereGeometry(R, 40, 28);
+    // The balls, each with a soft contact shadow where it sits on the cloth.
+    const sphere = new T.SphereGeometry(R, 48, 32);
+    const blob = canvasTex(64, 64, (c, w) => {
+      const g = c.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+      g.addColorStop(0, 'rgba(0,0,0,0.75)');
+      g.addColorStop(0.35, 'rgba(0,0,0,0.45)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g;
+      c.fillRect(0, 0, w, w);
+    });
+    const blobMat = new T.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false });
+    const blobGeo = new T.PlaneGeometry(R * 2.1, R * 2.1);
+    blobGeo.rotateX(-Math.PI / 2);
     for (let id = 0; id < 16; id++) {
       const mat = new T.MeshPhysicalMaterial({
-        map: ballTexture(id), roughness: 0.12, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.04,
+        map: ballTexture(id), roughness: 0.18, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.2,
       });
       const mesh = new T.Mesh(sphere, mat);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       scene.add(mesh);
       balls[id] = mesh;
+      const sh = new T.Mesh(blobGeo, blobMat);
+      sh.renderOrder = 1;
+      scene.add(sh);
+      contact[id] = sh;
     }
 
     // The cue: a tapered rod, 9.4 mm at the tip to 29 mm at the butt, with
@@ -543,7 +616,7 @@
     const pos = g.attributes.position;
     const uv = g.attributes.uv;
     for (let i = 0; i < pos.count; i++) {
-      if (Math.abs(pos.getY(i) - RAIL_TOP) > 0.01) continue;
+      if (pos.getY(i) < RAIL_TOP - 8) continue;
       const x = pos.getX(i);
       const z = pos.getZ(i);
       const ox = Math.max(-x, x - W, 0);
@@ -555,7 +628,7 @@
   }
 
   function lights() {
-    scene.add(new T.HemisphereLight(0xFFF2DD, 0x1A120C, 0.35));
+    scene.add(new T.HemisphereLight(0xFFF2DD, 0x1A120C, 0.2));
     // The lamp: a long shade with three bulbs.
     const shadeMat = new T.MeshStandardMaterial({ color: 0x1D3B2A, roughness: 0.4, metalness: 0.3 });
     lamp = new T.Group();
@@ -574,11 +647,12 @@
       glow.rotation.x = Math.PI / 2;
       glow.position.set(W / 2, LAMP_Y + 24, z);
       lamp.add(glow);
-      const s = new T.SpotLight(0xFFF1DC, 1.5, 0, 0.95, 0.65, 0);
+      // Real fall-off: brightest straight under each shade.
+      const s = new T.SpotLight(0xFFEFD6, 1.25e6, 0, 0.92, 0.7, 2);
       s.position.set(W / 2, LAMP_Y, z);
       s.target.position.set(W / 2, 0, z);
       s.castShadow = true;
-      s.shadow.mapSize.set(1024, 1024);
+      s.shadow.mapSize.set(2048, 2048);
       s.shadow.camera.near = 300;
       s.shadow.camera.far = 2400;
       s.shadow.bias = -0.0004;
@@ -845,6 +919,8 @@
       const m = balls[id];
       m.visible = b.on;
       if (b.on) placeBall(m, b, b.x, b.y, R);
+      contact[id].visible = b.on;
+      if (b.on) contact[id].position.set(b.x, 0.25, b.y);
     });
     // Balls dropping: on into the pocket and down.
     for (const a of G.anims) {
