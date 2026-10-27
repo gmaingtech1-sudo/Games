@@ -12,6 +12,7 @@ Small games for phones. Each one lives in its own folder.
 | [Cosmos 360](cosmos-360/) | A to-scale universe to explore in 360°. Look around by dragging or moving your phone, fly to real planets and moons where they are today, scan them for your logbook, and jump to Alpha Centauri, TRAPPIST-1 and the black hole at the centre of the Milky Way. |
 | [Starforge](starforge/) | A space shooter where you build your own starfighter. Pick its hull, wings, engine, weapon and special, paint it, then blast through waves of enemy ships and bosses to earn credits for better parts. |
 | [Eight-Ball](eight-ball/) | Pub pool to the official World Eightball Pool Federation rules: reds and yellows, breaking from baulk, fair breaks, two visits after a foul, foul snookers with a nominated ball, and a 60-second shot clock. Play the computer at three skill levels or a friend on the same phone. |
+| [Eight-Ball for Android](eight-ball-android/) | The same game as an installable Android app. [Download the APK](eight-ball-android/dist/eight-ball.apk). |
 
 ## Books
 

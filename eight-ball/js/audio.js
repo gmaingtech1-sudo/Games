@@ -72,6 +72,12 @@
 
   const lvl = (v, full) => Math.min(1, v / full);
 
+  // A buzz from the phone's vibration motor, in the Android app only.
+  function buzz(style) {
+    if (!window.AndroidHost) return;
+    try { window.AndroidHost.haptic(style); } catch (e) { /* ignore */ }
+  }
+
   const sfx = {
     ball(v) {
       if (!gate()) return;
@@ -85,6 +91,7 @@
       burst(260, 1.2, 0.05 + k * 0.45, 0.12, 'lowpass');
     },
     pocket(v) {
+      buzz('light');
       const k = lvl(v, 2500);
       burst(180, 1, 0.3 + k * 0.3, 0.22, 'lowpass');
       setTimeout(() => burst(900, 4, 0.15, 0.08), 90);
@@ -95,8 +102,12 @@
       tone(700, 0.05 + p * 0.1, 0.05, 'triangle');
     },
     beep() { tone(880, 0.12, 0.18, 'square'); },
-    foul() { tone(330, 0.12, 0.3, 'sawtooth', 0.7); },
+    foul() {
+      buzz('medium');
+      tone(330, 0.12, 0.3, 'sawtooth', 0.7);
+    },
     win() {
+      buzz('heavy');
       [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.12, 0.3, 'triangle'), i * 120));
     },
     tap() { tone(1200, 0.04, 0.04, 'triangle'); },

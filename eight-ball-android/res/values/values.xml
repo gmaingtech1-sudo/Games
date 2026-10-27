@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Eight-Ball</string>
+    <color name="shell">#0B1A13</color>
+    <color name="cloth">#1E7449</color>
+
+    <style name="EightBall" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/shell</item>
+        <item name="android:statusBarColor">@color/shell</item>
+        <item name="android:navigationBarColor">@color/shell</item>
+    </style>
+</resources>

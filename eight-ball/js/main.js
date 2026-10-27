@@ -270,7 +270,32 @@
   }
   requestAnimationFrame(frame);
 
-  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  // The Android app (../eight-ball-android) calls these for its back button
+  // and when it's switched away. back() answers false when there's nothing
+  // left to close, so the app can step aside.
+  EB.app = {
+    back() {
+      if (sheet === 'sheet-colour') return true;
+      if (sheet === 'sheet-over') { $('btn-menu').click(); return true; }
+      if (sheet) {
+        if (sheet === 'sheet-settings') saveSettings();
+        close();
+        return true;
+      }
+      if (screen === 'rules') { $('rules-back').click(); return true; }
+      if (screen === 'game') {
+        if (G.phase !== 'idle') $('btn-pause').click();
+        return true;
+      }
+      return false;
+    },
+    pause() {
+      if (screen === 'game' && !sheet && G.phase !== 'idle' && G.phase !== 'over') $('btn-pause').click();
+    },
+  };
+
+  // The Android app serves the game from inside the APK, so it needs no service worker.
+  if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.AndroidHost) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 })(window.EB = window.EB || {});
