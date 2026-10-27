@@ -3,7 +3,7 @@
 (function (EB) {
   'use strict';
 
-  const { game: G, render, audio: A } = EB;
+  const { game: G, audio: A } = EB;
   const $ = (id) => document.getElementById(id);
   const KEY = 'eightball.v1';
 
@@ -12,7 +12,7 @@
   const defaults = () => ({
     mode: 'ai', level: 'medium', race: 2,
     names: ['Player 1', 'Player 2'],
-    guide: 'long', clock: true, sound: true,
+    guide: 'long', clock: true, sound: true, table3d: true, view: 'player',
     record: { easy: [0, 0], medium: [0, 0], hard: [0, 0] },
   });
   let save = defaults();
@@ -35,7 +35,7 @@
   function show(id) {
     for (const s of ['menu', 'game', 'rules']) $(s).hidden = s !== id;
     screen = id;
-    if (id === 'game') requestAnimationFrame(() => render.resize());
+    if (id === 'game') requestAnimationFrame(() => EB.render.resize());
   }
 
   function open(id) {
@@ -100,7 +100,7 @@
     A.tap();
     show('game');
     requestAnimationFrame(() => {
-      render.resize();
+      EB.render.resize();
       G.startMatch({ mode: save.mode, level: save.level, race: save.race, names: save.names });
     });
   });
@@ -119,6 +119,8 @@
     $('set-name1').value = save.names[1];
     $('set-clock').checked = save.clock;
     $('set-sound').checked = save.sound;
+    $('set-3d').checked = save.table3d && can3d;
+    $('set-3d').disabled = !can3d;
     open('sheet-settings');
   }
 
@@ -127,6 +129,10 @@
     save.clock = $('set-clock').checked;
     save.sound = $('set-sound').checked;
     A.setSound(save.sound);
+    if (can3d && save.table3d !== $('set-3d').checked) {
+      save.table3d = $('set-3d').checked;
+      pickTable();
+    }
     persist();
     if (G.st) G.hud();
   }
@@ -250,21 +256,55 @@
     if (screen === 'game' && !sheet && G.key(e)) e.preventDefault();
   });
 
-  window.addEventListener('resize', () => render.resize());
+  window.addEventListener('resize', () => EB.render.resize());
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && screen === 'game' && !sheet && G.phase !== 'idle' && G.phase !== 'over') $('btn-pause').click();
   });
 
   /* ---------- Main loop ---------- */
 
-  render.init($('table'));
+  /* ---------- Which table: 3D, or flat if the phone can't do WebGL ---------- */
+
+  const can3d = !!(EB.render3d && EB.render3d.supported());
+  let ready3d = false;
+
+  function pickTable() {
+    const use3d = can3d && save.table3d;
+    if (use3d && !ready3d) {
+      try {
+        EB.render3d.init($('table3d'));
+        EB.render3d.setView(save.view);
+        ready3d = true;
+      } catch (e) {
+        save.table3d = false;
+      }
+    }
+    const three = use3d && ready3d;
+    EB.render = three ? EB.render3d : EB.render2d;
+    $('table3d').hidden = !three;
+    $('table').hidden = three;
+    $('btn-view').hidden = !three;
+    if (screen === 'game') requestAnimationFrame(() => EB.render.resize());
+  }
+
+  EB.render2d.init($('table'));
+  pickTable();
+
+  $('btn-view').addEventListener('click', () => {
+    if (EB.render !== EB.render3d) return;
+    A.tap();
+    G.say(EB.render3d.cycleView(), 'info', 1400);
+    save.view = EB.render3d.view;
+    persist();
+  });
+
   let last = performance.now();
   function frame(now) {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     if (screen === 'game') {
       G.update(dt);
-      render.draw(G, now);
+      EB.render.draw(G, now);
     }
     requestAnimationFrame(frame);
   }

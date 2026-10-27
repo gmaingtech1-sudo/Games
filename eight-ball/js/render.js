@@ -832,5 +832,5 @@
     }
   }
 
-  EB.render = { init, resize, draw, toWorld, toScreen, view, COL };
+  EB.render2d = { init, resize, draw, toWorld, toScreen, view, COL };
 })(window.EB = window.EB || {});

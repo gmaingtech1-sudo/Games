@@ -2,7 +2,7 @@
 
 Pub pool for phones, played to the official rules of the World Eightball Pool Federation (WEPF), from the abridged January 2020 rules sheet. You get reds and yellows on a 7 ft table, a baulk line, and two visits after a foul. Play against the computer at three skill levels, or pass the phone between two players.
 
-The balls skid, roll, spin, draw and throw the way real ones do. The table is lit by overhead pub lamps and sounds like the real thing. It's plain HTML, CSS and JavaScript. There's no build step and nothing to install. The table, balls and cue are drawn in code and the sounds are synthesised, so the only image files are the app icons. After the first visit it also works offline.
+The balls skid, roll, spin, draw and throw the way real ones do. The table is lit by overhead pub lamps and sounds like the real thing. It's plain HTML, CSS and JavaScript, with [three.js](https://threejs.org) (MIT licence, in `lib/`) for the 3D. There's no build step and nothing to install. The table, room, balls and cue are built in code and the sounds are synthesised, so the only image files are the app icons. After the first visit it also works offline.
 
 ## Playing
 
@@ -16,6 +16,20 @@ The balls skid, roll, spin, draw and throw the way real ones do. The table is li
 | Pause | The pause button | Esc |
 
 The aiming line shows the ghost ball where the cue ball will make contact, the path the object ball will take, and where the cue ball would glance off without spin. If you're lined up on a ball you're not on, the ghost ball turns red with a cross. In Settings you can shorten the guide, cut it to a single line, or turn it off.
+
+## In 3D
+
+The table is fully 3D, in a pub room with wood-panelled walls, wall lights and a dartboard. A long lamp hangs over the table, and its three shades are spotlights that cast real shadows of the balls and the cue. The balls are glossy and reflect the lamp. The cue is a real tapered cue, held with the butt raised to clear the rail, and it comes through the ball when you shoot.
+
+The camera button next to the spin control switches views:
+
+| View | What you see |
+| --- | --- |
+| **Player** | Down on the shot behind the cue ball, the way you'd line it up for real. Drag sideways anywhere to turn. When you shoot, you stand up to watch the balls run. When you have ball in hand, you stand over the table to place it. |
+| **Overhead** | The whole table from above the baulk end, or from the side on a landscape screen. Touch where you want to aim. |
+| **Top** | Straight down, like a plan. Touch where you want to aim. |
+
+The fine aim strip, power bar and spin work the same in every view. If a phone can't do 3D (no WebGL), the game uses the flat table instead, and you can also choose it with **3D table** in Settings.
 
 ## How real it is
 
@@ -90,7 +104,9 @@ Then open <http://localhost:8000>. Opening `index.html` straight from the file s
 | `js/physics.js` | The table (cushions, jaws, pockets, baulk line, spot), the rack, and the physics: each ball's velocity and 3D spin, skidding and rolling on the cloth, the tip's strike (with squirt), ball-to-ball collisions with throw and spin transfer, cushion rebounds that depend on spin, and balls dropping. Also sight lines for snookers and aiming |
 | `js/rules.js` | The referee: balls on, fair breaks, legal shots, fouls, two visits, deciding colours, touching balls, total and foul snookers, loss of frame and stalemates |
 | `js/ai.js` | The computer player |
-| `js/render.js` | Draws the lamp-lit table, shaded balls whose markings turn as they roll, their shadows, the aiming guide and the cue, portrait or landscape |
+| `js/render3d.js` | The 3D table and room, built with three.js from the same cushion, jaw and pocket shapes the physics uses: lighting and shadows, glossy balls turning with their spin, the cue, the aiming guide in 3D, and the three camera views |
+| `lib/three.min.js` | three.js r160 (MIT licence, see `lib/three.LICENSE`) |
+| `js/render.js` | The flat table, used when 3D is off or not available: the lamp-lit table, shaded balls whose markings turn as they roll, their shadows, the aiming guide and the cue, portrait or landscape |
 | `js/game.js` | A match in play: frames, turns, referee calls, the shot clock, touch controls and the computer's turns |
 | `js/audio.js` | Sounds synthesised with WebAudio (no audio files): ball clicks, cushions, the tip, rolling, pockets and the ball return |
 | `js/main.js` | The menu, settings, sheets and the main loop |

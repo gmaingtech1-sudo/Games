@@ -23,7 +23,7 @@ rm -rf "$BUILD"
 mkdir -p "$BUILD/gen" "$BUILD/classes" "$BUILD/assets/game" dist
 
 echo "1/5 Copying the game from ../eight-ball"
-cp -R ../eight-ball/index.html ../eight-ball/css ../eight-ball/js ../eight-ball/icons "$BUILD/assets/game/"
+cp -R ../eight-ball/index.html ../eight-ball/css ../eight-ball/js ../eight-ball/lib ../eight-ball/icons "$BUILD/assets/game/"
 
 echo "2/5 Compiling resources"
 aapt2 compile --dir res -o "$BUILD/res.zip"

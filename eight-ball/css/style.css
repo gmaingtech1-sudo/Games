@@ -352,3 +352,7 @@ button.chip { border-color: var(--brass-2); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* The 3D table's camera button. */
+.view-btn svg { width: 26px; height: 26px; color: var(--muted); }
+#table3d { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }

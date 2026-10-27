@@ -4,7 +4,7 @@
 (function (EB) {
   'use strict';
 
-  const { TABLE, kind, phys, rules, ai, audio: A, render } = EB;
+  const { TABLE, kind, phys, rules, ai, audio: A } = EB;
   const { W, L, R, D, BAULK } = TABLE;
   const $ = (id) => document.getElementById(id);
   const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -490,19 +490,25 @@
 
   /* ---------- Touch, mouse and keys ---------- */
 
-  const cv = $('table');
+  // Both tables (2D and 3D) sit in this box; whichever is showing takes the touches.
+  const wrap = document.querySelector('.table-wrap');
+  const onTable = (e) => e.target.tagName === 'CANVAS';
   let drag = null;
 
   function worldAt(e) {
-    const r = cv.getBoundingClientRect();
-    return render.toWorld(e.clientX - r.left, e.clientY - r.top);
+    const r = e.target.getBoundingClientRect();
+    return EB.render.toWorld(e.clientX - r.left, e.clientY - r.top);
   }
 
   function aimAt(w) {
     const c = G.balls[0];
-    if (Math.hypot(w.x - c.x, w.y - c.y) < R * 0.6) return;
+    if (!w || Math.hypot(w.x - c.x, w.y - c.y) < R * 0.6) return;
     G.aim = Math.atan2(w.y - c.y, w.x - c.x);
   }
+
+  // In the 3D player's view the camera turns with the cue, so a sideways
+  // drag turns the aim; everywhere else you point at where to aim.
+  const aimStyle = () => (EB.render.aimStyle ? EB.render.aimStyle(G) : 'point');
 
   function movedCue() {
     G.snook = G.st.afterFoul && rules.snookered(G.st, G.balls);
@@ -510,13 +516,14 @@
     refresh();
   }
 
-  cv.addEventListener('pointerdown', (e) => {
+  wrap.addEventListener('pointerdown', (e) => {
+    if (!onTable(e)) return;
     A.init();
     if (G.phase !== 'aim') return;
     const w = worldAt(e);
     const c = G.balls[0];
     if (G.nominating) {
-      const b = G.nominable.find((o) => Math.hypot(o.x - w.x, o.y - w.y) < R * 1.8);
+      const b = w && G.nominable.find((o) => Math.hypot(o.x - w.x, o.y - w.y) < R * 1.8);
       G.nominating = false;
       if (b) {
         G.st.nominated = b.id;
@@ -527,18 +534,26 @@
       chips();
       return;
     }
-    cv.setPointerCapture(e.pointerId);
-    if (G.st.inHand && Math.hypot(w.x - c.x, w.y - c.y) < R * 2.6) {
+    e.target.setPointerCapture(e.pointerId);
+    if (G.st.inHand && w && Math.hypot(w.x - c.x, w.y - c.y) < R * 2.6) {
       drag = { type: 'cue', ox: c.x - w.x, oy: c.y - w.y };
+    } else if (aimStyle() === 'drag') {
+      drag = { type: 'turn', x: e.clientX };
     } else {
       drag = { type: 'aim' };
       aimAt(w);
     }
   });
 
-  cv.addEventListener('pointermove', (e) => {
+  wrap.addEventListener('pointermove', (e) => {
     if (!drag || G.phase !== 'aim') return;
+    if (drag.type === 'turn') {
+      G.aim += (e.clientX - drag.x) * 0.0035;
+      drag.x = e.clientX;
+      return;
+    }
     const w = worldAt(e);
+    if (!w) return;
     if (drag.type === 'aim') aimAt(w);
     else {
       const x = clamp(w.x + drag.ox, R, W - R);
@@ -554,8 +569,8 @@
     if (drag && drag.type === 'cue' && G.phase === 'aim') movedCue();
     drag = null;
   };
-  cv.addEventListener('pointerup', endDrag);
-  cv.addEventListener('pointercancel', endDrag);
+  wrap.addEventListener('pointerup', endDrag);
+  wrap.addEventListener('pointercancel', endDrag);
 
   // Fine aim: drag along the strip to turn the cue a fraction of a degree.
   let fineX = null;
