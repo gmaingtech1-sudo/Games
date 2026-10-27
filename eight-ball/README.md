@@ -25,7 +25,7 @@ The balls behave the way real ones do, using real-world figures for resin balls 
 - **Spin.** Where the tip strikes matters. Hit low and the backspin draws the cue ball back after contact. It wears off over distance, so long draw shots need more power, just like on a real table. Hit high and it follows. Side spin bends rebounds off the cushions and dies away as the ball rolls. Using side also pushes the cue ball slightly off line ("squirt"), so you have to allow for it.
 - **Throw.** Friction between the balls "throws" a cut object ball a degree or two off the line of centres, and passes a little spin on to it.
 - **Cushions.** The rubber catches the ball a little above its centre, so a rebound depends on speed and spin. A ball comes off slower than it went in.
-- **Pockets.** Balls can rattle in the jaws and stay out, and a ball left hanging over the hole drops.
+- **Pockets.** As on a real table, the cushions end in rounded jaws, and the slate is cut back in an arc between them where the pocket falls away. A ball drops once its centre is over that edge. It can rattle on the jaws and stay out, and a ball hugging the cushion runs past a middle pocket.
 - **Rolling resistance.** Balls roll a long way on good cloth. It's the cushions that take their speed off.
 
 You see and hear it too. The table is lit by a row of pub lamps, which light pools on the cloth, shine on each ball and cast soft shadows from the balls and the cue. The 8 and the red spots on the cue ball turn as the balls roll and spin, so you can watch your draw and side at work. The cue comes through the ball when you shoot. The sounds are the click of the balls, the thump of the cushions, the tip, the rumble of balls rolling on the cloth, and a potted ball running down the return channel to knock into the others.
@@ -100,7 +100,7 @@ Settings and your record are saved in the browser's `localStorage`.
 
 ### Tuning
 
-- Table size, pocket mouths and jaws: the constants at the top of `js/physics.js` (`C` for corner pockets, `M` for middle pockets).
+- Table size, pocket mouths and jaws: the constants at the top of `js/physics.js` (`C` for corner pockets, `M` for middle pockets, `NOSE_CORNER` and `NOSE_MIDDLE` for how rounded the jaws are, and `pockets` for where the slate falls away).
 - How the balls skid, roll and bounce: `MU_SLIDE`, `MU_ROLL`, `SPIN_DECAY`, `E_BALL`, `MU_BALL`, `MU_CUSH`, `NOSE`, `TIP` and `SQUIRT` in `js/physics.js`.
 - The lamps (where they hang and how high): `LAMPS` and `LAMP_H` in `js/render.js`.
 - Computer skill: `LEVELS` in `js/ai.js`.

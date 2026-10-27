@@ -16,9 +16,11 @@
   const M = 46;                  // middle pockets: half the mouth
   const J = 36;                  // how far the jaws run back into a pocket
 
-  // Each cushion is a polygon whose first edge is the playing face; the edges
-  // either side of it are the jaws. The back edge is under the rail.
-  const cushions = [
+  // Each cushion starts as a polygon whose first edge is the playing face;
+  // the edges either side of it are the jaws, and the back edge is under
+  // the rail. The noses where face meets jaw are rounded, as on a real
+  // table, and the same shape is used for drawing and for bounces.
+  const RAW = [
     [[C, 0], [W - C, 0], [W - C + J, -J], [C - J, -J]],
     [[W - C, L], [C, L], [C - J, L + J], [W - C + J, L + J]],
     [[0, H - M], [0, C], [-J, C - J], [-J, H - M + 6]],
@@ -26,21 +28,76 @@
     [[W, C], [W, H - M], [W + J, H - M + 6], [W + J, C - J]],
     [[W, H + M], [W, L - C], [W + J, L - C + J], [W + J, H + M - 6]],
   ];
+  const NOSE_CORNER = 9;
+  const NOSE_MIDDLE = 13;
+
+  // Points along a rounded corner at p, between the edges to prev and next.
+  function fillet(prev, p, next, r) {
+    let ax = prev[0] - p[0];
+    let ay = prev[1] - p[1];
+    let bx = next[0] - p[0];
+    let by = next[1] - p[1];
+    const la = Math.hypot(ax, ay);
+    const lb = Math.hypot(bx, by);
+    ax /= la; ay /= la; bx /= lb; by /= lb;
+    const theta = Math.acos(Math.max(-1, Math.min(1, ax * bx + ay * by)));
+    const t = r / Math.tan(theta / 2);
+    let hx = ax + bx;
+    let hy = ay + by;
+    const hl = Math.hypot(hx, hy);
+    hx /= hl; hy /= hl;
+    const cd = r / Math.sin(theta / 2);
+    const cx = p[0] + hx * cd;
+    const cy = p[1] + hy * cd;
+    let a1 = Math.atan2(p[1] + ay * t - cy, p[0] + ax * t - cx);
+    let a2 = Math.atan2(p[1] + by * t - cy, p[0] + bx * t - cx);
+    let da = a2 - a1;
+    while (da > Math.PI) da -= Math.PI * 2;
+    while (da < -Math.PI) da += Math.PI * 2;
+    const out = [];
+    const n = 6;
+    for (let i = 0; i <= n; i++) {
+      const ang = a1 + (da * i) / n;
+      out.push([cx + Math.cos(ang) * r, cy + Math.sin(ang) * r]);
+    }
+    return out;
+  }
+
+  const noseR = (p) => ((p[0] === 0 || p[0] === W) && Math.abs(p[1] - H) < 100 ? NOSE_MIDDLE : NOSE_CORNER);
+  const cushions = RAW.map(([p0, p1, p2, p3]) => {
+    const n0 = fillet(p3, p0, p1, noseR(p0));
+    const n1 = fillet(p0, p1, p2, noseR(p1));
+    return { pts: [...n0, ...n1, p2, p3], face: [n0[n0.length - 1], n1[0]], back: [p2, p3] };
+  });
   const segs = [];
-  for (const c of cushions) {
-    for (const [a, b] of [[c[0], c[1]], [c[1], c[2]], [c[3], c[0]]]) {
+  for (const cu of cushions) {
+    const pts = cu.pts;
+    const pairs = [];
+    for (let i = 0; i < pts.length - 2; i++) pairs.push([pts[i], pts[i + 1]]);
+    pairs.push([pts[pts.length - 1], pts[0]]);
+    for (const [a, b] of pairs) {
       segs.push({ ax: a[0], ay: a[1], ex: b[0] - a[0], ey: b[1] - a[1], len2: (b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 });
     }
   }
 
-  // Hole centres and sizes for drawing; (ax, ay) is where a player aims to pot.
+  // The pockets. (x, y, r) is the round hole through the rail. The slate is
+  // cut back in a shallow arc from nose to nose (the drop: centre dx, dy,
+  // radius dr), and a ball falls once its centre is over that edge.
+  // (ax, ay) is where a player aims to pot.
+  const corner = (sx, sy, x0, y0) => ({
+    x: x0 + sx * 20, y: y0 + sy * 20, r: 54,
+    dx: x0 + sx * 200, dy: y0 + sy * 200, dr: Math.hypot(C + 200, 200),
+    ax: x0 - sx * 4, ay: y0 - sy * 4,
+  });
+  const middle = (sx, x0) => ({
+    x: x0 + sx * 34, y: H, r: 44,
+    dx: x0 + sx * 36, dy: H, dr: Math.hypot(36, M),
+    ax: x0 + sx * 10, ay: H, mid: true,
+  });
   const pockets = [
-    { x: -14, y: -14, r: 48, ax: 4, ay: 4 },
-    { x: W + 14, y: -14, r: 48, ax: W - 4, ay: 4 },
-    { x: -26, y: H, r: 44, ax: -10, ay: H, mid: true },
-    { x: W + 26, y: H, r: 44, ax: W + 10, ay: H, mid: true },
-    { x: -14, y: L + 14, r: 48, ax: 4, ay: L - 4 },
-    { x: W + 14, y: L + 14, r: 48, ax: W - 4, ay: L - 4 },
+    corner(-1, -1, 0, 0), corner(1, -1, W, 0),
+    middle(-1, 0), middle(1, W),
+    corner(-1, 1, 0, L), corner(1, 1, W, L),
   ];
 
   const TABLE = {
@@ -215,7 +272,7 @@
       if (!b.on) continue;
       if (b.x < R + 1 || b.x > W - R - 1 || b.y < R + 1 || b.y > L - R - 1) {
         cushion(b, ev);
-        if (b.x < -SINK || b.x > W + SINK || b.y < -SINK || b.y > L + SINK) {
+        if (b.x < -SINK || b.x > W + SINK || b.y < -SINK || b.y > L + SINK || overHole(b)) {
           sink(b, ev);
           continue;
         }
@@ -321,6 +378,11 @@
         if (ev.sounds) ev.sounds.push({ t: 'cushion', v: -vn });
       }
     }
+  }
+
+  function overHole(b) {
+    for (const p of pockets) if ((b.x - p.dx) ** 2 + (b.y - p.dy) ** 2 < p.dr * p.dr) return true;
+    return false;
   }
 
   function sink(b, ev) {

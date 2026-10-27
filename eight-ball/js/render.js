@@ -13,8 +13,8 @@
 
   const { TABLE, kind, phys } = EB;
   const { W, L, R, D, J, BAULK, SPOT, pockets, cushions } = TABLE;
-  const PAD = 84;
-  const RAIL = 80;
+  const PAD = 108;
+  const RAIL = 104;
   const CUE_LEN = 1450;
 
   // A long pub lamp over the table: three shades along its length, this high.
@@ -111,8 +111,24 @@
     c.restore();
 
     rails(c);
-    for (const p of pockets) pocket(c, p);
+    // The holes are cut through the rail and the slate: first the leather
+    // pocket lining set into the wood, then the bed, cut back in an arc
+    // where each pocket falls away, then the cushions over the top.
+    c.save();
+    c.beginPath();
+    c.roundRect(-RAIL + 3, -RAIL + 3, W + 2 * RAIL - 6, L + 2 * RAIL - 6, 30);
+    c.clip();
+    for (const p of pockets) lining(c, p);
+    c.restore();
     cloth(c);
+    // Inside the cushion line: the throat between the jaws and the bed cut
+    // away from nose to nose fall into the dark.
+    c.save();
+    c.beginPath();
+    c.rect(-J, -J, W + 2 * J, L + 2 * J);
+    c.clip();
+    for (const p of pockets) drop(c, p);
+    c.restore();
     for (const cu of cushions) cushion(c, cu);
 
     // The baulk line, chalked on, and the spot.
@@ -214,27 +230,62 @@
     for (let k = 1; k < 4; k++) { sight(W * k / 4, -m); sight(W * k / 4, L + m); }
   }
 
-  function pocket(c, p) {
+  // The pocket where it's set into the rail: a leather-lined cup with a
+  // rolled lip, dark inside.
+  function lining(c, p) {
+    const rim = p.r + 9;
+    const lip = c.createRadialGradient(p.x, p.y, p.r - 2, p.x, p.y, rim);
+    lip.addColorStop(0, '#0E0907');
+    lip.addColorStop(0.45, '#3A2418');
+    lip.addColorStop(0.7, '#5A3A26');
+    lip.addColorStop(1, '#24150D');
+    c.fillStyle = lip;
+    c.beginPath();
+    c.arc(p.x, p.y, rim, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = 'rgba(0,0,0,0.6)';
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.arc(p.x, p.y, rim, 0, Math.PI * 2);
+    c.stroke();
+    hole(c, p);
+  }
+
+  function hole(c, p) {
     const g = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
     g.addColorStop(0, '#000');
-    g.addColorStop(0.7, '#050505');
-    g.addColorStop(0.92, '#151110');
-    g.addColorStop(1, '#2B211B');
+    g.addColorStop(0.75, '#030303');
+    g.addColorStop(0.93, '#0D0B0A');
+    g.addColorStop(1, '#1A1512');
     c.fillStyle = g;
     c.beginPath();
     c.arc(p.x, p.y, p.r, 0, Math.PI * 2);
     c.fill();
-    // The rubber-lined rim.
-    c.strokeStyle = '#1E1612';
-    c.lineWidth = 5;
+  }
+
+  // Where the bed falls away into a pocket: the cloth folds over the edge
+  // of the slate, catching a little light, then drops into the dark.
+  function drop(c, p) {
+    c.fillStyle = '#040303';
     c.beginPath();
-    c.arc(p.x, p.y, p.r - 2, 0, Math.PI * 2);
-    c.stroke();
-    c.strokeStyle = 'rgba(255,255,255,0.07)';
-    c.lineWidth = 1.2;
+    c.arc(p.dx, p.dy, p.dr, 0, Math.PI * 2);
+    c.fill();
+    hole(c, p);
+    c.save();
     c.beginPath();
-    c.arc(p.x, p.y, p.r + 1, 0, Math.PI * 2);
+    c.rect(0, 0, W, L);
+    c.clip();
+    c.beginPath();
+    c.arc(p.dx, p.dy, p.dr + 3.5, 0, Math.PI * 2);
+    c.lineWidth = 7;
+    c.strokeStyle = 'rgba(12,45,28,0.9)';
     c.stroke();
+    c.beginPath();
+    c.arc(p.dx, p.dy, p.dr + 1, 0, Math.PI * 2);
+    c.lineWidth = 2;
+    c.strokeStyle = 'rgba(90,170,120,0.55)';
+    c.stroke();
+    c.restore();
   }
 
   // Worsted cloth: a fine, even weave, brighter in pools under each lamp
@@ -278,39 +329,61 @@
     edge(0, 0, 0, 140); edge(0, L, 0, L - 140); edge(0, 0, 110, 0); edge(W, 0, W - 110, 0);
   }
 
+  // A cushion: rubber under the same cloth as the bed, its rounded nose
+  // catching the light and throwing a thin shadow onto the bed.
   function cushion(c, cu) {
-    const [p0, p1, p2, p3] = cu;
-    const mx = (p0[0] + p1[0]) / 2;
-    const my = (p0[1] + p1[1]) / 2;
-    const bx = (p2[0] + p3[0]) / 2;
-    const by = (p2[1] + p3[1]) / 2;
+    const [f0, f1] = cu.face;
+    const [b0, b1] = cu.back;
+    const mx = (f0[0] + f1[0]) / 2;
+    const my = (f0[1] + f1[1]) / 2;
+    // Square to the face, towards the rail.
+    let fx = f1[1] - f0[1];
+    let fy = f0[0] - f1[0];
+    const fl = Math.hypot(fx, fy);
+    fx /= fl; fy /= fl;
+    if (fx * ((b0[0] + b1[0]) / 2 - mx) + fy * ((b0[1] + b1[1]) / 2 - my) < 0) { fx = -fx; fy = -fy; }
+    const bx = mx + fx * J;
+    const by = my + fy * J;
     const g = c.createLinearGradient(mx, my, bx, by);
-    g.addColorStop(0, '#2C8C58');
-    g.addColorStop(0.25, '#1F7448');
-    g.addColorStop(1, '#0F4429');
+    g.addColorStop(0, '#2A8656');
+    g.addColorStop(0.18, '#1D6E44');
+    g.addColorStop(0.7, '#175C38');
+    g.addColorStop(1, '#0E3F26');
     c.fillStyle = g;
-    poly(c, cu);
+    poly(c, cu.pts);
     c.fill();
-    // The nose catches the light; the cloth just below it sits in shadow.
-    const nx = bx - mx;
-    const ny = by - my;
-    const nl = Math.hypot(nx, ny);
-    c.strokeStyle = 'rgba(0,0,0,0.3)';
-    c.lineWidth = 4;
+    const nl = Math.hypot(bx - mx, by - my);
+    const nx = (bx - mx) / nl;
+    const ny = (by - my) / nl;
+    // Shadow on the bed along the face, and the lit top of the nose.
+    c.save();
     c.beginPath();
-    c.moveTo(p0[0] - nx / nl * 2, p0[1] - ny / nl * 2);
-    c.lineTo(p1[0] - nx / nl * 2, p1[1] - ny / nl * 2);
+    c.rect(0, 0, W, L);
+    c.clip();
+    const sh = c.createLinearGradient(mx, my, mx - nx * 10, my - ny * 10);
+    sh.addColorStop(0, 'rgba(0,0,0,0.32)');
+    sh.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = sh;
+    poly(c, [[f0[0], f0[1]], [f1[0], f1[1]], [f1[0] - nx * 10, f1[1] - ny * 10], [f0[0] - nx * 10, f0[1] - ny * 10]]);
+    c.fill();
+    c.restore();
+    c.strokeStyle = 'rgba(170,240,195,0.2)';
+    c.lineWidth = 2.2;
+    c.beginPath();
+    const pts = cu.pts;
+    const nose = pts.length - 2;     // the face and the rounded noses, not the jaws' backs
+    for (let i = 0; i < nose; i++) {
+      const [x, y] = pts[i];
+      const inner = (x - mx) * nx + (y - my) * ny;
+      if (inner > 9) continue;       // only the playing edge, not down the jaws
+      (i === 0 || (pts[i - 1][0] - mx) * nx + (pts[i - 1][1] - my) * ny > 9) ? c.moveTo(x + nx * 2, y + ny * 2) : c.lineTo(x + nx * 2, y + ny * 2);
+    }
     c.stroke();
-    c.strokeStyle = 'rgba(180,255,210,0.18)';
+    // Where the cushion meets the rail.
+    c.strokeStyle = 'rgba(0,0,0,0.45)';
     c.lineWidth = 2;
     c.beginPath();
-    c.moveTo(p0[0], p0[1]); c.lineTo(p1[0], p1[1]);
-    c.stroke();
-    c.strokeStyle = 'rgba(0,0,0,0.4)';
-    c.lineWidth = 1.5;
-    c.beginPath();
-    c.moveTo(p1[0], p1[1]); c.lineTo(p2[0], p2[1]);
-    c.moveTo(p3[0], p3[1]); c.lineTo(p0[0], p0[1]);
+    c.moveTo(b0[0], b0[1]); c.lineTo(b1[0], b1[1]);
     c.stroke();
   }
 
