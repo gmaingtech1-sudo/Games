@@ -442,6 +442,7 @@
   }
 
   function powerHud() {
+    els.power.classList.toggle('set', G.power > 0);
     els.powerFill.style.transform = `scaleX(${G.power})`;
     els.powerVal.textContent = G.power > 0 ? `${Math.round(G.power * 100)}%` : '';
   }
@@ -538,7 +539,8 @@
     if (G.st.inHand && w && Math.hypot(w.x - c.x, w.y - c.y) < R * 2.6) {
       drag = { type: 'cue', ox: c.x - w.x, oy: c.y - w.y };
     } else if (aimStyle() === 'drag') {
-      drag = { type: 'turn', x: e.clientX };
+      // Sideways turns the cue; pulling down draws it back for the shot.
+      drag = { type: 'turn', x: e.clientX, x0: e.clientX, y0: e.clientY, axis: null, h: e.target.getBoundingClientRect().height };
     } else {
       drag = { type: 'aim' };
       aimAt(w);
@@ -548,8 +550,20 @@
   wrap.addEventListener('pointermove', (e) => {
     if (!drag || G.phase !== 'aim') return;
     if (drag.type === 'turn') {
-      G.aim += (e.clientX - drag.x) * 0.0035;
-      drag.x = e.clientX;
+      if (!drag.axis) {
+        const mx = e.clientX - drag.x0;
+        const my = e.clientY - drag.y0;
+        if (Math.hypot(mx, my) < 10) return;
+        drag.axis = my > Math.abs(mx) ? 'stroke' : 'turn';
+        drag.x = e.clientX;
+      }
+      if (drag.axis === 'turn') {
+        G.aim += (e.clientX - drag.x) * 0.0035;
+        drag.x = e.clientX;
+      } else {
+        G.power = clamp((e.clientY - drag.y0 - 10) / (drag.h * 0.42), 0, 1);
+        powerHud();
+      }
       return;
     }
     const w = worldAt(e);
@@ -565,8 +579,13 @@
     }
   });
 
-  const endDrag = () => {
+  const endDrag = (e) => {
     if (drag && drag.type === 'cue' && G.phase === 'aim') movedCue();
+    if (drag && drag.axis === 'stroke' && G.phase === 'aim') {
+      // Let go to strike; pushed back up to nothing, it's called off.
+      if (e.type === 'pointerup' && G.power > 0.015) shoot();
+      else { G.power = 0; powerHud(); }
+    }
     drag = null;
   };
   wrap.addEventListener('pointerup', endDrag);

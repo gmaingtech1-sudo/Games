@@ -25,11 +25,13 @@ The camera button next to the spin control switches views:
 
 | View | What you see |
 | --- | --- |
-| **Player** | Down on the shot behind the cue ball, the way you'd line it up for real. Drag sideways anywhere to turn. When you shoot, you stand up to watch the balls run. When you have ball in hand, you stand over the table to place it. |
+| **Player** | Down on the shot behind the cue ball, the way you'd line it up for real. Drag sideways anywhere to turn. To shoot like the real thing, pull down on the table to draw the cue back (further back is harder) and let go to strike. Slide back up to call it off. The power bar works too. When you shoot, you stand up to watch the balls run. When you have ball in hand, you stand over the table to place it. |
 | **Overhead** | The whole table from above the baulk end, or from the side on a landscape screen. Touch where you want to aim. |
 | **Top** | Straight down, like a plan. Touch where you want to aim. |
 
-The fine aim strip, power bar and spin work the same in every view. If a phone can't do 3D (no WebGL), the game uses the flat table instead, and you can also choose it with **3D table** in Settings.
+The fine aim strip, power bar and spin work the same in every view.
+
+**3D graphics** in Settings is **Auto** to start with. That's full quality, with soft shadows from all three lamp shades, but if your phone can't keep up while the balls are running, it switches to **Fast** (no shadows, fewer pixels) and tells you. You can also pick **High** or **Fast** yourself. If a phone can't do 3D (no WebGL), the game uses the flat table instead, and you can also choose it with **3D table** in Settings.
 
 ## How real it is
 
@@ -69,7 +71,9 @@ The computer finds every open pot, plus thin, half-ball and full-ball safeties. 
 | --- | --- | --- |
 | Easy | about 1.4° | its 4 best pots at one speed, and straight safeties. Sometimes picks its second or third choice |
 | Medium | about 0.6° | 6 pots at two speeds, with and without draw |
-| Hard | about 0.2° | 9 pots at three speeds with follow, stun and draw, and five safety lines per ball |
+| Hard | about 0.2° | 12 pots at four speeds with follow, stun, draw and left or right side, and five safety lines per ball |
+
+Medium and Hard then re-try their best few shots with the aim a fraction off either way, and prefer the ones that still go in. Hard checks ten. They also look past the next shot: they like to leave the cue ball where a second ball can follow. Playing itself on Hard, the computer clears a frame in about 19 shots and fouls about once.
 
 Your match record against each level is kept on the menu.
 

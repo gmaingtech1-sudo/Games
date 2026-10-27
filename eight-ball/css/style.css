@@ -255,7 +255,7 @@ button.chip { border-color: var(--brass-2); }
   background: linear-gradient(90deg, #3E9B63, var(--yellow) 60%, var(--red));
 }
 .power .hint { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; font-weight: 600; color: var(--muted); pointer-events: none; transition: opacity 0.15s; }
-.power.pulling .hint { opacity: 0; }
+.power.pulling .hint, .power.set .hint { opacity: 0; }
 .power .val { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-family: var(--font-d); font-size: 20px; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); pointer-events: none; }
 .power.off, .fine.off { opacity: 0.4; pointer-events: none; }
 
@@ -356,3 +356,15 @@ button.chip { border-color: var(--brass-2); }
 /* The 3D table's camera button. */
 .view-btn svg { width: 26px; height: 26px; color: var(--muted); }
 #table3d { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+
+/* A compact scoreboard: pause and the clock side by side, so the table
+   gets the height. */
+.hud { padding: 6px 8px 2px; gap: 6px; align-items: center; }
+.mid { flex-direction: row; gap: 5px; }
+.mid .icon-btn { width: 36px; height: 36px; border-radius: 10px; }
+.pl { padding: 5px 9px 6px; }
+.pl .nm { font-size: 13px; }
+.pl .fr { font-size: 18px; }
+.pl .grp { margin-top: 3px; min-height: 12px; }
+.pl .b { width: 10px; height: 10px; }
+.pl .tag { bottom: -8px; font-size: 9px; }

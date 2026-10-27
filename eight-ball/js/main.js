@@ -12,7 +12,7 @@
   const defaults = () => ({
     mode: 'ai', level: 'medium', race: 2,
     names: ['Player 1', 'Player 2'],
-    guide: 'long', clock: true, sound: true, table3d: true, view: 'player',
+    guide: 'long', clock: true, sound: true, table3d: true, view: 'player', quality: 'auto', hinted: false,
     record: { easy: [0, 0], medium: [0, 0], hard: [0, 0] },
   });
   let save = defaults();
@@ -85,6 +85,12 @@
   seg('seg-level', save.level, (v) => { save.level = v; menuState(); });
   seg('seg-race', save.race, (v) => { save.race = +v; });
   seg('seg-guide', save.guide, (v) => { save.guide = v; });
+  // Auto starts on High and drops to Fast if the phone can't keep up.
+  let autoFast = false;
+  const applyQuality = () => {
+    if (EB.render3d && ready3d) EB.render3d.setQuality(save.quality === 'fast' || (save.quality === 'auto' && autoFast) ? 'fast' : 'high');
+  };
+  seg('seg-quality', save.quality, (v) => { save.quality = v; autoFast = false; applyQuality(); });
 
   function menuState() {
     $('diff-row').hidden = save.mode !== 'ai';
@@ -102,6 +108,11 @@
     requestAnimationFrame(() => {
       EB.render.resize();
       G.startMatch({ mode: save.mode, level: save.level, race: save.race, names: save.names });
+      if (!save.hinted && EB.render === EB.render3d && EB.render3d.view === 'player') {
+        save.hinted = true;
+        persist();
+        setTimeout(() => G.say(EB.render3d.VIEW_NAMES.player + ' The camera button changes the view.', 'info', 5000), 3400);
+      }
     });
   });
 
@@ -275,6 +286,13 @@
         EB.render3d.init($('table3d'));
         EB.render3d.setView(save.view);
         ready3d = true;
+        applyQuality();
+        EB.render3d.watchSpeed(() => {
+          if (save.quality !== 'auto' || autoFast) return;
+          autoFast = true;
+          applyQuality();
+          G.say('Graphics switched to Fast to keep things smooth. You can change this in Settings.', 'info', 3600);
+        });
       } catch (e) {
         save.table3d = false;
       }
@@ -293,7 +311,7 @@
   $('btn-view').addEventListener('click', () => {
     if (EB.render !== EB.render3d) return;
     A.tap();
-    G.say(EB.render3d.cycleView(), 'info', 1400);
+    G.say(EB.render3d.cycleView(), 'info', 3200);
     save.view = EB.render3d.view;
     persist();
   });

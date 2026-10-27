@@ -2,7 +2,7 @@
 
 The Eight-Ball pool game as a regular Android app: download the APK, install it, and it gets its own icon on your home screen. No app store needed.
 
-**Download:** [`dist/eight-ball.apk`](dist/eight-ball.apk) (about 552 KB, version 1.3)
+**Download:** [`dist/eight-ball.apk`](dist/eight-ball.apk) (about 552 KB, version 1.4)
 
 ## Installing it
 

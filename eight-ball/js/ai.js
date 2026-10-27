@@ -9,10 +9,17 @@
   const { TABLE, kind, phys, rules } = EB;
   const { W, L, R, D, pockets } = TABLE;
 
+  // spins are [side, follow/draw] pairs. `check` is how many of the best
+  // shots it re-tries with a wobble in the aim, to prefer the ones that
+  // still go in when it doesn't hit them perfectly.
   const LEVELS = {
-    easy: { aim: 0.024, pow: 0.15, lines: 4, mults: [1.2], spins: [0], safeties: [0], pick: 3 },
-    medium: { aim: 0.011, pow: 0.07, lines: 6, mults: [1, 1.5], spins: [0, -0.5], safeties: [-0.6, 0, 0.6], pick: 1 },
-    hard: { aim: 0.004, pow: 0.03, lines: 9, mults: [0.9, 1.3, 1.8], spins: [0, -0.6, 0.5], safeties: [-0.85, -0.45, 0, 0.45, 0.85], pick: 1 },
+    easy: { aim: 0.024, pow: 0.15, lines: 4, mults: [1.2], spins: [[0, 0]], safeties: [0], pick: 3, check: 0 },
+    medium: { aim: 0.011, pow: 0.07, lines: 7, mults: [1, 1.5], spins: [[0, 0], [0, -0.5], [0, 0.45]], safeties: [-0.6, 0, 0.6], pick: 1, check: 4 },
+    hard: {
+      aim: 0.004, pow: 0.03, lines: 12, mults: [0.85, 1.15, 1.6, 2.2],
+      spins: [[0, 0], [0, -0.65], [0, -0.3], [0, 0.5], [-0.55, 0], [0.55, 0]],
+      safeties: [-0.85, -0.45, 0, 0.45, 0.85], pick: 1, check: 10,
+    },
   };
 
   const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
@@ -63,6 +70,15 @@
     return l.length ? l[0].q : 0;
   };
 
+  // How good a position is: the best pot, plus a bit for a second ball
+  // that's also on, so the cue ball is left where the break can go on.
+  function flow(balls, on) {
+    const l = potLines(balls, on);
+    if (!l.length) return 0;
+    const second = l.find((x) => x.id !== l[0].id);
+    return l[0].q + (second ? second.q * 0.35 : 0);
+  }
+
   // Roughly how hard to hit a pot so the object ball reaches the pocket.
   // The object ball skids off the hit (keeping 5/7 of its speed once it
   // rolls), then rolls against the cloth's resistance; same for the cue ball.
@@ -87,7 +103,7 @@
     rules.apply(next, r);
     if (r.choose) next.groups[next.cur] = null;
     const on2 = rules.ballsOn(next, sim, false);
-    const q = bestQ(sim, on2);
+    const q = next.cur === st.cur ? flow(sim, on2) : bestQ(sim, on2);
     if (next.cur === st.cur) return (r.cont ? 300 : 120) + q * 250 + ev.potted.length * 10;
     return 40 - q * 300;
   }
@@ -104,7 +120,7 @@
     for (const ln of potLines(balls, pre.on).slice(0, lv.lines)) {
       const v = potSpeed(ln);
       for (const m of lv.mults) {
-        for (const s of lv.spins) cands.push({ dir: { x: ln.dx, y: ln.dy }, speed: Math.min(8000, v * m), spin: { x: 0, y: s } });
+        for (const [sx, sy] of lv.spins) cands.push({ dir: { x: ln.dx, y: ln.dy }, speed: Math.min(8000, v * m), spin: { x: sx, y: sy } });
       }
     }
     // Safeties: thin, half and full contacts on each ball on, at gentle speeds.
@@ -127,6 +143,21 @@
     }
     for (const cd of cands) cd.score = evaluate(st, balls, pre, cd) + Math.random() * 4;
     cands.sort((a, b) => b.score - a.score);
+    // A shot that only works when struck perfectly isn't worth much: re-try
+    // the best few with the aim off a little either way.
+    if (lv.check) {
+      const wob = Math.max(lv.aim, 0.0035) * 1.3;
+      for (const cd of cands.slice(0, lv.check)) {
+        const base = Math.atan2(cd.dir.y, cd.dir.x);
+        let sum = cd.score;
+        for (const k of [-1, 1]) {
+          const a = base + k * wob;
+          sum += evaluate(st, balls, pre, { ...cd, dir: { x: Math.cos(a), y: Math.sin(a) } });
+        }
+        cd.score = sum / 3;
+      }
+      cands.sort((a, b) => b.score - a.score);
+    }
     const top = cands.slice(0, Math.min(lv.pick, cands.length)).filter((cd) => cd.score > cands[0].score - 200);
     const pick = top[Math.floor(Math.random() * top.length)];
     const ang = Math.atan2(pick.dir.y, pick.dir.x) + gauss() * lv.aim;

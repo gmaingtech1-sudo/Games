@@ -26,7 +26,11 @@
   const LAMP_Z = [L * 0.2, L * 0.5, L * 0.8];
   const CUE_LEN = 1450;
   const VIEWS = ['player', 'overhead', 'top'];
-  const VIEW_NAMES = { player: 'Player view', overhead: 'Overhead view', top: 'Top view' };
+  const VIEW_NAMES = {
+    player: 'Player view: drag sideways to aim, pull down to draw the cue back and let go to strike.',
+    overhead: 'Overhead view: touch where you want to aim.',
+    top: 'Top view: touch where you want to aim.',
+  };
 
   const COL = { red: 0xB0101E, yellow: 0xE8AE08, black: 0x0B0B0D, cue: 0xF1ECDD };
 
@@ -45,6 +49,10 @@
   const balls = [];
   let cue = null;
   let lamp = null;
+  let quality = 'high';
+  const spots = [];
+  let slowCheck = { n: 0, sum: 0 };
+  let onSlow = null;
   const fx = {};
 
   /* ---------- Small helpers ---------- */
@@ -577,6 +585,7 @@
       s.shadow.normalBias = 0.5;
       scene.add(s);
       scene.add(s.target);
+      spots.push(s);
     }
     // What the glossy balls reflect: a dark room with the lamp overhead.
     const env = new T.Scene();
@@ -630,12 +639,32 @@
     cw = Math.max(1, r.width);
     ch = Math.max(1, r.height);
     land = cw > ch * 1.08;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, quality === 'fast' ? 1.1 : 1.75));
     renderer.setSize(cw, ch, false);
     camera.aspect = cw / ch;
     camera.updateProjectionMatrix();
     snap = true;
     lastSig = '';
+  }
+
+  // High: soft shadows from all three shades, sharp on high-density screens.
+  // Fast: no shadows and fewer pixels, for phones that struggle.
+  function setQuality(q) {
+    quality = q === 'fast' ? 'fast' : 'high';
+    if (!renderer) return;
+    const shadows = quality === 'high';
+    renderer.shadowMap.enabled = shadows;
+    for (const s of spots) s.castShadow = shadows;
+    scene.traverse((o) => {
+      if (!o.material) return;
+      for (const m of [].concat(o.material)) m.needsUpdate = true;
+    });
+    resize();
+  }
+
+  // Called with no arguments when frames take too long while the balls run.
+  function watchSpeed(fn) {
+    onSlow = fn;
   }
 
   function cycleView() {
@@ -868,6 +897,15 @@
     if (sig === lastSig) return;
     lastSig = sig;
     renderer.render(scene, camera);
+    // Keep an eye on the frame rate while the balls are running.
+    if (G.phase === 'rolling' && quality === 'high' && onSlow) {
+      slowCheck.n++;
+      slowCheck.sum += dt;
+      if (slowCheck.sum >= 1.5 && slowCheck.n >= 12) {
+        if (slowCheck.sum / slowCheck.n > 0.045) onSlow();
+        slowCheck = { n: 0, sum: 0 };
+      }
+    }
   }
 
   let lastSig = '';
@@ -908,5 +946,5 @@
     return view === 'player' && !(G.st && G.st.inHand) ? 'drag' : 'point';
   }
 
-  EB.render3d = { supported, init, resize, draw, toWorld, toScreen, aimStyle, cycleView, setView, get view() { return view; }, VIEW_NAMES };
+  EB.render3d = { supported, init, resize, draw, toWorld, toScreen, aimStyle, cycleView, setView, setQuality, watchSpeed, get view() { return view; }, VIEW_NAMES };
 })(window.EB = window.EB || {});
