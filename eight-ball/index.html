@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Eight-Ball</title>
+<meta name="description" content="Pub pool for your phone, played to the World Eightball Pool Federation rules. Reds and yellows, two visits after a foul, against the computer or a friend.">
+<meta name="theme-color" content="#0B1A13">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Eight-Ball">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== Menu ===================== -->
+  <section id="menu" class="screen menu" aria-label="Menu">
+    <div class="menu-inner">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 100 100"><defs><radialGradient id="lg" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#5a5d66"/><stop offset=".35" stop-color="#18191d"/><stop offset="1" stop-color="#000"/></radialGradient></defs><circle cx="50" cy="50" r="46" fill="url(#lg)" stroke="none"/><circle cx="50" cy="50" r="21" fill="#F6F2E6" stroke="none"/><text x="50" y="59" text-anchor="middle" font-family="Oswald, sans-serif" font-weight="700" font-size="26" fill="#141518" stroke="none">8</text></svg>
+      </div>
+      <h1 class="brand">Eight-Ball</h1>
+      <p class="sub">Pub pool, played to World Rules</p>
+
+      <div class="card">
+        <div class="lbl">Opponent</div>
+        <div class="seg" id="seg-mode" role="radiogroup" aria-label="Opponent">
+          <button type="button" data-v="ai">Computer</button>
+          <button type="button" data-v="2p">Two players</button>
+        </div>
+        <div id="diff-row">
+          <div class="lbl">Computer skill</div>
+          <div class="seg" id="seg-level" role="radiogroup" aria-label="Computer skill">
+            <button type="button" data-v="easy">Easy</button>
+            <button type="button" data-v="medium">Medium</button>
+            <button type="button" data-v="hard">Hard</button>
+          </div>
+        </div>
+        <div class="lbl">First to win</div>
+        <div class="seg" id="seg-race" role="radiogroup" aria-label="Frames to win">
+          <button type="button" data-v="1">1 frame</button>
+          <button type="button" data-v="2">2</button>
+          <button type="button" data-v="3">3</button>
+          <button type="button" data-v="5">5</button>
+        </div>
+        <button id="btn-play" class="btn primary" type="button">Play</button>
+      </div>
+
+      <div class="links">
+        <button id="btn-rules" class="btn ghost" type="button">Rules</button>
+        <button id="btn-settings" class="btn ghost" type="button">Settings</button>
+      </div>
+      <p class="record" id="record"></p>
+    </div>
+  </section>
+
+  <!-- ===================== Game ===================== -->
+  <section id="game" class="screen game" aria-label="Pool table" hidden>
+    <header class="hud">
+      <div class="pl" id="pl0">
+        <div class="pl-top"><span class="nm"></span><span class="fr"></span></div>
+        <div class="grp"></div>
+        <span class="tag"></span>
+      </div>
+      <div class="mid">
+        <button id="btn-pause" class="icon-btn" type="button" aria-label="Pause">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg>
+        </button>
+        <div id="clock" class="clock" aria-label="Shot clock" hidden>
+          <svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9" pathLength="100" class="track"/><circle id="clock-ring" cx="18" cy="18" r="15.9" pathLength="100" class="ring"/></svg>
+          <span id="clock-text">60</span>
+        </div>
+      </div>
+      <div class="pl right" id="pl1">
+        <div class="pl-top"><span class="fr"></span><span class="nm"></span></div>
+        <div class="grp"></div>
+        <span class="tag"></span>
+      </div>
+    </header>
+
+    <div class="table-wrap">
+      <canvas id="table" aria-label="Pool table. Touch to aim."></canvas>
+      <div id="ref" class="ref" role="status" aria-live="polite"></div>
+      <div id="chips" class="chips"></div>
+    </div>
+
+    <footer class="controls">
+      <div id="fine" class="fine" aria-label="Fine aim: drag sideways"><span>◂ fine aim ▸</span></div>
+      <div class="ctl-row">
+        <button id="btn-spin" class="spin-btn" type="button" aria-label="Spin">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="#F6F2E6" stroke="#9a9484" stroke-width="1"/><circle id="spin-dot" cx="12" cy="12" r="2.6" fill="#D3232E" stroke="none"/></svg>
+        </button>
+        <div id="power" class="power" aria-label="Power: drag right, let go to shoot">
+          <div id="power-fill" class="fill"></div>
+          <span class="hint">Pull right for power · let go to shoot</span>
+          <span id="power-val" class="val"></span>
+        </div>
+      </div>
+    </footer>
+  </section>
+
+  <!-- ===================== Rules ===================== -->
+  <section id="rules" class="screen page" aria-label="Rules" hidden>
+    <header class="page-top">
+      <button id="rules-back" class="icon-btn" type="button" aria-label="Back">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h2>Rules</h2>
+    </header>
+    <div class="page-body">
+      <p class="lead">The game follows the official rules of the World Eightball Pool Federation (the abridged version, January 2020). Here's how they play out on the table.</p>
+
+      <h3>Winning a frame</h3>
+      <p>There are seven reds, seven yellows and the black eight-ball. Pot all of your colour, in any order and any pockets, then pot the eight-ball to win. You can pot more than one of your colour in a shot, but the eight-ball needs a shot of its own.</p>
+
+      <h3>The break</h3>
+      <ul>
+        <li>A coin toss decides who breaks the first frame. After that, players take turns to break.</li>
+        <li>You break from <b>baulk</b>: the cue ball's centre must be behind the baulk line, the line across the bottom fifth of the table.</li>
+        <li>A <b>fair break</b> pots at least one colour, or drives at least four balls to a cushion.</li>
+        <li>Not a fair break: the balls are re-racked and your opponent breaks instead, with two visits.</li>
+        <li>Eight-ball potted on the break: re-rack, and the same player breaks again.</li>
+        <li>Cue ball potted on a fair break: your turn ends and your opponent plays from baulk.</li>
+      </ul>
+
+      <h3>Deciding colours</h3>
+      <ul>
+        <li>Until colours are decided the table is <b>open</b>, and you can play at either colour (never the eight-ball first).</li>
+        <li>Pot a colour on the break and you choose your colour. Choose one you potted and it's yours. Choose one you didn't, and you must pot it with your next shot to be on it.</li>
+        <li>After the break, potting balls of one colour puts you on that colour. Pot both and you choose.</li>
+        <li>Colours are never decided on a foul. Once decided, they're yours for the rest of the frame.</li>
+      </ul>
+
+      <h3>A legal shot</h3>
+      <p>The cue ball must hit a ball you're <b>on</b> first. Then you must either pot a ball you're on, or make any ball (cue ball included) touch a cushion. Pot one of yours legally and you play again.</p>
+      <p>If you're in a <b>total snooker</b>, with no straight line to any part of any ball you're on, you only need to hit one. The game spots this for you.</p>
+
+      <h3>Fouls and two visits</h3>
+      <p>After a standard foul your opponent gets <b>two visits</b>. If they miss on the first, they simply play again from where the balls stopped. A foul on either visit passes the turn back.</p>
+      <ul>
+        <li>Potting the cue ball (an <b>in-off</b>). The next player plays from baulk.</li>
+        <li>Hitting the wrong ball first, or missing everything.</li>
+        <li>Potting one of your opponent's balls.</li>
+        <li>No ball potted and nothing reaching a cushion.</li>
+        <li>Playing into a ball the cue ball is touching (see below).</li>
+        <li>Taking more than 60 seconds (a non-standard foul): two visits, from where the cue ball lies or from baulk.</li>
+      </ul>
+      <p>Other fouls go on: the cue ball stays where it stops.</p>
+
+      <h3>Foul snookers</h3>
+      <p>If, after a foul, you can't hit both edges of any of your balls in a straight line, you're <b>foul snookered</b>. For your first shot you can nominate one of your opponent's balls (or the eight-ball) to count as yours, and potting it is fine. Or you can take the cue ball into baulk. Pot a nominated eight-ball before you're on it and you lose the frame.</p>
+      <p>On the eight-ball and foul snookered? Pot the nominated ball, the eight-ball, or both, and you win.</p>
+
+      <h3>Touching balls</h3>
+      <p>If the cue ball is touching another ball, you must play away from it at more than 90°. If it touches several and one of them is yours, playing away from that one lets you play into the others.</p>
+
+      <h3>Losing the frame</h3>
+      <ul>
+        <li>Potting the eight-ball on a foul.</li>
+        <li>Potting the eight-ball while any of your colour is still on the table.</li>
+        <li>Potting the eight-ball in the same shot as your last ball.</li>
+      </ul>
+
+      <h3>Time and stalemates</h3>
+      <p>You have 60 seconds for each shot, with a warning at 30. The clock can be switched off in Settings. If both players go three turns in a row without the cue ball touching another ball, it's a stalemate and the frame is replayed with the same player breaking.</p>
+
+      <h3>Left out</h3>
+      <p class="small">Rules about the lag, conduct at the table (smoking, drinks, coaching, leaving the area), push shots, double hits, jump shots, balls leaving the table and balls falling on their own can't happen on a phone, so they're not in the game. Foul jaw snookers (where the jaw of a pocket blocks the shot) aren't detected.</p>
+    </div>
+  </section>
+
+  <!-- ===================== Sheets ===================== -->
+  <div id="scrim" class="scrim" hidden></div>
+
+  <div id="sheet-colour" class="sheet" role="dialog" aria-modal="true" aria-labelledby="colour-title" hidden>
+    <h2 id="colour-title">Choose your colour</h2>
+    <p id="colour-text" class="muted"></p>
+    <div class="colour-pick">
+      <button type="button" class="pick" data-c="red"><i class="b red big"></i>Reds</button>
+      <button type="button" class="pick" data-c="yellow"><i class="b yellow big"></i>Yellows</button>
+    </div>
+  </div>
+
+  <div id="sheet-spin" class="sheet" role="dialog" aria-modal="true" aria-labelledby="spin-title" hidden>
+    <h2 id="spin-title">Spin</h2>
+    <p class="muted">Touch where the cue tip strikes the cue ball. Top for follow, bottom for draw (screw), the sides for side.</p>
+    <div id="spin-ball" class="spin-ball"><i id="spin-mark"></i></div>
+    <div class="row">
+      <button id="spin-centre" type="button" class="btn ghost">Centre</button>
+      <button id="spin-done" type="button" class="btn primary">Done</button>
+    </div>
+  </div>
+
+  <div id="sheet-pause" class="sheet" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden>
+    <h2 id="pause-title">Paused</h2>
+    <p id="pause-score" class="muted"></p>
+    <button id="btn-resume" type="button" class="btn primary">Resume</button>
+    <button id="btn-pause-rules" type="button" class="btn ghost">Rules</button>
+    <button id="btn-pause-settings" type="button" class="btn ghost">Settings</button>
+    <button id="btn-quit" type="button" class="btn ghost danger">Leave the match</button>
+  </div>
+
+  <div id="sheet-over" class="sheet" role="dialog" aria-modal="true" aria-labelledby="over-title" hidden>
+    <h2 id="over-title"></h2>
+    <p id="over-why" class="muted"></p>
+    <div id="over-score" class="score"></div>
+    <button id="btn-next" type="button" class="btn primary">Next frame</button>
+    <button id="btn-menu" type="button" class="btn ghost">Menu</button>
+  </div>
+
+  <div id="sheet-settings" class="sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+    <h2 id="settings-title">Settings</h2>
+    <label class="field"><span>Player 1</span><input id="set-name0" type="text" maxlength="14" autocomplete="off"></label>
+    <label class="field"><span>Player 2</span><input id="set-name1" type="text" maxlength="14" autocomplete="off"></label>
+    <div class="lbl">Aiming guide</div>
+    <div class="seg" id="seg-guide" role="radiogroup" aria-label="Aiming guide">
+      <button type="button" data-v="long">Long</button>
+      <button type="button" data-v="short">Short</button>
+      <button type="button" data-v="off">Line only</button>
+    </div>
+    <label class="toggle"><span>60-second shot clock</span><input type="checkbox" id="set-clock"></label>
+    <label class="toggle"><span>Sound</span><input type="checkbox" id="set-sound"></label>
+    <button id="settings-done" type="button" class="btn primary">Done</button>
+  </div>
+
+</div>
+
+<script src="js/physics.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/render.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
