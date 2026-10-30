@@ -379,3 +379,39 @@ button.chip { border-color: var(--brass-2); }
   background: radial-gradient(ellipse 85% 75% at 50% 48%, transparent 55%, rgba(0, 0, 0, 0.42) 100%);
 }
 .ref, .chips { z-index: 2; }
+
+/* ---------- Tournament ---------- */
+
+.btn.gold-ghost {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-top: 10px; background: var(--bg); border: 1px solid var(--brass-2); color: #FFE39A;
+}
+.btn.gold-ghost svg { width: 22px; height: 22px; }
+.tour-body { display: flex; flex-direction: column; gap: 12px; }
+.tour-status {
+  display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center;
+  padding: 16px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line);
+}
+.tour-status b { font-family: var(--font-d); font-size: 22px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; color: var(--brass); }
+.tour-status .trophy { font-size: 54px; line-height: 1; }
+.tour-actions { display: flex; flex-direction: column; gap: 8px; }
+.bracket { display: flex; flex-direction: column; gap: 14px; }
+.round h3 { margin: 0 0 6px; display: flex; align-items: baseline; gap: 8px; }
+.round h3 small { font-family: var(--font-b); font-size: 12px; color: var(--muted); text-transform: none; letter-spacing: 0; }
+.match { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 6px; background: var(--panel); }
+.seat { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; gap: 8px; }
+.seat + .seat { border-top: 1px solid var(--line); }
+.seat .who { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.seat em { font-style: normal; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.seat .sc { font-family: var(--font-d); font-size: 18px; color: var(--muted); }
+.seat.won { font-weight: 700; }
+.seat.won .sc { color: var(--brass); }
+.seat.lost { color: var(--muted); }
+.seat.you { box-shadow: inset 3px 0 0 var(--brass); }
+.seat.tbc { color: var(--muted); font-style: italic; font-size: 13px; }
+.round.champ .seat { font-size: 17px; }
+@media (min-width: 720px) {
+  .bracket { flex-direction: row; align-items: center; }
+  .round { flex: 1; }
+}
+.tour-status span b { font-family: var(--font-b); font-size: inherit; font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--text); }

@@ -62,7 +62,7 @@
     G.race = opts.race;
     G.players = [
       { name: opts.names[0], ai: null, frames: 0 },
-      { name: opts.mode === 'ai' ? 'Computer' : opts.names[1], ai: opts.mode === 'ai' ? opts.level : null, frames: 0 },
+      { name: opts.mode === 'ai' ? opts.oppName || 'Computer' : opts.names[1], ai: opts.mode === 'ai' ? opts.level : null, frames: 0 },
     ];
     G.starter = Math.random() < 0.5 ? 0 : 1;
     G.paused = false;

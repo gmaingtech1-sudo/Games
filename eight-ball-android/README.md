@@ -2,7 +2,7 @@
 
 The Eight-Ball pool game as a regular Android app: download the APK, install it, and it gets its own icon on your home screen. No app store needed.
 
-**Download:** [`dist/eight-ball.apk`](dist/eight-ball.apk) (about 556 KB, version 1.5)
+**Download:** [`dist/eight-ball.apk`](dist/eight-ball.apk) (about 560 KB, version 1.6)
 
 ## Installing it
 
@@ -25,7 +25,7 @@ It's the same game as the web version in [`../eight-ball`](../eight-ball), packa
 - The view turns with the phone: upright or sideways. Rotating doesn't restart the game.
 - The screen stays on while you play.
 - The phone gives a little buzz when a ball drops, a firmer one for a foul, and a double one when a frame is won. On Android 10+ these use the phone's tuned click effects.
-- The back button closes the spin, settings or pause sheet, leaves the rules, and pauses a match before it leaves the app.
+- The back button closes the spin, settings or pause sheet, leaves the rules or the tournament draw, and pauses a match before it leaves the app.
 - Switching away from the app pauses the match, so the shot clock and the computer wait for you.
 
 | File | What it does |

@@ -1,7 +1,7 @@
 /* Eight-Ball — offline support. Serves the cached game instantly and
    refreshes the cache in the background, so updates land on the next launch.
    Fonts come from Google and are left to the browser's own cache. */
-const CACHE = 'eight-ball-v7';
+const CACHE = 'eight-ball-v8';
 const SHELL = [
   './',
   'index.html',
@@ -14,6 +14,7 @@ const SHELL = [
   'js/render.js',
   'js/render3d.js',
   'js/game.js',
+  'js/tour.js',
   'js/main.js',
   'manifest.webmanifest',
   'icons/icon.svg',

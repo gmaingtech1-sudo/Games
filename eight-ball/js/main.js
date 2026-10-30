@@ -14,11 +14,12 @@
     names: ['Player 1', 'Player 2'],
     guide: 'long', clock: true, sound: true, table3d: true, view: 'player', quality: 'auto', hinted: false,
     record: { easy: [0, 0], medium: [0, 0], hard: [0, 0] },
+    tour: null, trophies: { easy: 0, medium: 0, hard: 0 },
   });
   let save = defaults();
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (s) save = { ...save, ...s, record: { ...save.record, ...(s.record || {}) } };
+    if (s) save = { ...save, ...s, record: { ...save.record, ...(s.record || {}) }, trophies: { ...save.trophies, ...(s.trophies || {}) } };
   } catch (e) { /* storage may be blocked */ }
   const persist = () => {
     try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* ignore */ }
@@ -33,7 +34,7 @@
   let sheetBack = null;
 
   function show(id) {
-    for (const s of ['menu', 'game', 'rules']) $(s).hidden = s !== id;
+    for (const s of ['menu', 'game', 'rules', 'tour']) $(s).hidden = s !== id;
     screen = id;
     if (id === 'game') requestAnimationFrame(() => EB.render.resize());
   }
@@ -93,6 +94,8 @@
   seg('seg-quality', save.quality, (v) => { save.quality = v; autoFast = false; applyQuality(); });
 
   function menuState() {
+    const t = save.tour;
+    $('btn-tour-text').textContent = t && t.champion === null && t.out === null ? 'Continue the tournament' : 'Tournament';
     $('diff-row').hidden = save.mode !== 'ai';
     const r = save.record[save.level];
     $('record').textContent = save.mode === 'ai' && (r[0] || r[1])
@@ -179,9 +182,114 @@
   function quit() {
     G.phase = 'idle';
     G.paused = true;
+    if (tourMatch) {
+      // Walking out of a tournament match: it'll be played again from 0–0.
+      tourMatch = false;
+      showTour();
+      return;
+    }
     show('menu');
     menuState();
   }
+
+  /* ---------- The tournament ---------- */
+
+  const LEVEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+  const ROUND_OF = ['the quarter-final', 'the semi-final', 'the final'];
+  let tourMatch = false;
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function showTour() {
+    const T = EB.tour;
+    const t = save.tour;
+    show('tour');
+    $('tour-field').textContent = `An eight-player knockout at the ${LEVEL[t.field].toLowerCase()} level. Quarter-finals and semi-finals are first to 2 frames, the final is first to 3.`;
+    const n = T.next(t);
+    let status = '';
+    let actions = '';
+    if (n) {
+      status = `<b>${n.round}</b><span>You play <b>${esc(n.opp.name)}</b> (${LEVEL[n.opp.level]}), first to ${n.race} frames.</span>`;
+      actions = `<button class="btn primary" type="button" data-act="play">Play the ${n.round.toLowerCase()}</button>
+        <button class="btn ghost" type="button" data-act="quit">Give up the tournament</button>`;
+    } else if (t.champion === 0) {
+      status = `<span class="trophy" aria-hidden="true">🏆</span><b>You won the Eight-Ball Open!</b>`;
+      actions = '<button class="btn primary" type="button" data-act="new">New tournament</button>';
+    } else {
+      status = `<b>Knocked out in ${ROUND_OF[t.out]}</b><span>The Open was won by ${esc(t.players[t.champion].name)}.</span>`;
+      actions = '<button class="btn primary" type="button" data-act="new">New tournament</button>';
+    }
+    $('tour-status').innerHTML = status;
+    $('tour-actions').innerHTML = actions;
+    // The draw.
+    let html = '';
+    t.rounds.forEach((ms, r) => {
+      html += `<div class="round"><h3>${T.ROUNDS[r]}<small>first to ${T.RACE[r]}</small></h3>`;
+      const count = [4, 2, 1][r];
+      for (let i = 0; i < count; i++) {
+        const m = ms[i];
+        const row = (who, score) => {
+          if (who === undefined) return '<div class="seat tbc">To be decided</div>';
+          const p = t.players[who];
+          const won = m && m.w === who;
+          const lost = m && m.w !== null && !won;
+          return `<div class="seat${who === 0 ? ' you' : ''}${won ? ' won' : ''}${lost ? ' lost' : ''}">
+            <span class="who">${esc(p.name)}${p.level ? `<em>${LEVEL[p.level]}</em>` : '<em>You</em>'}</span>
+            <span class="sc">${m && m.w !== null ? score : ''}</span></div>`;
+        };
+        html += `<div class="match">${row(m && m.a, m && m.s[0])}${row(m && m.b, m && m.s[1])}</div>`;
+      }
+      html += '</div>';
+    });
+    if (t.champion !== null) html += `<div class="round champ"><h3>Champion</h3><div class="match"><div class="seat won${t.champion === 0 ? ' you' : ''}"><span class="who">🏆 ${esc(t.players[t.champion].name)}</span></div></div></div>`;
+    $('bracket').innerHTML = html;
+    const tr = save.trophies;
+    const total = tr.easy + tr.medium + tr.hard;
+    $('tour-trophies').textContent = total ? `Your trophies: ${['easy', 'medium', 'hard'].filter((k) => tr[k]).map((k) => `${tr[k]} ${LEVEL[k].toLowerCase()}`).join(', ')}.` : '';
+  }
+
+  function newTour() {
+    save.tour = EB.tour.create(save.level, save.names[0]);
+    persist();
+    showTour();
+  }
+
+  $('btn-tour').addEventListener('click', () => {
+    A.init();
+    A.tap();
+    if (!save.tour) newTour();
+    else showTour();
+  });
+  $('tour-back').addEventListener('click', () => { show('menu'); menuState(); });
+
+  let quitArmed = 0;
+  $('tour-actions').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    A.tap();
+    const act = b.dataset.act;
+    if (act === 'new') newTour();
+    else if (act === 'quit') {
+      // Ask twice: giving up can't be undone.
+      if (Date.now() - quitArmed > 3000) {
+        quitArmed = Date.now();
+        b.textContent = 'Tap again to give up';
+        return;
+      }
+      save.tour = null;
+      persist();
+      show('menu');
+      menuState();
+    } else if (act === 'play') {
+      const n = EB.tour.next(save.tour);
+      tourMatch = true;
+      show('game');
+      requestAnimationFrame(() => {
+        EB.render.resize();
+        G.startMatch({ mode: 'ai', level: n.opp.level, race: n.race, names: save.names, oppName: n.opp.name });
+        G.say(`${n.round}: first to ${n.race}. ${G.players[G.starter].name} to break.`, 'info', 3400);
+      });
+    }
+  });
 
   $('btn-spin').addEventListener('click', () => {
     if (G.phase !== 'aim') return;
@@ -229,8 +337,10 @@
     $('over-title').textContent = match ? `${w.name} wins the match!` : `${w.name} wins the frame`;
     $('over-why').textContent = why;
     $('over-score').innerHTML = `<span>${pl[0].name}</span><b>${pl[0].frames} – ${pl[1].frames}</b><span>${pl[1].name}</span>`;
-    $('btn-next').textContent = match ? 'Play again' : 'Next frame';
-    $('btn-next').dataset.match = match ? '1' : '';
+    $('btn-next').textContent = match ? (tourMatch ? 'Back to the draw' : 'Play again') : 'Next frame';
+    $('btn-next').dataset.match = match ? (tourMatch ? 'tour' : '1') : '';
+    $('btn-menu').hidden = match && tourMatch;
+    $('btn-menu').textContent = tourMatch ? 'Leave (replay this match later)' : 'Menu';
     if (match && pl[1].ai) {
       save.record[pl[1].ai][winner === 0 ? 0 : 1]++;
       persist();
@@ -240,7 +350,17 @@
   $('btn-next').addEventListener('click', () => {
     const again = $('btn-next').dataset.match;
     close();
-    if (again) G.startMatch({ mode: save.mode, level: save.level, race: save.race, names: save.names });
+    if (again === 'tour') {
+      const [me, them] = G.players;
+      const t = save.tour;
+      EB.tour.result(t, me.frames, them.frames);
+      if (t.champion === 0) save.trophies[t.field]++;
+      persist();
+      tourMatch = false;
+      G.phase = 'idle';
+      G.paused = true;
+      showTour();
+    } else if (again) G.startMatch({ mode: save.mode, level: save.level, race: save.race, names: save.names });
     else G.nextFrame();
   });
   $('btn-menu').addEventListener('click', () => {
@@ -335,13 +455,14 @@
   EB.app = {
     back() {
       if (sheet === 'sheet-colour') return true;
-      if (sheet === 'sheet-over') { $('btn-menu').click(); return true; }
+      if (sheet === 'sheet-over') { $($('btn-menu').hidden ? 'btn-next' : 'btn-menu').click(); return true; }
       if (sheet) {
         if (sheet === 'sheet-settings') saveSettings();
         close();
         return true;
       }
       if (screen === 'rules') { $('rules-back').click(); return true; }
+      if (screen === 'tour') { $('tour-back').click(); return true; }
       if (screen === 'game') {
         if (G.phase !== 'idle') $('btn-pause').click();
         return true;

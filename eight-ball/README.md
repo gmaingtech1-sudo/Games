@@ -17,6 +17,14 @@ The balls skid, roll, spin, draw and throw the way real ones do. The table is li
 
 The aiming line shows the ghost ball where the cue ball will make contact, the path the object ball will take, and where the cue ball would glance off without spin. If you're lined up on a ball you're not on, the ghost ball turns red with a cross. In Settings you can shorten the guide, cut it to a single line, or turn it off.
 
+## The tournament
+
+**Tournament** on the menu enters you in the Eight-Ball Open, an eight-player knockout against seven regulars from the pub, each with their own name and skill. The quarter-finals and semi-finals are first to 2 frames, and the final is first to 3. The draw is seeded: you start against one of the weaker players, and the strongest is in the other half of the draw, waiting in the final. The matches you're not in are played out between rounds, and you can follow the results in the draw.
+
+The **Computer skill** you've picked on the menu sets the level of the field. Easy is mostly beginners, and Hard is full of sharpshooters. Lose and you're out, and the rest of the tournament is played out to a champion. Win the final and the trophy goes in your cabinet, counted for each level.
+
+The tournament is saved as you go, so you can leave and **continue** later. If you walk out of a match partway through, it starts again from 0–0 next time.
+
 ## In 3D
 
 The table is fully 3D, in a pub room with wood-panelled walls, wall lights and a dartboard. The cloth is felt with a fine weave and a soft sheen. The cushions and the varnished rails have rounded edges, the pockets have rolled leather lips, and there's a cube of chalk on the rail. Each ball sits on its own soft contact shadow and reflects all three lamp shades. A long lamp hangs over the table, and its three shades are spotlights that cast real shadows of the balls and the cue. The balls are glossy and reflect the lamp. The cue is a real tapered cue, held with the butt raised to clear the rail, and it comes through the ball when you shoot.
@@ -111,6 +119,7 @@ Then open <http://localhost:8000>. Opening `index.html` straight from the file s
 | `js/render3d.js` | The 3D table and room, built with three.js from the same cushion, jaw and pocket shapes the physics uses: lighting and shadows, glossy balls turning with their spin, the cue, the aiming guide in 3D, and the three camera views |
 | `lib/three.min.js` | three.js r160 (MIT licence, see `lib/three.LICENSE`) |
 | `js/render.js` | The flat table, used when 3D is off or not available: the lamp-lit table, shaded balls whose markings turn as they roll, their shadows, the aiming guide and the cue, portrait or landscape |
+| `js/tour.js` | The tournament: the field, the seeded draw, playing out the other matches, and moving through the rounds |
 | `js/game.js` | A match in play: frames, turns, referee calls, the shot clock, touch controls and the computer's turns |
 | `js/audio.js` | Sounds synthesised with WebAudio (no audio files): ball clicks, cushions, the tip, rolling, pockets and the ball return |
 | `js/main.js` | The menu, settings, sheets and the main loop |
