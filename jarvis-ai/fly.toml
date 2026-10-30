@@ -1,0 +1,35 @@
+# Fly.io deployment. From the jarvis-ai/ folder:
+#   fly launch --no-deploy --copy-config   (pick a unique app name)
+#   fly volumes create jarvis_data --size 1 --region lhr
+#   fly secrets set JARVIS_PASSWORD=... ANTHROPIC_API_KEY=...
+#   fly deploy
+app = "jarvis-ai-change-me"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "backend/Dockerfile"
+
+[env]
+  TRUST_PROXY = "true"
+  DAILY_BUDGET_USD = "2"
+
+[mounts]
+  source = "jarvis_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  method = "GET"
+  path = "/api/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

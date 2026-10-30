@@ -1,0 +1,29 @@
+# Self-hosting on any Linux VPS with Docker. Caddy gets a free HTTPS
+# certificate from Let's Encrypt automatically.
+#   1. Point a domain (e.g. jarvis.example.com) at the server's IP.
+#   2. Put JARVIS_PASSWORD and ANTHROPIC_API_KEY in deploy/.env (chmod 600).
+#   3. Set the domain in deploy/Caddyfile.
+#   4. From the jarvis-ai/ folder: docker compose -f deploy/docker-compose.yml up -d --build
+services:
+  jarvis:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    environment:
+      TRUST_PROXY: "true"
+    volumes:
+      - jarvis-data:/data
+    restart: unless-stopped
+  caddy:
+    image: caddy:2.10.2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    restart: unless-stopped
+volumes:
+  jarvis-data:
+  caddy-data:

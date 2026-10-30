@@ -1,0 +1,7 @@
+# Replace with your own domain. Caddy obtains and renews the HTTPS certificate.
+jarvis.example.com {
+	encode gzip
+	reverse_proxy jarvis:8787 {
+		flush_interval -1
+	}
+}

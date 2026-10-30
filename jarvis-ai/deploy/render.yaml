@@ -1,0 +1,24 @@
+# Render Blueprint (copy to the repository root as render.yaml, or create the
+# service by hand with the same settings). A persistent disk needs a paid
+# instance type; without one, the database is wiped on every deploy/restart.
+services:
+  - type: web
+    name: jarvis-ai-backend
+    runtime: docker
+    dockerfilePath: ./jarvis-ai/backend/Dockerfile
+    dockerContext: ./jarvis-ai
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: TRUST_PROXY
+        value: "true"
+      - key: DAILY_BUDGET_USD
+        value: "2"
+      - key: JARVIS_PASSWORD
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+    disk:
+      name: jarvis-data
+      mountPath: /data
+      sizeGB: 1

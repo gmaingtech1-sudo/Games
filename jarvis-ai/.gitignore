@@ -1,0 +1,16 @@
+node_modules/
+backend/data/
+.env
+deploy/.env
+android/app/build/
+android/.gradle/
+android/build/
+android/local.properties
+android/.idea/
+android/**/*.iml
+android/release.keystore
+android/keystore.properties
+windows/**/bin/
+windows/**/obj/
+build/
+*.log

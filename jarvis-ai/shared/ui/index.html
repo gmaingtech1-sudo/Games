@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en" data-theme="arc">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#02070d">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src *; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>JARVIS AI</title>
+  <link rel="icon" href="img/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/jarvis.css">
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-mic" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M4 12 20 4l-6 16-2.5-6.5L4 12z"/></symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></symbol>
+      <symbol id="i-attach" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M20 11.5 12 19.5a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.7 17.2a1.7 1.7 0 0 1-2.4-2.4l7.6-7.6"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-history" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M3 12a9 9 0 1 0 3-6.7M3 4v4h4M12 7v5l3 2"/></symbol>
+      <symbol id="i-brain" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a2 2 0 0 0-3-1zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/></symbol>
+      <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.6" d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+      <symbol id="i-speaker" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" d="M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></symbol>
+      <symbol id="i-mute" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6M22 9l-5 6"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+      <symbol id="i-hands" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM2 10v2M22 10v2M5 8v6M19 8v6"/></symbol>
+      <symbol id="i-power" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" d="M12 3v8M6.3 6.3a8 8 0 1 0 11.4 0"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="scanlines" aria-hidden="true"></div>
+  <div class="grid-bg" aria-hidden="true"></div>
+
+  <div id="app" class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span id="brandName" class="brand-name">JARVIS</span>
+      </div>
+      <div class="status-wrap">
+        <span id="statusChip" class="status-chip" data-state="idle" role="status" aria-live="polite">IDLE</span>
+        <span id="connDot" class="conn-dot" data-conn="unknown" title="Connection"></span>
+      </div>
+      <nav class="top-actions">
+        <button class="icon-btn" id="btnNew" title="New conversation" aria-label="New conversation"><svg><use href="#i-plus"/></svg></button>
+        <button class="icon-btn" id="btnHistory" title="History" aria-label="Conversation history"><svg><use href="#i-history"/></svg></button>
+        <button class="icon-btn" id="btnMemory" title="Memory" aria-label="Saved memories"><svg><use href="#i-brain"/></svg></button>
+        <button class="icon-btn" id="btnSettings" title="Settings" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+      </nav>
+    </header>
+
+    <div id="banner" class="banner" hidden></div>
+
+    <main class="stage">
+      <section class="core" aria-label="Assistant visualiser">
+        <canvas id="viz" aria-hidden="true"></canvas>
+        <div class="core-caption">
+          <div id="coreState" class="core-state">STANDING BY</div>
+          <div id="coreHint" class="core-hint">Tap the microphone or type a message</div>
+        </div>
+      </section>
+
+      <section class="convo" aria-label="Conversation">
+        <div id="messages" class="messages" role="log" aria-live="polite"></div>
+        <div id="empty" class="empty">
+          <h2>How can I help?</h2>
+          <div class="suggestions">
+            <button class="suggest" data-prompt="Write a Unity C# third-person player controller using the new Input System, and explain how to set it up.">Unity player controller</button>
+            <button class="suggest" data-prompt="Help me brainstorm ideas for a short sci-fi story.">Brainstorm a story</button>
+            <button class="suggest" data-prompt="Explain how the internet works in simple language.">Explain something simply</button>
+            <button class="suggest" data-prompt="Help me plan my week. Ask me what I need to get done.">Plan my week</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="composer">
+      <div class="chips">
+        <select id="styleSelect" class="chip-select" aria-label="Conversation style"></select>
+        <button id="btnVoiceReplies" class="chip" aria-pressed="false" title="Speak replies aloud"><svg><use href="#i-speaker"/></svg><span>Voice replies</span></button>
+        <button id="btnHandsFree" class="chip" aria-pressed="false" title="Listen again after each reply"><svg><use href="#i-hands"/></svg><span>Hands-free</span></button>
+        <button id="btnStopSpeaking" class="chip chip-warn" hidden title="Stop speaking"><svg><use href="#i-mute"/></svg><span>Stop speaking</span></button>
+      </div>
+      <div id="attachments" class="attach-list" hidden></div>
+      <div class="input-row">
+        <button class="icon-btn" id="btnAttach" title="Attach a text or code file" aria-label="Attach a file"><svg><use href="#i-attach"/></svg></button>
+        <textarea id="input" rows="1" placeholder="Message JARVIS…" aria-label="Message" enterkeyhint="send"></textarea>
+        <button class="mic-btn" id="btnMic" title="Speak" aria-label="Start voice input"><svg><use href="#i-mic"/></svg></button>
+        <button class="send-btn" id="btnSend" title="Send" aria-label="Send"><svg><use href="#i-send"/></svg></button>
+        <button class="send-btn stop" id="btnStop" title="Stop" aria-label="Stop the reply" hidden><svg><use href="#i-stop"/></svg></button>
+      </div>
+      <input type="file" id="fileInput" hidden multiple>
+    </footer>
+  </div>
+
+  <!-- Drawers -->
+  <aside id="drawer" class="drawer" hidden aria-modal="true" role="dialog">
+    <div class="drawer-head">
+      <h2 id="drawerTitle">Settings</h2>
+      <button class="icon-btn" id="btnDrawerClose" aria-label="Close"><svg><use href="#i-close"/></svg></button>
+    </div>
+    <div id="drawerBody" class="drawer-body"></div>
+  </aside>
+  <div id="scrim" class="scrim" hidden></div>
+
+  <!-- Pairing / onboarding -->
+  <div id="pairModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="pairTitle">
+    <form id="pairForm" class="modal-card" autocomplete="off">
+      <div class="modal-ring" aria-hidden="true"></div>
+      <h2 id="pairTitle">Connect to your JARVIS server</h2>
+      <p class="muted">Your AI key stays on your own server. Enter its address and the pairing password you set as <code>JARVIS_PASSWORD</code>.</p>
+      <label>Server address<input id="pairUrl" type="url" inputmode="url" placeholder="https://jarvis.example.com" required spellcheck="false"></label>
+      <label>Pairing password<input id="pairPassword" type="password" required></label>
+      <label>Name for this device<input id="pairDevice" type="text" maxlength="60" required></label>
+      <div id="pairError" class="form-error" hidden></div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary" id="pairSubmit">Connect</button>
+        <button type="button" class="btn" id="pairDemo">Try offline demo</button>
+      </div>
+      <p class="tiny muted">The offline demo shows the interface and voice features with canned replies. It does not use any AI.</p>
+    </form>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

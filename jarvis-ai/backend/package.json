@@ -1,0 +1,20 @@
+{
+  "name": "jarvis-ai-backend",
+  "version": "1.0.0",
+  "description": "JARVIS AI backend: secure AI gateway, memory and conversation storage for the JARVIS AI Android and Windows apps",
+  "private": true,
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env src/server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env --watch src/server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.134.0",
+    "express": "5.2.1"
+  }
+}
