@@ -1,10 +1,11 @@
 /* Filmstrip — offline support. Serves the cached app instantly and refreshes
    the cache in the background, so updates land on the next launch. */
-const CACHE = 'filmstrip-v1';
+const CACHE = 'filmstrip-v2';
 const SHELL = [
   './',
   'index.html',
   'css/style.css',
+  'js/host.js',
   'js/store.js',
   'js/draw.js',
   'js/engine.js',

@@ -50,16 +50,7 @@
   }
   FS.toast = toast;
 
-  let wake = null;
-  async function keepAwake(on) {
-    try {
-      if (on && 'wakeLock' in navigator) wake = await navigator.wakeLock.request('screen');
-      else if (!on && wake) {
-        await wake.release();
-        wake = null;
-      }
-    } catch (e) { /* not available, fine */ }
-  }
+  const keepAwake = (on) => FS.host.keepAwake(on);
 
   const total = () => FS.timeline(project).total;
   const sceneById = (id) => project.scenes.find((s) => s.id === id);
@@ -344,7 +335,7 @@
     const left = room();
     if (left < 1) return toast('Your video is full: it has reached 20 minutes.');
     engine.pause();
-    FS.camera.open(left, async (blob, secs) => {
+    FS.camera.show(left, async (blob, secs) => {
       toast('Adding your recording…');
       try {
         const m = await store.addMedia(await prepVideo(blob, 'Recording', secs));
@@ -368,6 +359,7 @@
     $(id).hidden = false;
     $('scrim').hidden = false;
     document.body.classList.add('sheet-open');
+    FS.host.setOverlay(true);
   }
 
   function closeSheet() {
@@ -377,6 +369,7 @@
     openSheet = null;
     $('scrim').hidden = true;
     document.body.classList.remove('sheet-open');
+    FS.host.setOverlay(false);
     if (selected) {
       selected = null;
       renderStrip();
@@ -674,11 +667,15 @@
         <p class="note center">Keep this screen open while your video saves.</p>
         <div class="actions"><button class="pill wide" type="button" data-do="cancel">Cancel</button></div>`;
     } else if (state === 'done') {
-      const canShare = navigator.canShare && navigator.canShare({ files: [new File([info.blob], info.name, { type: info.blob.type })] });
+      const canShare = FS.host.native
+        || (navigator.canShare && navigator.canShare({ files: [new File([info.blob], info.name, { type: info.blob.type })] }));
+      const save = FS.host.native
+        ? '<button class="pill primary" type="button" data-do="save">Save to gallery</button>'
+        : `<a class="pill primary" href="${info.url}" download="${esc(info.name)}">Download</a>`;
       body = `<video class="result" src="${info.url}" controls playsinline></video>
-        <p class="note center">${esc(info.name)} · ${fmtSize(info.blob.size)}</p>
+        <p class="note center" id="ex-note">${esc(info.name)} · ${fmtSize(info.blob.size)}</p>
         <div class="actions">
-          <a class="pill primary" href="${info.url}" download="${esc(info.name)}">Download</a>
+          ${save}
           ${canShare ? '<button class="pill" type="button" data-do="share">Share</button>' : ''}
         </div>`;
     }
@@ -718,6 +715,28 @@
     }
   }
 
+  // In the Android app the video is copied over to the app, then saved to
+  // the gallery or handed to the share sheet.
+  let handing = false;
+  async function nativeHandOff(what) {
+    if (handing || !lastExport) return;
+    handing = true;
+    const note = $('ex-note');
+    const was = note ? note.textContent : '';
+    const buttons = $('sheet-export').querySelectorAll('.actions button');
+    buttons.forEach((b) => { b.disabled = true; });
+    const progress = (p) => { if (note) note.textContent = `Getting it ready… ${Math.round(p * 100)}%`; };
+    const ex = lastExport;
+    const ok = what === 'save'
+      ? await FS.host.saveVideo(ex.blob, ex.name, progress)
+      : await FS.host.shareVideo(ex.blob, ex.name, progress);
+    handing = false;
+    buttons.forEach((b) => { b.disabled = false; });
+    if (note) note.textContent = was;
+    if (what === 'save') toast(ok ? 'Saved to your gallery, in Movies/Filmstrip.' : "Sorry, the video couldn't be saved.");
+    else if (!ok) toast("Sorry, the video couldn't be shared.");
+  }
+
   async function onExportClick(e) {
     const act = e.target.closest('[data-do]');
     if (!act) return;
@@ -725,7 +744,12 @@
       case 'close': closeSheet(); break;
       case 'start': startExport(); break;
       case 'cancel': engine.cancelExport(); break;
+      case 'save':
       case 'share':
+        if (FS.host.native) {
+          nativeHandOff(act.dataset.do);
+          break;
+        }
         try {
           await navigator.share({ files: [new File([lastExport.blob], lastExport.name, { type: lastExport.blob.type })], title: 'My video' });
         } catch (err) { /* cancelled */ }
@@ -823,6 +847,11 @@
         e.preventDefault();
         engine.toggle();
       }
+    });
+    // Android's back button, while a sheet or the camera is up.
+    FS.host.on('back', () => {
+      if (FS.camera.open && !FS.camera.recording) FS.camera.close();
+      else closeSheet();
     });
     window.addEventListener('beforeunload', (e) => {
       if (engine.exporting || FS.camera.recording) {

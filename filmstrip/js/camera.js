@@ -16,7 +16,6 @@
   let onDone = null;
   let startedAt = 0;
   let timer = 0;
-  let wake = null;
 
   const fmt = (s) => {
     s = Math.max(0, Math.floor(s));
@@ -68,15 +67,7 @@
     if (rec && s >= maxSec) stop();
   }
 
-  async function lockScreen(on) {
-    try {
-      if (on && 'wakeLock' in navigator) wake = await navigator.wakeLock.request('screen');
-      else if (!on && wake) {
-        await wake.release();
-        wake = null;
-      }
-    } catch (e) { /* not available, fine */ }
-  }
+  const lockScreen = (on) => FS.host.keepAwake(on);
 
   function start() {
     if (!stream || rec) return;
@@ -126,6 +117,7 @@
     $('rec-flip').disabled = false;
     $('rec-close').disabled = false;
     screen.hidden = false;
+    FS.host.setOverlay(true);
     showTime();
     startCamera();
   }
@@ -133,6 +125,7 @@
   function close() {
     stopStream();
     screen.hidden = true;
+    FS.host.setOverlay(document.body.classList.contains('sheet-open'));
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -146,5 +139,10 @@
     $('rec-close').addEventListener('click', () => { if (!rec) close(); });
   });
 
-  FS.camera = { open, get recording() { return !!rec; } };
+  FS.camera = {
+    show: open,
+    close,
+    get open() { return !!screen && !screen.hidden; },
+    get recording() { return !!rec; },
+  };
 })(window.FS = window.FS || {});

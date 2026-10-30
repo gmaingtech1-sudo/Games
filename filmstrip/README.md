@@ -2,7 +2,7 @@
 
 Make videos up to **20 minutes** long on your phone. Put photos, video clips, title cards and camera recordings together, add words on screen, transitions and music, then save it all as one video file you can download or share.
 
-It's plain HTML, CSS and JavaScript. There's no build step, nothing to install and no server: your photos and clips never leave your phone.
+It's plain HTML, CSS and JavaScript. There's no build step, nothing to install and no server: your photos and clips never leave your phone. There's also an installable Android app in [`../filmstrip-android`](../filmstrip-android).
 
 ## Making a video
 
@@ -59,6 +59,7 @@ Then open <http://localhost:8000>.
 | --- | --- |
 | `index.html` | Layout: the preview, the play bar, the scene strip, the buttons, the record screen |
 | `css/style.css` | All styling. Mobile-first, handles notches (safe areas), and respects reduced-motion settings |
+| `js/host.js` | Where finished videos go and how the screen is kept on: the browser, or the Android app when running inside it |
 | `js/store.js` | The timeline maths, and keeping the project, photos, clips and songs in IndexedDB |
 | `js/draw.js` | Draws one frame: a scene's picture, its words, its zoom or pan, and the transition into it |
 | `js/engine.js` | The player: keeps time, plays clips and music, mixes sound with WebAudio, and records the canvas and sound with `MediaRecorder` to save the video |
@@ -73,3 +74,5 @@ Then open <http://localhost:8000>.
 - Transition length: `TRANS` in `js/draw.js`. Title colors: `THEMES` in the same file.
 - Video sizes and bitrates: `SIZES` and `videoBitsPerSecond` in `js/engine.js`.
 - When you change any file, bump `CACHE` in `sw.js` so installed copies pick up the update.
+
+If you change the app, run `./build.sh` in `../filmstrip-android` so the Android app gets the change too.
