@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Filmstrip</title>
+<meta name="description" content="Make videos up to 20 minutes long on your phone. Put photos, clips, titles, camera recordings and music together, then save one video file.">
+<meta name="theme-color" content="#121016">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Filmstrip">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="6" width="26" height="20" rx="5"/><path d="M13.5 11.5v9l7.5-4.5z" class="brand-play"/></svg>
+      <span>Filmstrip</span>
+    </div>
+    <div class="meter" id="meter" title="How much of the 20 minutes you've used">
+      <div class="meter-bar"><i id="meter-fill"></i></div>
+      <span id="meter-text">0:00 / 20:00</span>
+    </div>
+    <button id="btn-settings" class="icon-btn" type="button" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+    </button>
+  </header>
+
+  <section class="stage">
+    <div class="screen" id="screen">
+      <canvas id="out" width="720" height="1280"></canvas>
+      <button id="btn-bigplay" class="bigplay" type="button" aria-label="Play" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+      </button>
+      <div class="empty" id="empty">
+        <p class="empty-title">Make a video</p>
+        <p>Add photos, clips and titles, or record with your camera. Your video can be up to <b>20 minutes</b> long.</p>
+        <div class="empty-actions">
+          <button class="pill primary" type="button" data-act="media">Add photos &amp; clips</button>
+          <button class="pill" type="button" data-act="record">Record</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="transport">
+    <button id="btn-play" class="icon-btn" type="button" aria-label="Play">
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="i-play"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="i-pause"><path d="M8 5v14M16 5v14"/></svg>
+    </button>
+    <span id="time-now" class="time">0:00</span>
+    <input type="range" id="scrub" min="0" max="0" step="0.01" value="0" aria-label="Position in video">
+    <span id="time-total" class="time">0:00</span>
+  </div>
+
+  <section class="strip" id="strip" aria-label="Scenes"></section>
+
+  <nav class="dock" aria-label="Add">
+    <button class="dock-btn" type="button" data-act="media">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></svg>
+      <span>Media</span>
+    </button>
+    <button class="dock-btn" type="button" data-act="record">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="M15.5 10.5l6-3.5v10l-6-3.5"/></svg>
+      <span>Record</span>
+    </button>
+    <button class="dock-btn" type="button" data-act="title">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M12 6v13M8.5 19h7"/></svg>
+      <span>Title</span>
+    </button>
+    <button class="dock-btn" type="button" data-act="music">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>
+      <span>Music</span>
+    </button>
+    <button class="dock-btn primary" type="button" data-act="export">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg>
+      <span>Save video</span>
+    </button>
+  </nav>
+</div>
+
+<input type="file" id="file-media" accept="image/*,video/*" multiple hidden>
+<input type="file" id="file-music" accept="audio/*" hidden>
+
+<!-- Bottom sheets. Their insides are filled in by js/main.js. -->
+<div class="scrim" id="scrim" hidden></div>
+<section class="sheet" id="sheet-scene" role="dialog" aria-modal="true" aria-labelledby="scene-head" hidden></section>
+<section class="sheet" id="sheet-music" role="dialog" aria-modal="true" aria-labelledby="music-head" hidden></section>
+<section class="sheet" id="sheet-settings" role="dialog" aria-modal="true" aria-labelledby="settings-head" hidden></section>
+<section class="sheet" id="sheet-export" role="dialog" aria-modal="true" aria-labelledby="export-head" hidden></section>
+
+<!-- The camera, full screen. -->
+<section class="rec" id="rec" hidden>
+  <video id="rec-view" playsinline muted autoplay></video>
+  <div class="rec-top">
+    <button id="rec-close" class="icon-btn glass" type="button" aria-label="Close camera">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div class="rec-time" id="rec-time"><i></i><span>0:00</span> / <span id="rec-max">20:00</span></div>
+    <button id="rec-flip" class="icon-btn glass" type="button" aria-label="Switch camera">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9a8 8 0 0 1 14-3l2 2M20 4v4h-4M20 15a8 8 0 0 1-14 3l-2-2M4 20v-4h4"/></svg>
+    </button>
+  </div>
+  <p class="rec-msg" id="rec-msg" hidden></p>
+  <div class="rec-bottom">
+    <button id="rec-go" class="rec-go" type="button" aria-label="Start recording"><i></i></button>
+  </div>
+</section>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<!-- Clips and photos are loaded into elements here so the canvas can draw them. -->
+<div id="media-pool" aria-hidden="true"></div>
+
+<script src="js/store.js"></script>
+<script src="js/draw.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/main.js"></script>
+<script>
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
