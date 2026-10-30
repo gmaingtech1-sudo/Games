@@ -1,0 +1,13 @@
+{
+  "name": "jarvis-ai",
+  "private": true,
+  "description": "JARVIS AI - repository-level test runner (UI tests need Playwright's Chromium)",
+  "type": "module",
+  "scripts": {
+    "test": "npm --prefix backend test && npm run test:ui",
+    "test:ui": "node --disable-warning=ExperimentalWarning --test tests/markdown.test.mjs tests/ui.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}
