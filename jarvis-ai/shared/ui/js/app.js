@@ -686,6 +686,7 @@ async function main() {
     toast('Emergency stop: everything was stopped.', { kind: 'error', ms: 6000 });
   });
   platform.on('app.resume', () => { if (!state.online && state.api) connect(); });
+  platform.on('hotkey.listen', () => { if (!voice.listening) { if (state.busy) stopResponse(); sounds.play('listen'); voice.listen(); } });
   window.addEventListener('online', () => { if (!state.online) connect(); });
 
   applyPrefs();

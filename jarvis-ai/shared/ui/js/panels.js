@@ -138,7 +138,16 @@ export async function openSettings(ctx, focus) {
   );
 
   // Microphone
-  if (platform.can('permissions')) {
+  if (platform.name === 'windows') {
+    sections.mic = section('MICROPHONE',
+      h('p.note', 'Voice input uses Windows speech recognition on this PC (offline). JARVIS only listens while the microphone button is lit or wake-word listening is on, and sends only the recognised text to your server.'),
+      h('p.note', 'If nothing is heard: open Windows Settings > Privacy & security > Microphone and turn on "Let desktop apps access your microphone". To add a speech language: Settings > Time & language > Speech.'),
+      h('div.btn-row',
+        h('button.btn.btn-small', { type: 'button', onclick: () => platform.call('app.openSystemSettings', { page: 'microphone' }).catch((e) => toast(e.message, { kind: 'error' })) }, 'Microphone privacy settings'),
+        h('button.btn.btn-small', { type: 'button', onclick: () => platform.call('app.openSystemSettings', { page: 'speech' }).catch((e) => toast(e.message, { kind: 'error' })) }, 'Speech settings')),
+      h('p.note', 'Shortcut: Ctrl+Alt+J brings JARVIS forward and starts listening, from any app.'),
+    );
+  } else if (platform.can('permissions')) {
     let perm = { microphone: 'unknown' };
     try { perm = await platform.call('app.permission', { name: 'microphone' }); } catch { /* ignore */ }
     const statusText = { granted: 'Allowed', denied: 'Blocked', prompt: 'Not asked yet', unknown: 'Unknown' }[perm.microphone] || perm.microphone;

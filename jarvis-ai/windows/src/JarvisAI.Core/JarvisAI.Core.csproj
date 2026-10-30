@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Platform-independent logic for the Windows app: tool definitions, the
+       approved-folder policy, file tools with backups, approved commands and
+       the action log. Unit-tested on any OS (tests/JarvisAI.Core.Tests). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>JarvisAI.Core</RootNamespace>
+  </PropertyGroup>
+</Project>
