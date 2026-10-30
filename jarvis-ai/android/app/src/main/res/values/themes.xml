@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shown while the app starts (Android 8-11). -->
+    <style name="Theme.Jarvis.Starting" parent="Theme.Jarvis">
+        <item name="android:windowBackground">@drawable/splash</item>
+    </style>
+
+    <style name="Theme.Jarvis" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorAccent">@color/jarvis_accent</item>
+        <item name="android:colorPrimary">@color/jarvis_bg</item>
+        <item name="android:colorPrimaryDark">@color/jarvis_bg</item>
+        <item name="android:windowBackground">@color/jarvis_bg</item>
+        <item name="android:statusBarColor">@color/jarvis_bg</item>
+        <item name="android:navigationBarColor">@color/jarvis_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

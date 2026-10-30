@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ system splash screen. -->
+    <style name="Theme.Jarvis.Starting" parent="Theme.Jarvis">
+        <item name="android:windowSplashScreenBackground">@color/jarvis_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="android:windowSplashScreenAnimationDuration">600</item>
+    </style>
+</resources>

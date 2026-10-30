@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Original JARVIS AI mark: rings, arcs and a glowing core. -->
+    <path android:pathData="M25.00,54.00 a29,29 0 1,0 58,0 a29,29 0 1,0 -58,0" android:strokeColor="#7338DCFF" android:strokeWidth="1"/>
+    <path android:pathData="M54.00,28.00 A26,26 0 0,1 76.52,41.00 M76.52,67.00 A26,26 0 0,1 54.00,80.00 M31.48,67.00 A26,26 0 0,1 31.48,41.00" android:strokeColor="#FF38DCFF" android:strokeWidth="3.2" android:strokeLineCap="round"/>
+    <path android:pathData="M34.00,54.00 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0" android:strokeColor="#9938DCFF" android:strokeWidth="0.9"/>
+    <path android:pathData="M54.00,38.50 L67.42,46.25 L67.42,61.75 L54.00,69.50 L40.58,61.75 L40.58,46.25 Z" android:strokeColor="#8C38DCFF" android:strokeWidth="0.9"/>
+    <path android:pathData="M38.00,54.00 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54" android:centerY="54" android:gradientRadius="16">
+                <item android:offset="0" android:color="#FFFFFFFF"/>
+                <item android:offset="0.3" android:color="#FF9FF3FF"/>
+                <item android:offset="0.65" android:color="#BF38DCFF"/>
+                <item android:offset="1" android:color="#0038DCFF"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M44.00,54.00 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0" android:strokeColor="#E6E8FDFF" android:strokeWidth="0.9"/>
+</vector>

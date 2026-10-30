@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Your server should use HTTPS. Plain HTTP is allowed so you can test with a
+     server on your own Wi-Fi first; the app itself refuses http:// addresses
+     that are not on a private network (see shared/ui/js/api.js). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

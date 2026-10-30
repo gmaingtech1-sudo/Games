@@ -14,3 +14,5 @@ windows/**/bin/
 windows/**/obj/
 build/
 *.log
+android/build/
+!android/dist/

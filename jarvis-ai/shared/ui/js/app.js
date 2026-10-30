@@ -618,6 +618,16 @@ $('#btnMemory').addEventListener('click', () => openMemory(ctx));
 $('#btnSettings').addEventListener('click', () => openSettings(ctx));
 $('#pairForm').addEventListener('submit', pair);
 $('#pairDemo').addEventListener('click', startDemo);
+// Android back button: close whatever is open first. Returns true if handled.
+window.jarvisBack = () => {
+  const modal = document.querySelector('.modal:not(#pairModal)');
+  if (modal) { modal.remove(); return true; }
+  if (!$('#drawer').hidden) { closeDrawer(); return true; }
+  if (voice?.listening) { voice.cancelListening(); return true; }
+  if (voice?.speaking) { voice.stopSpeaking(); return true; }
+  if (state.busy) { stopResponse(); return true; }
+  return false;
+};
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (!$('#drawer').hidden) closeDrawer();

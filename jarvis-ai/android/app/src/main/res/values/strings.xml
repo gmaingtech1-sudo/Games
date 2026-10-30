@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">JARVIS AI</string>
+    <string name="mic_rationale">JARVIS needs the microphone to hear your voice commands. It only listens while the microphone button is lit or wake-word listening is on.</string>
+    <string name="no_browser">No app found to open this link.</string>
+</resources>
