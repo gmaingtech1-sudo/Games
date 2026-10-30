@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="app.filmstrip.video"
-    android:versionCode="1"
-    android:versionName="1.0.0">
+    android:versionCode="2"
+    android:versionName="1.1.0">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
-    <!-- Google Fonts for the app's typeface; everything else ships in the APK. -->
+    <!-- The AI helper (Claude API) and Google Fonts; everything else ships in the APK. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Record: the camera and its sound. Nothing leaves the phone. -->
     <uses-permission android:name="android.permission.CAMERA" />

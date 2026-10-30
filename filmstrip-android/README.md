@@ -2,7 +2,7 @@
 
 The Filmstrip video maker as a regular Android app: download the APK, install it, and it gets its own icon on your home screen. No app store, and no HTTPS hosting needed for the camera.
 
-**Download:** [`dist/filmstrip.apk`](dist/filmstrip.apk) (about 110 KB)
+**Download:** [`dist/filmstrip.apk`](dist/filmstrip.apk) (about 200 KB)
 
 ## Installing it
 
@@ -20,6 +20,7 @@ Works on Android 7.0 and newer, as long as Android System WebView is up to date 
 It's the same app as the web version in [`../filmstrip`](../filmstrip), packaged into a small native app:
 
 - The app's files are inside the APK. The app serves them to its WebView from a private `https://appassets.androidplatform.net/` address, which counts as a secure page, so the camera works without the internet. Only the font comes from Google Fonts, and it falls back to the phone's font without a connection.
+- The AI helper (the **AI** button and **✦ Suggest**) needs an internet connection and your own Claude API key, which you paste into **Settings**. See [the AI helper](../filmstrip/README.md#the-ai-helper).
 - **Media** and **Music** open Android's picker, so you can choose from your gallery, Google Photos, Files and so on. You can pick several photos and clips at once.
 - **Save to gallery** puts the finished video in **Movies/Filmstrip**. **Share** opens Android's share sheet.
 - The screen stays on while you record or save a video.
@@ -31,7 +32,7 @@ It's the same app as the web version in [`../filmstrip`](../filmstrip), packaged
 | --- | --- |
 | `src/app/filmstrip/video/MainActivity.java` | The native side: WebView setup, serving the app's files, file pickers, camera and microphone permissions, keeping the screen on, receiving finished videos and saving or sharing them, back button |
 | `src/app/filmstrip/video/VideoProvider.java` | Hands the video you're sharing to the app you pick (read-only, one file at a time) |
-| `AndroidManifest.xml` | App name, icon, permissions (camera, microphone, internet for the font, storage for saving videos on Android 9 and older), portrait screen |
+| `AndroidManifest.xml` | App name, icon, permissions (camera, microphone, internet for the AI helper and the font, storage for saving videos on Android 9 and older), portrait screen |
 | `res/` | Launcher icons (including the Android 8+ adaptive icon and the Android 13+ themed icon) and the dark theme |
 | `build.sh` | Builds `dist/filmstrip.apk` |
 | `signing.keystore` | The key the APK is signed with |

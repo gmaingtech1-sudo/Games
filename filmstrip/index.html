@@ -77,6 +77,10 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M12 6v13M8.5 19h7"/></svg>
       <span>Title</span>
     </button>
+    <button class="dock-btn ai" type="button" data-act="ai">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.6 4.4 4.4 1.6-4.4 1.6L10 15.5l-1.6-4.4L4 9.5l4.4-1.6zM17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></svg>
+      <span>AI</span>
+    </button>
     <button class="dock-btn" type="button" data-act="music">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>
       <span>Music</span>
@@ -94,6 +98,7 @@
 <!-- Bottom sheets. Their insides are filled in by js/main.js. -->
 <div class="scrim" id="scrim" hidden></div>
 <section class="sheet" id="sheet-scene" role="dialog" aria-modal="true" aria-labelledby="scene-head" hidden></section>
+<section class="sheet" id="sheet-ai" role="dialog" aria-modal="true" aria-labelledby="ai-head" hidden></section>
 <section class="sheet" id="sheet-music" role="dialog" aria-modal="true" aria-labelledby="music-head" hidden></section>
 <section class="sheet" id="sheet-settings" role="dialog" aria-modal="true" aria-labelledby="settings-head" hidden></section>
 <section class="sheet" id="sheet-export" role="dialog" aria-modal="true" aria-labelledby="export-head" hidden></section>
@@ -122,10 +127,12 @@
 <div id="media-pool" aria-hidden="true"></div>
 
 <script src="js/host.js"></script>
+<script src="js/vendor/anthropic-sdk.js"></script>
 <script src="js/store.js"></script>
 <script src="js/draw.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/camera.js"></script>
+<script src="js/ai.js"></script>
 <script src="js/main.js"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol === 'https:') {

@@ -423,7 +423,8 @@
         </div></div>`);
     }
 
-    parts.push(`<div class="field"><label for="text">${sc.type === 'title' ? 'Title' : 'Words on screen'}</label>
+    parts.push(`<div class="field"><div class="label-row"><label for="text">${sc.type === 'title' ? 'Title' : 'Words on screen'}</label>
+        <button class="chip ai-chip" type="button" data-do="suggest">✦ Suggest</button></div>
       <textarea id="text" rows="2" maxlength="300" placeholder="${sc.type === 'title' ? 'Your title' : 'Add words (optional)'}">${esc(sc.text || '')}</textarea></div>`);
     parts.push(`<div class="field row">
       <div><label>Place</label>${chips('textPos', sc.textPos, [['top', 'Top'], ['middle', 'Middle'], ['bottom', 'Bottom']])}</div>
@@ -525,7 +526,7 @@
   function onSceneClick(e) {
     const sc = sceneById($('sheet-scene').dataset.id);
     if (!sc) return;
-    const chip = e.target.closest('.chip');
+    const chip = e.target.closest('.chip:not([data-do])');
     if (chip) {
       const key = chip.parentElement.dataset.key;
       const val = chip.dataset.val;
@@ -567,6 +568,9 @@
         editScene(copy.id);
         break;
       }
+      case 'suggest':
+        suggestWords(sc, act);
+        break;
       case 'delete':
         project.scenes.splice(i, 1);
         selected = null;
@@ -610,6 +614,150 @@
     }
   }
 
+  /* ----- the AI helper ----- */
+
+  let aiBrief = '';
+  let aiLength = 'auto';
+  let aiBusy = false;
+  let aiUndo = null;  // the scenes from before the AI Director's last plan
+
+  function keyField() {
+    if (FS.ai.ready) {
+      return `<div class="field"><label>AI helper</label>
+        <p class="note">Your Claude API key is saved on this device.</p>
+        <div class="actions"><button class="pill danger" type="button" data-do="key-remove">Remove key</button></div></div>`;
+    }
+    return `<div class="field"><label for="ai-key">AI helper · Claude API key</label>
+      <div class="keyrow"><input type="password" id="ai-key" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+        <button class="pill primary" type="button" data-do="key-save">Save</button></div>
+      <p class="note">The AI features use Claude from Anthropic. Get a key at console.anthropic.com; what you use is billed to that account. The key stays on this device and is only sent to Anthropic.</p></div>`;
+  }
+
+  function onKeyClick(what, after) {
+    if (what === 'key-save') {
+      const k = ($('ai-key') || {}).value || '';
+      if (!k.trim()) return toast('Paste your API key first.');
+      FS.ai.setKey(k);
+      toast('API key saved.');
+      after();
+    } else if (what === 'key-remove') {
+      FS.ai.setKey('');
+      toast('API key removed.');
+      after();
+    }
+  }
+
+  function aiSheet(state, info) {
+    let body = '';
+    const media = project.scenes.some((s) => s.type !== 'title');
+    if (!FS.ai.ready) {
+      body = `<p class="lead">Describe the video you want, and the AI arranges your photos and clips, picks the best parts, and writes the titles and words on screen.</p>${keyField()}`;
+    } else if (state === 'busy') {
+      body = `<div class="ai-status"><span class="spinner" aria-hidden="true"></span><span id="ai-step">${esc(info || 'Looking at your photos and clips…')}</span></div>
+        <p class="note">This can take a minute.</p>`;
+    } else if (state === 'done') {
+      body = `<div class="ai-summary">${esc(info.summary || 'Your video is ready.')}</div>
+        <p class="note">It's now ${fmtLong(total())} long, with ${project.scenes.length} scenes. Tap play to watch it, or tap a scene to change it.</p>
+        <div class="actions"><button class="pill" type="button" data-do="undo">Undo</button><button class="pill primary" type="button" data-do="again">Try something else</button></div>`;
+    } else if (!media) {
+      body = `<p class="lead">Add some photos or clips first, then the AI can turn them into a video.</p>
+        <div class="actions"><button class="pill primary" type="button" data-act="media">Add photos &amp; clips</button></div>`;
+    } else {
+      body = `<div class="field"><label for="ai-brief">What should your video be like?</label>
+          <textarea id="ai-brief" rows="3" maxlength="1000" placeholder="e.g. A fun recap of our beach trip for Grandma, with a title at the start">${esc(aiBrief)}</textarea></div>
+        <div class="field"><label>Length</label>${chips('ai-length', aiLength, [['auto', 'AI decides'], ['short', 'Short · 30 s'], ['medium', '1–2 min'], ['all', 'Use everything'], ['long', 'Long · up to 20 min']])}</div>
+        <div class="actions"><button class="pill primary wide" type="button" data-do="direct">✦ Make my video</button></div>
+        <p class="note">The AI looks at your ${project.scenes.length} scenes and plans the order, timing, titles, words and transitions. You can undo it.</p>`;
+    }
+    $('sheet-ai').innerHTML = sheetHead('ai-head', 'AI Director', state === 'busy' ? '' : 'Powered by Claude') + body;
+    showSheet('sheet-ai');
+  }
+
+  async function runDirector() {
+    if (aiBusy) return;
+    aiBusy = true;
+    engine.pause();
+    aiSheet('busy');
+    const step = (text) => { const el = $('ai-step'); if (el) el.textContent = text; };
+    try {
+      const plan = await FS.ai.direct(project, aiBrief, aiLength, (p) => {
+        step(p < 1 ? `Looking at your photos and clips… ${Math.round(p * 100)}%` : 'Planning your video…');
+      });
+      if (!plan.scenes.length) throw new Error('The AI came back with an empty plan. Please try again.');
+      aiUndo = project.scenes;
+      store.hold(aiUndo.map((s) => s.mediaId).filter(Boolean));
+      project.scenes = plan.scenes;
+      selected = null;
+      commit();
+      engine.seek(0);
+      aiSheet('done', plan);
+    } catch (e) {
+      toast(e.message || 'Something went wrong.');
+      aiSheet('ready');
+    } finally {
+      aiBusy = false;
+    }
+  }
+
+  function onAiClick(e) {
+    const chip = e.target.closest('.chip:not([data-do])');
+    if (chip && chip.parentElement.dataset.key === 'ai-length') {
+      aiLength = chip.dataset.val;
+      chip.parentElement.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
+      return;
+    }
+    const a = e.target.closest('[data-do]');
+    if (!a) return;
+    switch (a.dataset.do) {
+      case 'close': if (!aiBusy) closeSheet(); break;
+      case 'direct':
+        aiBrief = ($('ai-brief') || {}).value || aiBrief;
+        runDirector();
+        break;
+      case 'undo':
+        if (aiUndo) {
+          project.scenes = aiUndo;
+          aiUndo = null;
+          commit();
+          engine.seek(0);
+          store.hold(null);
+          toast('Back to how it was.');
+        }
+        aiSheet('ready');
+        break;
+      case 'again':
+        aiSheet('ready');
+        break;
+      default:
+        onKeyClick(a.dataset.do, () => aiSheet('ready'));
+    }
+  }
+
+  async function suggestWords(sc, btn) {
+    if (!FS.ai.ready) {
+      toast('Add your Claude API key to use AI.');
+      aiSheet('ready');
+      return;
+    }
+    btn.disabled = true;
+    const was = btn.textContent;
+    btn.textContent = 'Thinking…';
+    try {
+      const text = await FS.ai.suggestWords(project, sc);
+      if (text && sceneById(sc.id)) {
+        sc.text = text;
+        const ta = $('text');
+        if (ta && $('sheet-scene').dataset.id === sc.id) ta.value = text;
+        commit();
+      }
+    } catch (e) {
+      toast(e.message || 'Something went wrong.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = was;
+    }
+  }
+
   /* ----- settings ----- */
 
   function settingsSheet() {
@@ -623,13 +771,14 @@
       `<div class="field"><p class="note">${store.persistent
         ? 'Your project is kept on this device, so you can close the app and carry on later.'
         : "This browser won't let the app keep files, so your project is lost when you close the page. Save your video before you leave."}</p></div>`,
+      keyField(),
       `<div class="actions"><button class="pill danger" type="button" data-do="new">Start a new video</button></div>`,
     ].join('');
     showSheet('sheet-settings');
   }
 
   function onSettingsClick(e) {
-    const chip = e.target.closest('.chip');
+    const chip = e.target.closest('.chip:not([data-do])');
     if (chip) {
       const key = chip.parentElement.dataset.key;
       project[key] = key === 'quality' ? parseInt(chip.dataset.val, 10) : chip.dataset.val;
@@ -640,10 +789,13 @@
     const act = e.target.closest('[data-do]');
     if (!act) return;
     if (act.dataset.do === 'close') closeSheet();
+    onKeyClick(act.dataset.do, settingsSheet);
     if (act.dataset.do === 'new') {
       if (project.scenes.length && !confirm('Start a new video? This one will be deleted from the app.')) return;
       const keep = { aspect: project.aspect, quality: project.quality };
       project = Object.assign(FS.newProject(), keep);
+      aiUndo = null;
+      store.hold(null);
       engine.seek(0);
       closeSheet();
       commit();
@@ -766,6 +918,7 @@
       case 'record': record(); break;
       case 'title': addTitle(); break;
       case 'music': engine.pause(); musicSheet(); break;
+      case 'ai': engine.pause(); aiSheet('ready'); break;
       case 'export':
         if (!project.scenes.length) return toast('Add something to your video first.');
         engine.pause();
@@ -823,6 +976,8 @@
     sceneSheet.addEventListener('click', onSceneClick);
     $('sheet-settings').addEventListener('click', onSettingsClick);
     $('sheet-export').addEventListener('click', onExportClick);
+    $('sheet-ai').addEventListener('click', onAiClick);
+    $('sheet-ai').addEventListener('input', (e) => { if (e.target.id === 'ai-brief') aiBrief = e.target.value; });
     $('sheet-music').addEventListener('click', (e) => {
       const a = e.target.closest('[data-do]');
       if (!a) return;

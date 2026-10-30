@@ -10,7 +10,7 @@ Small games for phones. Each one lives in its own folder.
 | [Pet Cam for Android](pet-cam-android/) | The same game as an installable Android app. [Download the APK](pet-cam-android/dist/pet-cam.apk). |
 | [Riftborn](riftborn/) | An AR game on your real streets, mixing Ingress, Pokémon GO and Jurassic World Alive. Fight over Rifts for your faction, catch prehistoric creatures in your camera, collect their DNA and fuse hybrids. |
 | [Cosmos 360](cosmos-360/) | A to-scale universe to explore in 360°. Look around by dragging or moving your phone, fly to real planets and moons where they are today, scan them for your logbook, and jump to Alpha Centauri, TRAPPIST-1 and the black hole at the centre of the Milky Way. |
-| [Filmstrip](filmstrip/) | A video maker for your phone. Put photos, clips, title cards and camera recordings together with words on screen, transitions and music, and save a video up to 20 minutes long. |
+| [Filmstrip](filmstrip/) | A video maker for your phone. Put photos, clips, title cards and camera recordings together with words on screen, transitions and music, and save a video up to 20 minutes long. Its AI Director (powered by Claude) can look at your footage and plan the whole video for you. |
 | [Filmstrip for Android](filmstrip-android/) | The same video maker as an installable Android app. [Download the APK](filmstrip-android/dist/filmstrip.apk). |
 | [Starforge](starforge/) | A space shooter where you build your own starfighter. Pick its hull, wings, engine, weapon and special, paint it, then blast through waves of enemy ships and bosses to earn credits for better parts. |
 

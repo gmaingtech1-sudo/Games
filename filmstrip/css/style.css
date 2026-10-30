@@ -11,6 +11,7 @@
   --muted: #a49cad;
   --accent: #ffb547;
   --accent-ink: #2a1a00;
+  --ai: #b9a4ff;
   --rec: #ff4d4d;
   --danger: #ff6b6b;
   --glass: rgba(18, 16, 22, 0.6);
@@ -207,7 +208,7 @@ input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; border-radius
 
 /* ---------- the dock ---------- */
 
-.dock { display: grid; grid-template-columns: repeat(4, 1fr) 1.4fr; gap: 6px; }
+.dock { display: grid; grid-template-columns: repeat(5, 1fr) 1.4fr; gap: 6px; }
 .dock-btn {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   min-height: 60px; padding: 8px 4px;
@@ -217,6 +218,27 @@ input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; border-radius
 }
 .dock-btn svg { width: 24px; height: 24px; }
 .dock-btn.primary { background: var(--accent); color: var(--accent-ink); font-weight: 800; }
+.dock-btn.ai svg { stroke: var(--ai); }
+
+/* ---------- the AI helper ---------- */
+
+.keyrow { display: flex; gap: 8px; }
+.keyrow input {
+  flex: 1; min-width: 0; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--bg);
+  font-size: 16px;
+}
+.label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.field .label-row > label { margin: 0; }
+.chip.ai-chip { color: var(--ai); min-height: 30px; padding: 0 12px; }
+.ai-status { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 14px; background: var(--bg); line-height: 1.4; }
+.spinner {
+  flex: none; width: 22px; height: 22px; border-radius: 50%;
+  border: 3px solid var(--bg-3); border-top-color: var(--ai);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.ai-summary { padding: 14px 16px; border-radius: 14px; background: var(--bg); line-height: 1.5; border-left: 3px solid var(--ai); }
 
 /* ---------- buttons and chips ---------- */
 
@@ -276,7 +298,7 @@ input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; border-radius
 .sheet-head .sub { margin: 2px 0 0; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .field { margin: 14px 0; }
-.field > label, .field .row > div > label, .field.row label {
+.field > label, .field .row > div > label, .field.row label, .label-row > label {
   display: block; margin-bottom: 8px;
   font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em;
 }
@@ -375,6 +397,11 @@ textarea, input[type="number"] {
 
 @media (max-height: 640px) {
   .dock-btn { min-height: 50px; padding: 6px 4px; }
+  .dock-btn svg { width: 20px; height: 20px; }
+}
+@media (max-width: 380px) {
+  .dock { gap: 4px; }
+  .dock-btn { font-size: 11px; }
   .dock-btn svg { width: 20px; height: 20px; }
 }
 

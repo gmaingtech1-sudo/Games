@@ -134,9 +134,12 @@
 
   // Forget media no scene uses any more, in memory and on disk. Media added in
   // the last little while is left alone: it may be on its way into a scene.
+  // Media an undo may still bring back (see hold()).
+  let held = new Set();
+
   async function prune(project) {
     const used = usedIds(project);
-    const fresh = (id) => media.has(id) && Date.now() - (media.get(id).added || 0) < 60000;
+    const fresh = (id) => held.has(id) || (media.has(id) && Date.now() - (media.get(id).added || 0) < 60000);
     for (const [id, m] of media) {
       if (!used.has(id) && !fresh(id)) {
         URL.revokeObjectURL(m.url);
@@ -161,5 +164,7 @@
     addMedia,
     loadProject,
     saveProject,
+    // Keep this media even while no scene uses it (pass null to let go).
+    hold(ids) { held = new Set(ids || []); },
   };
 })(window.FS = window.FS || {});

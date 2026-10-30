@@ -11,6 +11,7 @@ It's plain HTML, CSS and JavaScript. There's no build step, nothing to install a
 | **Media** | Add photos and video clips from your phone. Photos stay on screen for 4 seconds (you can change it) with a slow zoom or pan. |
 | **Record** | Record with your front or back camera, with sound. One recording can last up to 20 minutes, or however much of the 20 minutes is left. |
 | **Title** | Add a title card: words on a colored background. |
+| **AI** | The AI Director: describe the video you want and it plans it for you (see below). |
 | **Music** | Pick a song from your phone. It plays under the whole video and fades out at the end. You can set its volume, and the volume of your clips' own sound. |
 | **Save video** | Makes the video file. When it's done you can watch it, **Download** it or **Share** it. |
 
@@ -23,7 +24,20 @@ Tap a scene in the strip to edit it:
 - **Transition in**: cut, fade, slide, zoom or dip to black
 - **Move**, **Duplicate** or **Delete** the scene
 
+In the scene editor, **✦ Suggest** asks the AI to write the words for that scene.
+
 The bar at the top shows how much of the 20 minutes you've used. The settings button sets the video's shape (tall, wide or square) and quality (720p or 1080p), or starts a new video.
+
+## The AI helper
+
+Filmstrip's AI features use Claude, from Anthropic.
+
+- **AI Director** (the **AI** button): write what you want ("a fun recap of our beach trip for Grandma"), pick a length (AI decides, about 30 seconds, 1–2 minutes, use everything, or long), and tap **Make my video**. Claude looks at your photos and a few frames from each clip, then puts the scenes in order, trims the clips, sets how long each photo stays up, adds title cards, writes the words on screen, and chooses motion and transitions. It always stays within 20 minutes. Tap **Undo** to go back to how it was.
+- **✦ Suggest**: writes the words for one scene, in the same voice and language as the rest of your video.
+
+To turn it on, paste a Claude API key into **Settings** (or the AI sheet). You get a key at [console.anthropic.com](https://console.anthropic.com), and what you use is billed to that account. A plan for a typical video costs a few cents. The key is kept on your device and only ever sent to Anthropic. Pictures are sent as small JPEGs (512 pixels on the longest side, at most 80 per plan). The rest of the app works without a key or an internet connection.
+
+It calls the Claude API (`claude-opus-5-5`) straight from the app with the official Anthropic SDK and structured outputs, so the plan always comes back in a shape the app can use. If a safety check declines a request, the API retries it on its recommended fallback model (`fallbacks: "default"`).
 
 ## Saving
 
@@ -60,6 +74,8 @@ Then open <http://localhost:8000>.
 | `index.html` | Layout: the preview, the play bar, the scene strip, the buttons, the record screen |
 | `css/style.css` | All styling. Mobile-first, handles notches (safe areas), and respects reduced-motion settings |
 | `js/host.js` | Where finished videos go and how the screen is kept on: the browser, or the Android app when running inside it |
+| `js/ai.js` | The AI helper: preparing pictures of each scene, asking Claude for a plan or a caption, and turning the plan into scenes |
+| `js/vendor/anthropic-sdk.js` | The official Anthropic SDK (`@anthropic-ai/sdk` 1.3.0), bundled into one file so the app needs no build step |
 | `js/store.js` | The timeline maths, and keeping the project, photos, clips and songs in IndexedDB |
 | `js/draw.js` | Draws one frame: a scene's picture, its words, its zoom or pan, and the transition into it |
 | `js/engine.js` | The player: keeps time, plays clips and music, mixes sound with WebAudio, and records the canvas and sound with `MediaRecorder` to save the video |
@@ -71,6 +87,7 @@ Then open <http://localhost:8000>.
 
 - The longest video: `MAX` in `js/store.js` (seconds).
 - How long a new photo lasts: `PHOTO_SECS` in `js/main.js`.
+- The AI model, and how many pictures it sees: `MODEL`, `MAX_IMAGES` and `IMG_EDGE` in `js/ai.js`. What the AI Director is told: `DIRECTOR_SYSTEM` in the same file.
 - Transition length: `TRANS` in `js/draw.js`. Title colors: `THEMES` in the same file.
 - Video sizes and bitrates: `SIZES` and `videoBitsPerSecond` in `js/engine.js`.
 - When you change any file, bump `CACHE` in `sw.js` so installed copies pick up the update.
