@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0820">
+  <meta name="description" content="Neon Break: an arcade pool game. Play 8-ball against the CPU or a friend, or sink as many balls as you can in Blitz.">
+  <title>Neon Break</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <canvas id="table"></canvas>
+
+    <!-- In-game heads-up display -->
+    <div id="hud" class="hidden">
+      <div class="player" id="p0">
+        <div class="pname">You</div>
+        <div class="pballs"></div>
+      </div>
+      <div id="hudMid">
+        <div id="hudInfo"></div>
+        <button id="pauseBtn" aria-label="Pause">II</button>
+      </div>
+      <div class="player right" id="p1">
+        <div class="pname">CPU</div>
+        <div class="pballs"></div>
+      </div>
+      <div id="blitzHud" class="hidden">
+        <div><span class="lbl">SCORE</span><span id="bScore">0</span></div>
+        <div id="bTimeWrap"><span class="lbl">TIME</span><span id="bTime">90</span></div>
+        <div><span class="lbl">COMBO</span><span id="bMult">x1</span></div>
+      </div>
+    </div>
+
+    <div id="banner" class="hidden"></div>
+    <div id="toast" class="hidden"></div>
+
+    <!-- Shot controls -->
+    <div id="controls" class="hidden">
+      <div class="row">
+        <button id="spinBtn" aria-label="Spin"><canvas id="spinMini" width="88" height="88"></canvas></button>
+        <div id="fine" aria-label="Fine aim"><div id="fineRibs"></div><span>FINE AIM</span></div>
+      </div>
+      <div id="power">
+        <div id="powerFill"></div>
+        <div id="powerLabel">DRAG &rarr; TO SHOOT</div>
+      </div>
+    </div>
+
+    <!-- Spin picker -->
+    <div id="spinPick" class="overlay hidden">
+      <div class="card">
+        <h2>Spin</h2>
+        <p class="sub">Tap where the cue hits the ball.<br>Top = follow through, bottom = screw back, sides bend the bounce off cushions.</p>
+        <canvas id="spinBig" width="440" height="440"></canvas>
+        <div class="btns"><button id="spinReset" class="ghost">Centre</button><button id="spinDone">Done</button></div>
+      </div>
+    </div>
+
+    <!-- Main menu -->
+    <div id="menu" class="screen">
+      <div class="logo"><span class="l1">NEON</span><span class="l2">BREAK</span></div>
+      <div class="coins"><span class="coin"></span><span class="coinCount">0</span></div>
+      <div class="menuBtns">
+        <button data-go="cpu" class="big pink">VS CPU</button>
+        <button data-go="2p" class="big cyan">2 PLAYERS</button>
+        <button data-go="blitz" class="big yellow">BLITZ</button>
+        <div class="split">
+          <button data-go="shop">SHOP</button>
+          <button data-go="how">HOW TO PLAY</button>
+        </div>
+        <div class="split small">
+          <button id="soundBtn" class="ghost">Sound: on</button>
+          <button id="vibeBtn" class="ghost">Buzz: on</button>
+        </div>
+      </div>
+      <div id="stats" class="stats"></div>
+    </div>
+
+    <!-- Pick CPU level -->
+    <div id="cpuMenu" class="screen hidden">
+      <h1>VS CPU</h1>
+      <p class="sub">8-ball. Pot your group, then the 8.</p>
+      <div class="menuBtns">
+        <button data-level="easy" class="big cyan">ROOKIE<small>win +40 coins</small></button>
+        <button data-level="medium" class="big pink">HUSTLER<small>win +90 coins</small></button>
+        <button data-level="hard" class="big yellow">SHARK<small>win +180 coins</small></button>
+        <button data-go="menu" class="ghost">Back</button>
+      </div>
+    </div>
+
+    <!-- Shop -->
+    <div id="shop" class="screen hidden">
+      <h1>SHOP</h1>
+      <div class="coins"><span class="coin"></span><span class="coinCount">0</span></div>
+      <div class="tabs"><button data-tab="cues" class="on">Cues</button><button data-tab="felts">Tables</button></div>
+      <div id="shopList"></div>
+      <button data-go="menu" class="ghost">Back</button>
+    </div>
+
+    <!-- How to play -->
+    <div id="how" class="screen hidden">
+      <h1>HOW TO PLAY</h1>
+      <div class="howText">
+        <h3>Shooting</h3>
+        <p><b>Touch the table</b> to point the cue at your finger. Drag to move it.</p>
+        <p><b>Fine aim</b>: slide along the ribbed strip for tiny adjustments.</p>
+        <p><b>Power</b>: drag right along the power bar, then let go to shoot. Slide back to the start to cancel.</p>
+        <p><b>Spin</b>: tap the little white ball. Hit low to screw the cue ball back, high to follow through.</p>
+        <h3>8-Ball</h3>
+        <p>Break, then the first ball you pot makes you <b>solids</b> (1&ndash;7) or <b>stripes</b> (9&ndash;15). Pot all of yours, then the black 8 to win.</p>
+        <p>Pot one of yours and you go again. Fouls give the other player the cue ball <b>in hand</b>: they can drag it anywhere.</p>
+        <p>Fouls: potting the cue ball, missing everything, hitting the other group (or the 8) first, or nothing touching a cushion after the hit.</p>
+        <p>Pot the 8 early, or foul while potting it, and you lose.</p>
+        <h3>Blitz</h3>
+        <p>90 seconds on the clock. Every pot scores and adds 2 seconds. Pot on shot after shot to build a combo up to x5. The black 8 is worth 3. Potting the white costs 5 seconds. Clear the table for a bonus and a fresh rack.</p>
+      </div>
+      <button data-go="menu" class="ghost">Back</button>
+    </div>
+
+    <!-- Pause -->
+    <div id="pauseMenu" class="overlay hidden">
+      <div class="card">
+        <h2>Paused</h2>
+        <div class="menuBtns">
+          <button id="resumeBtn" class="big cyan">RESUME</button>
+          <button id="restartBtn">Restart</button>
+          <button id="quitBtn" class="ghost">Quit to menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game over -->
+    <div id="overMenu" class="overlay hidden">
+      <div class="card">
+        <h2 id="overTitle">You win!</h2>
+        <p id="overSub" class="sub"></p>
+        <div id="overCoins" class="coins"></div>
+        <div class="menuBtns">
+          <button id="againBtn" class="big pink">PLAY AGAIN</button>
+          <button id="overMenuBtn" class="ghost">Menu</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/physics.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
