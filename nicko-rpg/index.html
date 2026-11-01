@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0a12">
+  <meta name="description" content="Nicko RPG: a dark-fantasy role-playing game. Explore, fight monsters, collect loot and defeat bosses.">
+  <title>Nicko RPG</title>
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+  <noscript><p class="noscript">Nicko RPG needs JavaScript enabled to run.</p></noscript>
+  <div id="bg" aria-hidden="true"><div class="bg-glow"></div><div class="bg-embers"></div></div>
+
+  <main id="app">
+    <!-- 1. Main menu -->
+    <section class="screen" id="screen-menu" data-music="menu"></section>
+    <!-- 2. New game (slot picker) -->
+    <section class="screen" id="screen-newgame" data-music="menu"></section>
+    <!-- 3. Character creation -->
+    <section class="screen" id="screen-create" data-music="menu"></section>
+    <!-- 4-12. In-game screens live inside the game shell -->
+    <section class="screen" id="screen-game" data-music="town">
+      <header class="hud" id="hud"></header>
+      <nav class="game-nav" id="game-nav" aria-label="Game"></nav>
+      <div class="game-body" id="game-body"></div>
+    </section>
+    <!-- 11. Enemy creator (developer tool) -->
+    <section class="screen" id="screen-creator" data-music="menu"></section>
+    <!-- 13. Settings -->
+    <section class="screen" id="screen-settings" data-music="menu"></section>
+    <!-- 14. Save and load -->
+    <section class="screen" id="screen-saves" data-music="menu"></section>
+    <!-- Combat (used by dungeons, boss arena and creator tests) -->
+    <section class="screen" id="screen-combat" data-music="combat"></section>
+    <!-- 15. Game over -->
+    <section class="screen" id="screen-gameover" data-music=""></section>
+  </main>
+
+  <div id="toasts" aria-live="polite"></div>
+  <div id="banner" aria-live="assertive"></div>
+  <div id="modal-root"></div>
+  <div id="tooltip" role="tooltip"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

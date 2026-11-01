@@ -1,0 +1,73 @@
+/* Responsive layout: phones are the base; these rules adapt to tablets and desktops. */
+
+@media (max-width: 380px) {
+  :root { font-size: calc(15px * var(--ui-scale, 1)); }
+  .class-grid { gap: 8px; }
+  .actions { grid-template-columns: repeat(2, 1fr); }
+  .paperdoll { grid-template-columns: repeat(2, 1fr); }
+  .form-grid { grid-template-columns: 1fr; }
+  .hud-right { font-size: .78rem; }
+}
+
+/* Phones: keep the combat actions close to the top of the screen. */
+@media (max-width: 599px) {
+  .sprite { width: 118px; height: 118px; }
+  .sprite.boss { width: 140px; height: 140px; }
+  .log { height: 104px; }
+  .enemy-zone.panel, .player-zone.panel, .action-wrap.panel { padding: 10px; }
+  .combat { gap: 8px; }
+}
+
+@media (min-width: 600px) {
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .map-grid { grid-template-columns: repeat(2, 1fr); }
+  .class-grid { grid-template-columns: repeat(4, 1fr); }
+  .town-actions { grid-template-columns: repeat(4, 1fr); }
+  .ability-grid { grid-template-columns: repeat(3, 1fr); }
+  .inv-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
+  .log { height: 180px; }
+  .sprite { width: 180px; height: 180px; }
+  .sprite.boss { width: 230px; height: 230px; }
+}
+
+@media (min-width: 900px) {
+  .screen { padding: 24px; }
+  #screen-game { display: none; }
+  #screen-game.active { display: grid; grid-template-columns: 210px 1fr; grid-template-rows: auto 1fr; min-height: 100vh; }
+  .hud { grid-column: 1 / -1; padding: 10px 20px; grid-template-columns: auto minmax(260px, 520px) 1fr; }
+  .game-nav { position: sticky; top: 64px; align-self: start; display: flex; flex-direction: column; gap: 2px; padding: 14px 10px; border-top: 0; border-right: 1px solid var(--line); background: transparent; height: calc(100vh - 64px); overflow-y: auto; }
+  .nav-btn { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 44px; padding: 8px 14px; border-radius: var(--radius-sm); font-size: .95rem; }
+  .nav-btn:hover { background: #17121f; color: var(--text); }
+  .nav-btn.active { background: linear-gradient(90deg, rgba(155, 92, 255, .25), transparent); }
+  .nav-btn.active::after { top: 8px; bottom: 8px; left: 0; right: auto; width: 3px; height: auto; }
+  .nav-btn .dot { position: static; margin-left: auto; }
+  .nav-desktop-only { display: flex; }
+  .nav-mobile-only { display: none; }
+  .game-body { padding: 20px 24px 40px; width: 100%; }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .tree { grid-template-columns: repeat(3, 1fr); }
+  .combat { grid-template-columns: 1fr 1fr; grid-template-areas: 'enemy enemy' 'player log' 'actions actions'; }
+  .combat .enemy-zone { grid-area: enemy; }
+  .combat .player-zone { grid-area: player; align-self: start; }
+  .combat .log-wrap { grid-area: log; }
+  .combat .action-wrap { grid-area: actions; }
+  .ability-grid { grid-template-columns: repeat(4, 1fr); }
+  .creator-layout { display: grid; grid-template-columns: 1fr 300px; gap: 14px; align-items: start; }
+  #toasts { top: 80px; right: 20px; left: auto; transform: none; }
+}
+
+@media (min-width: 1200px) {
+  .map-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Landscape phones: compress the combat screen so actions stay visible. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .sprite, .sprite.boss { width: 90px; height: 90px; }
+  .log { height: 90px; }
+  .hud { position: static; }
+}
+
+@media (hover: none) {
+  .card.clickable:hover { transform: none; }
+}
