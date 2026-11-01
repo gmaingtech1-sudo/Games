@@ -13,6 +13,8 @@ var NB = window.NB || (window.NB = {});
   var CUSHION_E = 0.76;           // cushion bounciness
   var BALL_E = 0.95;              // ball-ball bounciness
   var MAX_SPEED = 3300;
+  var SLIDE = 380;                // sliding friction (units/s^2): turns skid into roll
+  var SPIN_MAX = 1.4;            // most spin the cue can put on, as a share of speed
 
   var M = 34;                     // corner pocket mouth (distance along each rail)
   var S = 27;                     // half-width of a side pocket mouth
@@ -53,7 +55,8 @@ var NB = window.NB || (window.NB = {});
   var FOOT = { x: W / 2, y: H * 0.25 };
 
   function makeBall(n, x, y) {
-    return { n: n, x: x, y: y, vx: 0, vy: 0, on: true, moving: false, rot: null, sunkAt: -1 };
+    // (wx, wy) is the ball's spin, as the speed its surface turns at. Rolling: w == v.
+    return { n: n, x: x, y: y, vx: 0, vy: 0, wx: 0, wy: 0, sx: 0, sy: 0, on: true, moving: false, rot: null, sunkAt: -1 };
   }
 
   // A standard 8-ball rack: 8 in the middle, a solid and a stripe in the back corners.
@@ -99,7 +102,7 @@ var NB = window.NB || (window.NB = {});
 
   function cloneState(st) {
     var b = st.balls.map(function (o) {
-      return { n: o.n, x: o.x, y: o.y, vx: o.vx, vy: o.vy, on: o.on, moving: o.moving, rot: null, sunkAt: o.sunkAt, spin: o.spin, side: o.side };
+      return { n: o.n, x: o.x, y: o.y, vx: o.vx, vy: o.vy, wx: o.wx || 0, wy: o.wy || 0, sx: 0, sy: 0, on: o.on, moving: o.moving, rot: null, sunkAt: o.sunkAt, side: o.side };
     });
     return { balls: b, time: st.time };
   }
@@ -111,13 +114,20 @@ var NB = window.NB || (window.NB = {});
     cue.vx = Math.cos(angle) * sp;
     cue.vy = Math.sin(angle) * sp;
     cue.moving = true;
-    cue.spin = spin || 0;
+    // Hitting above centre gives topspin (follow), below gives backspin (draw).
+    var w = (spin || 0) * SPIN_MAX * sp;
+    cue.wx = Math.cos(angle) * w;
+    cue.wy = Math.sin(angle) * w;
     cue.side = side || 0;
     return {
       first: -1,          // number of the first ball the cue ball touched
       sunk: [],           // numbers of balls pocketed, in order
+      sunkInfo: [],       // {n, rails, by}: cushions it touched, which ball hit it first
       rails: 0,           // cushion hits by any ball after first contact
       cueRails: 0,
+      kick: false,        // the cue ball hit a cushion before any ball
+      hitBy: {},
+      ballRails: {},
       contacts: []        // {kind, speed} for sounds (only when wanted)
     };
   }
@@ -131,16 +141,29 @@ var NB = window.NB || (window.NB = {});
   function step(st, ev, wantSounds) {
     var balls = st.balls, n = balls.length, i, b, maxSp = 0;
     st.time += DT;
-    // Rolling friction once per step.
+    // Cloth friction once per step. A skidding ball (spin doesn't match its
+    // speed) is gripped hard until it rolls; a rolling ball slows gently.
     for (i = 0; i < n; i++) {
       b = balls[i];
       if (!b.on || !b.moving) continue;
-      var sp = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-      var nsp = sp - (ROLL_DECEL + DRAG * sp) * DT;
-      if (nsp <= STOP) { b.vx = 0; b.vy = 0; b.moving = false; continue; }
-      var k = nsp / sp;
-      b.vx *= k; b.vy *= k;
-      if (nsp > maxSp) maxSp = nsp;
+      var slx = b.vx - b.wx, sly = b.vy - b.wy;
+      var slip = Math.sqrt(slx * slx + sly * sly);
+      if (slip > 3.5 * SLIDE * DT) {
+        var f = SLIDE * DT / slip;
+        b.vx -= slx * f; b.vy -= sly * f;
+        b.wx += slx * f * 2.5; b.wy += sly * f * 2.5;
+      } else {
+        // Now rolling: both settle on the shared speed.
+        var rx = (5 * b.vx + 2 * b.wx) / 7, ry = (5 * b.vy + 2 * b.wy) / 7;
+        var sp = Math.sqrt(rx * rx + ry * ry);
+        var nsp = sp - (ROLL_DECEL + DRAG * sp) * DT;
+        if (nsp <= STOP) { b.vx = b.vy = b.wx = b.wy = 0; b.moving = false; continue; }
+        var k = nsp / sp;
+        b.vx = b.wx = rx * k; b.vy = b.wy = ry * k;
+      }
+      b.sx += b.wx * DT; b.sy += b.wy * DT;
+      var vsp = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+      if (vsp > maxSp) maxSp = vsp;
     }
     // Fast balls move in small pieces so they never sink deep into each other.
     var sub = Math.max(1, Math.ceil(maxSp * DT / (R * 0.3)));
@@ -174,20 +197,15 @@ var NB = window.NB || (window.NB = {});
         b.x += nx * over / 2; b.y += ny * over / 2;
         var rel = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;
         if (rel <= 0) continue;
-        var cueInvolved = a.n === 0 ? a : null;
-        if (cueInvolved && ev.first < 0) ev.first = b.n;
-        var preSpeed = cueInvolved ? Math.sqrt(a.vx * a.vx + a.vy * a.vy) : 0;
-        var preDirX = cueInvolved ? a.vx / (preSpeed || 1) : 0, preDirY = cueInvolved ? a.vy / (preSpeed || 1) : 0;
+        if (a.n === 0 && ev.first < 0) ev.first = b.n;
+        if (ev.hitBy[b.n] == null) ev.hitBy[b.n] = a.n;
+        if (a.n !== 0 && ev.hitBy[a.n] == null) ev.hitBy[a.n] = b.n;
+        // Speed passes along the line of centres; spin stays with each ball,
+        // which is what makes the cue ball draw back or follow through.
         var imp = rel * (1 + BALL_E) / 2;
         a.vx -= imp * nx; a.vy -= imp * ny;
         b.vx += imp * nx; b.vy += imp * ny;
         a.moving = true; b.moving = true;
-        // Follow / draw: the cue ball's spin kicks in after its first hit.
-        if (cueInvolved && a.spin) {
-          var kick = a.spin * preSpeed * (a.spin > 0 ? 0.42 : 0.62) * Math.min(1, rel / (preSpeed || 1) + 0.25);
-          a.vx += preDirX * kick; a.vy += preDirY * kick;
-          a.spin *= 0.15;
-        }
         if (wantSounds && rel > 20) ev.contacts.push({ kind: 'ball', speed: rel, x: a.x, y: a.y });
       }
     }
@@ -222,8 +240,9 @@ var NB = window.NB || (window.NB = {});
   }
 
   function sink(st, b, ev, pocketIndex, wantSounds) {
-    b.on = false; b.moving = false; b.vx = 0; b.vy = 0; b.sunkAt = st.time;
+    b.on = false; b.moving = false; b.vx = 0; b.vy = 0; b.wx = 0; b.wy = 0; b.sunkAt = st.time;
     ev.sunk.push(b.n);
+    if (ev.sunkInfo) ev.sunkInfo.push({ n: b.n, rails: ev.ballRails[b.n] || 0, by: ev.hitBy[b.n] });
     if (wantSounds) ev.contacts.push({ kind: 'pocket', speed: 0, n: b.n, pocket: pocketIndex });
   }
 
@@ -241,11 +260,17 @@ var NB = window.NB || (window.NB = {});
     if (vn >= 0) return;
     b.vx -= (1 + CUSHION_E) * vn * nx;
     b.vy -= (1 + CUSHION_E) * vn * ny;
+    // The cushion grabs the spin that pointed into it.
+    var wn = b.wx * nx + b.wy * ny;
+    b.wx -= wn * nx * 1.4; b.wy -= wn * ny * 1.4;
+    if (ev.ballRails) ev.ballRails[b.n] = (ev.ballRails[b.n] || 0) + 1;
+    if (b.n === 0 && ev.first < 0) ev.kick = true;
     // Side spin bends the rebound, then wears off.
     if (b.n === 0 && b.side) {
       var ang = b.side * 0.32 * Math.min(1, -vn / 900);
       var c = Math.cos(ang), sn = Math.sin(ang), vx = b.vx;
       b.vx = vx * c - b.vy * sn; b.vy = vx * sn + b.vy * c;
+      var wx = b.wx; b.wx = wx * c - b.wy * sn; b.wy = wx * sn + b.wy * c;
       b.side *= 0.45;
     }
     if (ev.first >= 0) ev.rails++;
@@ -286,7 +311,7 @@ var NB = window.NB || (window.NB = {});
         var dx = b.x - tx, dy = b.y - ty;
         if (dx * dx + dy * dy < 4 * R * R + 1) ok = false;
       }
-      if (ok) { ball.x = tx; ball.y = ty; ball.on = true; ball.vx = ball.vy = 0; ball.moving = false; return; }
+      if (ok) { ball.x = tx; ball.y = ty; ball.on = true; ball.vx = ball.vy = ball.wx = ball.wy = 0; ball.moving = false; return; }
     }
   }
 

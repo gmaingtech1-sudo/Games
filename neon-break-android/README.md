@@ -2,7 +2,7 @@
 
 The Neon Break pool game as a regular Android app: download the APK, install it, and it gets its own icon on your home screen. No app store needed, and it plays offline.
 
-**Download:** [`dist/neon-break.apk`](dist/neon-break.apk) (about 590 KB)
+**Download:** [`dist/neon-break.apk`](dist/neon-break.apk) (about 600 KB)
 
 ## Installing it
 

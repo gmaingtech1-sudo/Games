@@ -148,3 +148,40 @@ button.yellow { border-color: var(--yellow); box-shadow: 0 0 18px rgba(255, 225,
 .card .btns { display: flex; gap: 10px; width: 100%; }
 .card .btns button { flex: 1; }
 #spinBig { width: 220px; height: 220px; touch-action: none; }
+
+/* ---- Trick shots, Argon Crystal ---------------------------------------- */
+:root { --violet: #c58bff; --argon2: #7ff6ff; }
+button.violet { border-color: var(--violet); box-shadow: 0 0 18px rgba(197, 139, 255, 0.5), inset 0 0 14px rgba(197, 139, 255, 0.25); text-shadow: 0 0 8px var(--violet); }
+.argonCard {
+  position: relative; overflow: hidden; display: flex; align-items: center; gap: 14px; padding: 12px 16px; text-align: left;
+  border: 2px solid transparent; border-radius: 16px;
+  background: linear-gradient(135deg, rgba(58, 29, 154, 0.9), rgba(30, 12, 80, 0.9)) padding-box,
+              linear-gradient(120deg, var(--violet), var(--argon2), var(--violet)) border-box;
+  box-shadow: 0 0 24px rgba(197, 139, 255, 0.45);
+}
+.argonCard::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  animation: sheen 3.2s ease-in-out infinite;
+}
+@keyframes sheen { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+.argonCard .gem {
+  width: 38px; height: 38px; flex: none; transform: rotate(45deg); border-radius: 6px;
+  background: conic-gradient(from 30deg, #f2e8ff, var(--violet), #3a1d9a, var(--argon2), #f2e8ff, var(--violet));
+  box-shadow: 0 0 16px var(--violet), 0 0 30px rgba(127, 246, 255, 0.5); animation: gemspin 6s linear infinite;
+}
+@keyframes gemspin { to { transform: rotate(405deg); } }
+.argonCard .txt b { display: block; font-size: 1.05rem; letter-spacing: 0.16em; color: #fff; text-shadow: 0 0 10px var(--violet); }
+.argonCard .txt small { font-size: 0.68rem; letter-spacing: 0.12em; color: var(--argon2); }
+.item.argon { border-color: var(--violet); box-shadow: 0 0 14px rgba(197, 139, 255, 0.35); background: linear-gradient(135deg, rgba(58, 29, 154, 0.35), rgba(255, 255, 255, 0.04)); }
+
+#trickGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 380px; }
+.lvl { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border-color: rgba(197, 139, 255, 0.5); }
+.lvl b { font-size: 1.4rem; color: #fff; text-shadow: 0 0 10px var(--violet); }
+.lvl .nm { font-size: 0.68rem; color: var(--dim); font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.lvl .st { color: var(--yellow); letter-spacing: 0.1em; font-size: 0.9rem; text-shadow: 0 0 8px rgba(255, 225, 74, 0.6); }
+.lvl.done { border-color: var(--yellow); }
+.lvl.locked { opacity: 0.35; }
+#overStars { font-size: 2.4rem; letter-spacing: 0.15em; color: rgba(255, 255, 255, 0.18); }
+#overStars span.on { color: var(--yellow); text-shadow: 0 0 14px var(--yellow); }
+#overStars:empty { display: none; }
