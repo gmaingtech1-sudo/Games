@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>BODY.OS: Beyond Existence</title>
+<meta name="description" content="A sci-fi RPG: wake up on a derelict ship and reconfigure your body, brain, senses and reality itself through BODY.OS.">
+<meta name="theme-color" content="#02040a">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="fx"><div id="fx-tint"></div><div id="fx-lines" class="fx-lines"></div><div id="fx-flash"></div></div>
+<div id="hud" hidden></div>
+<div id="menus"></div>
+<div id="toasts"></div>
+<div id="layers"></div>
+<div id="fade" class="on"></div>
+<div id="rotate"><div>BODY.OS runs in landscape.<br>Turn your phone sideways.</div></div>
+<div id="boot">BODY.OS booting&hellip;</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

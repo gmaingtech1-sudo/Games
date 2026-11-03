@@ -5,7 +5,9 @@ abandoned research ship, THE DERELICT, with no memories. Your body runs BODY.OS,
 system that lets you reconfigure your body, brain, senses and eventually reality itself.
 Every setting has a real gameplay effect.
 
-> **Status: source project, not a built APK.** The Unity Editor isn't available in the
+> **Want to play it on your phone now?** An installable APK of the game, built from the HTML5 version, is in [`../body-os-android/dist/body-os.apk`](../body-os-android/dist/body-os.apk).
+>
+> **Status of this Unity project: source project, not a built APK.** The Unity Editor isn't available in the
 > environment this was written in, so no scene, APK or play session has been produced or tested
 > in Unity yet. All scripts compile against the Unity engine and uGUI reference assemblies, and the
 > logic tests pass. See [Building the APK](#building-the-apk) and [What still needs testing](#what-still-needs-testing).

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BODY.OS: BEYOND EXISTENCE</string>
+    <color name="space">#02040A</color>
+
+    <style name="BodyOS" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/space</item>
+        <item name="android:statusBarColor">@color/space</item>
+        <item name="android:navigationBarColor">@color/space</item>
+    </style>
+</resources>
