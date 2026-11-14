@@ -12,6 +12,12 @@ Small games for phones. Each one lives in its own folder.
 | [Cosmos 360](cosmos-360/) | A to-scale universe to explore in 360°. Look around by dragging or moving your phone, fly to real planets and moons where they are today, scan them for your logbook, and jump to Alpha Centauri, TRAPPIST-1 and the black hole at the centre of the Milky Way. |
 | [Starforge](starforge/) | A space shooter where you build your own starfighter. Pick its hull, wings, engine, weapon and special, paint it, then blast through waves of enemy ships and bosses to earn credits for better parts. |
 
+## Videos
+
+| Video | Description |
+| --- | --- |
+| [The Silent Harvest](necrons-vs-guard/) | A 44-second fan animation of Necrons vs the Imperial Guard: a trench line at night, a Necron tomb waking, a tank duel and a pyramid ship. It ends with a commissar leading the charge. Generated entirely in code. |
+
 ## Books
 
 | Book | Description |
