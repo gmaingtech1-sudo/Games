@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#14213d">
+  <title>Coin Empire</title>
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="top">
+      <div class="top-row">
+        <div class="stars" id="starsChip" title="Investors">⭐ <span id="starsVal">0</span></div>
+        <div class="money-wrap">
+          <div id="money">$0</div>
+          <div id="rate">$0 / sec</div>
+        </div>
+        <button class="icon-btn" id="settingsBtn" aria-label="Settings">⚙️</button>
+      </div>
+      <div id="boostBar" class="hidden"><span id="boostText">Gold rush ×7</span><i id="boostFill"></i></div>
+    </header>
+
+    <section id="tapZone">
+      <button id="coin" aria-label="Tap for money">
+        <span class="coin-face">$</span>
+      </button>
+      <div id="tapInfo">+<span id="tapVal">$1</span> per tap</div>
+    </section>
+
+    <nav id="tabs">
+      <button data-tab="biz" class="active">🏪<span>Business</span></button>
+      <button data-tab="mgr">🧑‍💼<span>Managers</span><b class="dot hidden" id="mgrDot"></b></button>
+      <button data-tab="upg">🚀<span>Upgrades</span><b class="dot hidden" id="upgDot"></b></button>
+      <button data-tab="inv">⭐<span>Investors</span><b class="dot hidden" id="invDot"></b></button>
+    </nav>
+
+    <div id="buyModeRow">
+      <span>Buy</span>
+      <button class="mode active" data-mode="1">×1</button>
+      <button class="mode" data-mode="10">×10</button>
+      <button class="mode" data-mode="100">×100</button>
+      <button class="mode" data-mode="max">Max</button>
+    </div>
+
+    <main id="panels">
+      <div class="panel active" id="panel-biz"></div>
+      <div class="panel" id="panel-mgr"></div>
+      <div class="panel" id="panel-upg"></div>
+      <div class="panel" id="panel-inv"></div>
+    </main>
+
+    <div id="fx"></div>
+    <button id="golden" class="hidden" aria-label="Golden coin">🪙</button>
+    <div id="toast" class="hidden"></div>
+
+    <div id="modal" class="hidden">
+      <div class="card" id="modalCard"></div>
+    </div>
+  </div>
+
+  <script src="js/host.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
