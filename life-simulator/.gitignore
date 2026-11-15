@@ -1,0 +1,5 @@
+# Godot
+.godot/
+*.tmp
+# Build output (the release APK is copied to dist/)
+build/

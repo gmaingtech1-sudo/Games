@@ -1,0 +1,127 @@
+{
+  "businesses": [
+    {
+      "id": "restaurant",
+      "name": "Corner Bistro",
+      "type_name": "Restaurant",
+      "price": 85000,
+      "location": "biz_restaurant",
+      "base_customers": 220,
+      "unit_price": 18,
+      "unit_cost": 6,
+      "staff_wage": 75,
+      "max_staff": 8,
+      "stock_unit_cost": 6,
+      "desc": "A cosy bistro in the shopping district."
+    },
+    {
+      "id": "clothing_shop",
+      "name": "Threads Boutique",
+      "type_name": "Clothing Shop",
+      "price": 60000,
+      "location": "biz_clothing",
+      "base_customers": 90,
+      "unit_price": 32,
+      "unit_cost": 12,
+      "staff_wage": 70,
+      "max_staff": 6,
+      "stock_unit_cost": 12,
+      "desc": "Fashion for the whole city."
+    },
+    {
+      "id": "car_dealership",
+      "name": "Prestige Motors",
+      "type_name": "Car Dealership",
+      "price": 320000,
+      "location": "biz_dealership",
+      "base_customers": 4,
+      "unit_price": 12000,
+      "unit_cost": 9500,
+      "staff_wage": 110,
+      "max_staff": 6,
+      "stock_unit_cost": 9500,
+      "desc": "Sell cars to the people of the city."
+    },
+    {
+      "id": "supermarket",
+      "name": "Neighbourhood Grocer",
+      "type_name": "Supermarket",
+      "price": 140000,
+      "location": "biz_supermarket",
+      "base_customers": 600,
+      "unit_price": 9,
+      "unit_cost": 3,
+      "staff_wage": 68,
+      "max_staff": 10,
+      "stock_unit_cost": 3,
+      "desc": "Everyday essentials, every day."
+    },
+    {
+      "id": "repair_garage",
+      "name": "Quickfix Auto",
+      "type_name": "Repair Garage",
+      "price": 110000,
+      "location": "biz_garage",
+      "base_customers": 24,
+      "unit_price": 180,
+      "unit_cost": 50,
+      "staff_wage": 95,
+      "max_staff": 6,
+      "stock_unit_cost": 50,
+      "desc": "Repairs, MOTs and servicing."
+    },
+    {
+      "id": "tech_shop",
+      "name": "Circuit City Tech",
+      "type_name": "Technology Shop",
+      "price": 175000,
+      "location": "biz_tech",
+      "base_customers": 45,
+      "unit_price": 220,
+      "unit_cost": 115,
+      "staff_wage": 85,
+      "max_staff": 6,
+      "stock_unit_cost": 115,
+      "desc": "Phones, laptops and gadgets."
+    }
+  ],
+  "price_levels": [
+    {
+      "name": "Bargain",
+      "price_mult": 0.8,
+      "demand_mult": 1.35
+    },
+    {
+      "name": "Fair",
+      "price_mult": 1.0,
+      "demand_mult": 1.0
+    },
+    {
+      "name": "Premium",
+      "price_mult": 1.25,
+      "demand_mult": 0.72
+    }
+  ],
+  "upgrades": [
+    {
+      "level": 1,
+      "name": "Refit",
+      "cost_ratio": 0.12,
+      "customers_mult": 1.2
+    },
+    {
+      "level": 2,
+      "name": "Expansion",
+      "cost_ratio": 0.25,
+      "customers_mult": 1.45
+    },
+    {
+      "level": 3,
+      "name": "Flagship",
+      "cost_ratio": 0.45,
+      "customers_mult": 1.8
+    }
+  ],
+  "sell_ratio": 0.8,
+  "overhead_ratio": 0.0008
+}

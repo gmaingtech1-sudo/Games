@@ -1,0 +1,19 @@
+{
+  "vehicles": [
+    {"id": "scooter", "name": "Zipp 125 Scooter", "type": "motorcycle", "price": 1800, "top_speed": 22, "accel": 9, "handling": 2.6, "fuel_capacity": 8, "economy": 0.03, "desc": "Cheap, cheerful and easy to park."},
+    {"id": "hatchback", "name": "Corsa-ish Hatch", "type": "car", "price": 4500, "top_speed": 28, "accel": 8, "handling": 2.2, "fuel_capacity": 40, "economy": 0.06, "desc": "A reliable used hatchback."},
+    {"id": "saloon", "name": "Meridian Saloon", "type": "car", "price": 14000, "top_speed": 34, "accel": 10, "handling": 2.0, "fuel_capacity": 55, "economy": 0.07, "desc": "A comfortable family saloon."},
+    {"id": "suv", "name": "Ridgeback SUV", "type": "car", "price": 26000, "top_speed": 33, "accel": 10, "handling": 1.8, "fuel_capacity": 70, "economy": 0.1, "desc": "Big, tough and roomy."},
+    {"id": "van", "name": "Workhorse Van", "type": "van", "price": 9500, "top_speed": 27, "accel": 7, "handling": 1.7, "fuel_capacity": 70, "economy": 0.09, "desc": "Delivery drivers earn a bonus with their own van.", "job_bonus": "delivery_driver"},
+    {"id": "sports_bike", "name": "Raptor 600", "type": "motorcycle", "price": 9000, "top_speed": 40, "accel": 15, "handling": 2.8, "fuel_capacity": 15, "economy": 0.05, "desc": "A screaming sports bike."},
+    {"id": "sports_car", "name": "Vento GT", "type": "car", "price": 65000, "top_speed": 46, "accel": 16, "handling": 2.5, "fuel_capacity": 60, "economy": 0.12, "desc": "Low, wide and very fast.", "luxury": true},
+    {"id": "supercar", "name": "Aurelio Fulmine", "type": "car", "price": 240000, "top_speed": 55, "accel": 20, "handling": 2.7, "fuel_capacity": 70, "economy": 0.15, "desc": "The ultimate status symbol.", "luxury": true}
+  ],
+  "colors": ["#c0392b", "#2e6fd1", "#f4f4f4", "#1d1f24", "#7a7f87", "#27ae60", "#f1c40f", "#8e44ad", "#e67e22", "#16a085"],
+  "paint_cost": 150,
+  "engine_upgrades": [{"level": 1, "cost": 800, "bonus": 0.1}, {"level": 2, "cost": 2200, "bonus": 0.2}, {"level": 3, "cost": 5000, "bonus": 0.32}],
+  "fuel_price_per_litre": 1.5,
+  "repair_cost_per_percent": 12,
+  "tow_cost": 60,
+  "delivery_cost": 40
+}

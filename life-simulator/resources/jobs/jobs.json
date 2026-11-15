@@ -1,0 +1,39 @@
+{
+  "jobs": [
+    {"id": "delivery_driver", "name": "Delivery Driver", "employer": "SwiftParcel Depot", "workplace": "depot", "start": 8, "end": 16, "activity": "route", "requires": {"qualifications": ["driving_licence"]},
+     "desc": "Drive parcels across the city. Faster deliveries mean better pay.",
+     "levels": [{"title": "Trainee Driver", "pay": 72, "xp": 0}, {"title": "Delivery Driver", "pay": 92, "xp": 6}, {"title": "Senior Driver", "pay": 118, "xp": 16}, {"title": "Route Supervisor", "pay": 150, "xp": 32}]},
+    {"id": "shop_assistant", "name": "Shop Assistant", "employer": "FreshMart Supermarket", "workplace": "supermarket", "start": 9, "end": 17, "activity": "tap", "requires": {},
+     "desc": "Stock shelves and serve customers. No experience needed.",
+     "levels": [{"title": "Shop Assistant", "pay": 64, "xp": 0}, {"title": "Senior Assistant", "pay": 80, "xp": 6}, {"title": "Shift Leader", "pay": 102, "xp": 16}, {"title": "Store Manager", "pay": 138, "xp": 32}]},
+    {"id": "cleaner", "name": "Cleaner", "employer": "Sparkle Cleaning Co.", "workplace": "office_tower", "start": 6, "end": 12, "activity": "tap", "requires": {},
+     "desc": "Keep the offices spotless. Early starts, no experience needed.",
+     "levels": [{"title": "Cleaner", "pay": 58, "xp": 0}, {"title": "Senior Cleaner", "pay": 72, "xp": 6}, {"title": "Cleaning Supervisor", "pay": 92, "xp": 16}, {"title": "Facilities Manager", "pay": 124, "xp": 32}]},
+    {"id": "mechanic", "name": "Mechanic", "employer": "Gearhead Garage", "workplace": "garage", "start": 8, "end": 17, "activity": "sequence", "requires": {"qualifications": ["mechanics_cert"]},
+     "desc": "Diagnose and repair cars. Memorise the repair steps.",
+     "levels": [{"title": "Apprentice Mechanic", "pay": 84, "xp": 0}, {"title": "Mechanic", "pay": 110, "xp": 8}, {"title": "Senior Mechanic", "pay": 140, "xp": 20}, {"title": "Workshop Manager", "pay": 180, "xp": 36}]},
+    {"id": "security_guard", "name": "Security Guard", "employer": "Citadel Security", "workplace": "bank", "start": 18, "end": 24, "activity": "tap", "requires": {"qualifications": ["security_licence"]},
+     "desc": "Night shifts guarding the City Bank. Spot the suspicious activity.",
+     "levels": [{"title": "Security Officer", "pay": 80, "xp": 0}, {"title": "Senior Officer", "pay": 100, "xp": 8}, {"title": "Security Supervisor", "pay": 128, "xp": 20}, {"title": "Head of Security", "pay": 165, "xp": 36}]},
+    {"id": "police_officer", "name": "Police Officer", "employer": "City Police", "workplace": "police_station", "start": 7, "end": 15, "activity": "route", "requires": {"qualifications": ["police_training"], "min_stat": {"health": 50}},
+     "desc": "Patrol the city and respond to calls.",
+     "levels": [{"title": "Probationary Constable", "pay": 110, "xp": 0}, {"title": "Constable", "pay": 136, "xp": 8}, {"title": "Sergeant", "pay": 172, "xp": 20}, {"title": "Inspector", "pay": 220, "xp": 40}]},
+    {"id": "office_worker", "name": "Office Worker", "employer": "Meridian Financial", "workplace": "office_tower", "start": 9, "end": 17, "activity": "sequence", "requires": {"smart_outfit": true},
+     "desc": "Process reports and spreadsheets. You must dress smartly for the interview.",
+     "levels": [{"title": "Office Junior", "pay": 88, "xp": 0}, {"title": "Administrator", "pay": 112, "xp": 8}, {"title": "Senior Analyst", "pay": 150, "xp": 20}, {"title": "Department Head", "pay": 205, "xp": 40}]},
+    {"id": "doctor", "name": "Doctor", "employer": "St. Aurelia Hospital", "workplace": "hospital", "start": 8, "end": 18, "activity": "choice", "requires": {"qualifications": ["medical_degree"], "smart_outfit": true},
+     "desc": "Diagnose and treat patients. The best-paid job in the city.",
+     "levels": [{"title": "Junior Doctor", "pay": 210, "xp": 0}, {"title": "Registrar", "pay": 270, "xp": 10}, {"title": "Consultant", "pay": 360, "xp": 24}, {"title": "Chief of Medicine", "pay": 480, "xp": 45}]},
+    {"id": "business_manager", "name": "Business Manager", "employer": "Apex Holdings", "workplace": "business_centre", "start": 9, "end": 18, "activity": "choice", "requires": {"qualifications": ["business_degree"], "smart_outfit": true, "job_xp": {"office_worker": 8}},
+     "desc": "Make the big decisions. Needs a business degree and office experience.",
+     "levels": [{"title": "Assistant Manager", "pay": 190, "xp": 0}, {"title": "Business Manager", "pay": 250, "xp": 10}, {"title": "Regional Director", "pay": 330, "xp": 24}, {"title": "Chief Executive", "pay": 450, "xp": 45}]}
+  ],
+  "courses": [
+    {"id": "driving_licence", "name": "Driving Licence", "fee": 120, "sessions": 2, "hours": 3, "desc": "Lessons and a test. Needed to drive for work."},
+    {"id": "security_licence", "name": "Security Licence", "fee": 180, "sessions": 2, "hours": 4, "desc": "Licence for security work."},
+    {"id": "mechanics_cert", "name": "Mechanics Certificate", "fee": 450, "sessions": 3, "hours": 4, "desc": "Learn to fix engines."},
+    {"id": "police_training", "name": "Police Training", "fee": 300, "sessions": 4, "hours": 5, "desc": "Police academy training."},
+    {"id": "business_degree", "name": "Business Degree", "fee": 2500, "sessions": 5, "hours": 6, "desc": "Management and finance."},
+    {"id": "medical_degree", "name": "Medical Degree", "fee": 6000, "sessions": 8, "hours": 6, "desc": "The long road to becoming a doctor."}
+  ]
+}

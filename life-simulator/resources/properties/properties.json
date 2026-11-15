@@ -1,0 +1,21 @@
+{
+  "properties": [
+    {"id": "studio_1", "name": "Flat 3, Ashgrove Court", "type": "studio", "type_name": "Studio Apartment", "rent": 140, "price": 48000, "plot": 0, "slots": 4, "comfort": 5, "room": [8, 7], "desc": "A compact studio. Bed, shower and a kitchenette."},
+    {"id": "studio_2", "name": "Flat 9, Canal View", "type": "studio", "type_name": "Studio Apartment", "rent": 160, "price": 56000, "plot": 1, "slots": 4, "comfort": 6, "room": [8, 8], "desc": "A bright studio near the park."},
+    {"id": "small_house_1", "name": "14 Elm Road", "type": "small_house", "type_name": "Small House", "rent": 260, "price": 125000, "plot": 2, "slots": 6, "comfort": 10, "room": [11, 9], "desc": "Two-bed terrace with a little garden."},
+    {"id": "small_house_2", "name": "22 Elm Road", "type": "small_house", "type_name": "Small House", "rent": 280, "price": 138000, "plot": 3, "slots": 6, "comfort": 11, "room": [11, 9], "desc": "Freshly decorated two-bed terrace."},
+    {"id": "family_house_1", "name": "7 Willow Crescent", "type": "family_house", "type_name": "Family House", "rent": 420, "price": 265000, "plot": 4, "slots": 9, "comfort": 16, "room": [14, 11], "desc": "Four bedrooms, driveway and a big garden."},
+    {"id": "luxury_house_1", "name": "The Glasshouse", "type": "luxury_house", "type_name": "Luxury House", "rent": 900, "price": 620000, "plot": 5, "slots": 12, "comfort": 24, "room": [17, 13], "desc": "Architect-designed, all glass and oak."},
+    {"id": "mansion_1", "name": "Hartwell Manor", "type": "mansion", "type_name": "Mansion", "rent": 2400, "price": 1850000, "plot": 6, "slots": 16, "comfort": 36, "room": [22, 16], "desc": "Eight bedrooms, a pool and a staircase to die for."}
+  ],
+  "upgrades": [
+    {"level": 1, "name": "Fresh Decoration", "cost_ratio": 0.03, "comfort": 4, "slots": 1},
+    {"level": 2, "name": "New Kitchen & Bathroom", "cost_ratio": 0.06, "comfort": 8, "slots": 2},
+    {"level": 3, "name": "Extension", "cost_ratio": 0.1, "comfort": 12, "slots": 3}
+  ],
+  "rent_deposit_weeks": 1,
+  "sell_ratio": 0.92,
+  "bills_ratio": 0.0006,
+  "wall_colors": ["#efe8dc", "#d7e3ea", "#e9d6d0", "#d9e6d2", "#3d4a5c", "#f4e2b8", "#ffffff", "#5b3f36"],
+  "floor_colors": ["#9b7653", "#c9b18f", "#6b4a33", "#8c8c8c", "#e0d8cc", "#3f3a36"]
+}

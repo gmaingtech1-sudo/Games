@@ -1,0 +1,28 @@
+{
+  "achievements": [
+    {"id": "first_paycheck", "name": "First Paycheck", "desc": "Get paid for your first work shift.", "check": "shifts", "value": 1},
+    {"id": "first_car", "name": "First Car", "desc": "Buy your first vehicle.", "check": "vehicles", "value": 1},
+    {"id": "first_home", "name": "First Home", "desc": "Rent or buy your first home.", "check": "properties", "value": 1},
+    {"id": "homeowner", "name": "Homeowner", "desc": "Own a property outright.", "check": "owned_properties", "value": 1},
+    {"id": "millionaire", "name": "Millionaire", "desc": "Reach a net worth of £1,000,000.", "check": "net_worth", "value": 1000000},
+    {"id": "business_owner", "name": "Business Owner", "desc": "Buy your first business.", "check": "businesses", "value": 1},
+    {"id": "missions_10", "name": "Go-Getter", "desc": "Complete 10 missions.", "check": "missions_completed", "value": 10},
+    {"id": "missions_100", "name": "100 Missions Completed", "desc": "Complete 100 missions.", "check": "missions_completed", "value": 100},
+    {"id": "city_explorer", "name": "City Explorer", "desc": "Visit every district in the city.", "check": "districts", "value": 7},
+    {"id": "luxury_lifestyle", "name": "Luxury Lifestyle", "desc": "Own a luxury house or mansion, a luxury vehicle and a luxury item.", "check": "luxury", "value": 1},
+    {"id": "career_champion", "name": "Career Champion", "desc": "Reach the top level of any career.", "check": "max_job_level", "value": 3},
+    {"id": "best_friend", "name": "Best Friends Forever", "desc": "Become best friends with someone.", "check": "best_friends", "value": 1},
+    {"id": "social_star", "name": "Social Star", "desc": "Be friends with 8 people.", "check": "friends", "value": 8},
+    {"id": "tycoon", "name": "Business Tycoon", "desc": "Win the Business Tycoon challenge.", "check": "challenge:business_tycoon", "value": 1},
+    {"id": "racer", "name": "Street Racing Champion", "desc": "Win the Street Racing Championship.", "check": "challenge:street_racing", "value": 1},
+    {"id": "mogul", "name": "Property Mogul", "desc": "Win the Property Mogul challenge.", "check": "challenge:property_mogul", "value": 1},
+    {"id": "career_challenge", "name": "Rising Star", "desc": "Win the Career Challenge.", "check": "challenge:career_challenge", "value": 1},
+    {"id": "road_warrior", "name": "Road Warrior", "desc": "Drive 50 km.", "check": "distance_driven", "value": 50000},
+    {"id": "marathon", "name": "Marathon", "desc": "Walk 42 km.", "check": "distance_walked", "value": 42000},
+    {"id": "graduate", "name": "Graduate", "desc": "Complete a university degree.", "check": "degree", "value": 1},
+    {"id": "fashionista", "name": "Fashionista", "desc": "Own 15 clothing items.", "check": "clothing_owned", "value": 15},
+    {"id": "interior_designer", "name": "Interior Designer", "desc": "Place 10 pieces of furniture in one home.", "check": "max_furniture", "value": 10},
+    {"id": "collector", "name": "Collector", "desc": "Own 5 different collectibles.", "check": "collectibles", "value": 5},
+    {"id": "big_saver", "name": "Big Saver", "desc": "Have £10,000 in the bank.", "check": "bank", "value": 10000}
+  ]
+}

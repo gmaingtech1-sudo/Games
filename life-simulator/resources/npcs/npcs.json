@@ -1,0 +1,43 @@
+{
+  "levels": [
+    {"min": 0, "name": "Stranger"},
+    {"min": 15, "name": "Acquaintance"},
+    {"min": 35, "name": "Friend"},
+    {"min": 60, "name": "Good Friend"},
+    {"min": 85, "name": "Best Friend"}
+  ],
+  "npcs": [
+    {"id": "priya", "name": "Priya Shah", "body": "fem", "skin": 3, "hair": 2, "hair_color": "#1a1208", "top": "#d35400", "bottom": "#22315e", "occupation": "Café owner", "personality": "cheerful", "likes": "drink", "home": "home_a", "work": "cafe", "leisure": "park",
+     "lines": ["Morning! Best flat white in town, I promise.", "You look like you need a coffee!", "Business is good today. Everyone wants cake.", "You're one of my favourite regulars now!", "Honestly, you're like family to me."]},
+    {"id": "tom", "name": "Tom Okafor", "body": "masc", "skin": 5, "hair": 1, "hair_color": "#0d0d0d", "top": "#2e6fd1", "bottom": "#1d1f24", "occupation": "Mechanic", "personality": "laid-back", "likes": "vehicle_parts", "home": "home_b", "work": "garage", "leisure": "restaurant",
+     "lines": ["Alright? Car trouble?", "Nothing a spanner can't fix.", "Bring your motor round any time.", "You're alright, you know that?", "Mate, I'd lend you my last spanner."]},
+    {"id": "ellie", "name": "Ellie Morgan", "body": "fem", "skin": 0, "hair": 3, "hair_color": "#c7752e", "top": "#27ae60", "bottom": "#33507a", "occupation": "Student", "personality": "curious", "likes": "electronics", "home": "home_c", "work": "college", "leisure": "park",
+     "lines": ["Hi! Are you new around here?", "I'm studying for my exams, wish me luck!", "Have you explored the park? The fountain's lovely.", "We should study together sometime!", "You're the best, honestly."]},
+    {"id": "marcus", "name": "Marcus Bell", "body": "masc", "skin": 1, "hair": 4, "hair_color": "#3b2a20", "top": "#22262e", "bottom": "#1d1f24", "occupation": "Banker", "personality": "ambitious", "likes": "collectibles", "home": "home_lux", "work": "bank", "leisure": "restaurant",
+     "lines": ["Time is money. Make it quick.", "Have you thought about investing?", "Property, my friend. Always property.", "You've got a head for business.", "Partner, we're going places."]},
+    {"id": "sofia", "name": "Sofia Rossi", "body": "fem", "skin": 1, "hair": 5, "hair_color": "#0d0d0d", "top": "#c62f3b", "bottom": "#1d1f24", "occupation": "Chef", "personality": "passionate", "likes": "food", "home": "home_d", "work": "restaurant", "leisure": "supermarket",
+     "lines": ["Ciao! Have you eaten today?", "The secret is fresh ingredients.", "Come by the restaurant, I'll cook for you.", "You have good taste, my friend.", "For you, the chef's table is always free."]},
+    {"id": "jamal", "name": "Jamal Wright", "body": "masc", "skin": 4, "hair": 0, "hair_color": "#0d0d0d", "top": "#1f3a93", "bottom": "#1d1f24", "occupation": "Police Sergeant", "personality": "serious", "likes": "drink", "home": "home_e", "work": "police_station", "leisure": "gym",
+     "lines": ["Evening. Keep out of trouble.", "The city's quieter than it looks.", "Ever thought about joining the force?", "Good to see a friendly face.", "You've always got my back. Respect."]},
+    {"id": "hannah", "name": "Hannah Lee", "body": "fem", "skin": 2, "hair": 1, "hair_color": "#14110f", "top": "#f2f2f2", "bottom": "#2c3e50", "occupation": "Doctor", "personality": "kind", "likes": "food", "home": "home_f", "work": "hospital", "leisure": "cafe",
+     "lines": ["Hello there. Feeling alright?", "Remember to drink plenty of water!", "Long shift today, but it's worth it.", "You'd make a good doctor, you know.", "You're a wonderful friend."]},
+    {"id": "oliver", "name": "Oliver Grant", "body": "masc", "skin": 0, "hair": 2, "hair_color": "#e3c27a", "top": "#7a7f87", "bottom": "#33507a", "occupation": "Delivery Driver", "personality": "chatty", "likes": "food", "home": "home_g", "work": "depot", "leisure": "cafe",
+     "lines": ["Can't stop long, parcels to drop!", "I've driven every road in this city.", "The depot's always hiring, you know.", "Fancy a coffee after my shift?", "You're a legend, mate."]},
+    {"id": "aisha", "name": "Aisha Khan", "body": "fem", "skin": 3, "hair": 6, "hair_color": "#1a1208", "top": "#8e44ad", "bottom": "#22315e", "occupation": "Estate Agent", "personality": "confident", "likes": "collectibles", "home": "home_h", "work": "estate_agent", "leisure": "restaurant",
+     "lines": ["Looking to buy? Or rent?", "Location, location, location.", "I've got a lovely studio you'd adore.", "For you? Mates' rates.", "You're my favourite client and my best friend."]},
+    {"id": "ben", "name": "Ben Carter", "body": "masc", "skin": 0, "hair": 3, "hair_color": "#6b4a2a", "top": "#e67e22", "bottom": "#6d7078", "occupation": "Shop Assistant", "personality": "shy", "likes": "electronics", "home": "home_a", "work": "supermarket", "leisure": "tech",
+     "lines": ["Oh, um, hi.", "Do you need help finding something?", "I like games. Do you play?", "It's nice talking to you.", "You're my best mate, seriously."]},
+    {"id": "chloe", "name": "Chloe Evans", "body": "fem", "skin": 0, "hair": 4, "hair_color": "#f0d58c", "top": "#e84393", "bottom": "#f2f2f2", "occupation": "Fashion Designer", "personality": "stylish", "likes": "clothing", "home": "home_lux", "work": "clothing", "leisure": "cafe",
+     "lines": ["Love the look! Well... nearly.", "Fashion is all about confidence.", "Have you seen the new range at Threads?", "You've got real style now!", "Darling, you're my muse."]},
+    {"id": "daniel", "name": "Daniel Novak", "body": "masc", "skin": 1, "hair": 5, "hair_color": "#2b2b2b", "top": "#16a085", "bottom": "#1d1f24", "occupation": "Street Racer", "personality": "daring", "likes": "vehicle_parts", "home": "home_b", "work": "events", "leisure": "fuel_station",
+     "lines": ["Hey. You drive?", "The streets come alive at night.", "Think you can beat my lap time?", "You've got some skills behind the wheel.", "You're the only one who can keep up with me."]},
+    {"id": "grace", "name": "Grace Mensah", "body": "fem", "skin": 5, "hair": 2, "hair_color": "#0d0d0d", "top": "#f1c40f", "bottom": "#2c3e50", "occupation": "Business Owner", "personality": "driven", "likes": "collectibles", "home": "home_f", "work": "business_centre", "leisure": "restaurant",
+     "lines": ["Every day is an opportunity.", "Never stop hustling.", "Thinking of starting a business?", "I see a lot of myself in you.", "We should go into business together!"]},
+    {"id": "leo", "name": "Leo Fischer", "body": "masc", "skin": 0, "hair": 6, "hair_color": "#a33a1a", "top": "#27ae60", "bottom": "#33507a", "occupation": "Gardener", "personality": "gentle", "likes": "furniture", "home": "home_c", "work": "park", "leisure": "park",
+     "lines": ["Lovely day for it.", "Those roses took me three years.", "Nature always finds a way.", "You're good company.", "Friends like you are rare as blue roses."]},
+    {"id": "maya", "name": "Maya Patel", "body": "fem", "skin": 2, "hair": 3, "hair_color": "#2a1c10", "top": "#3498db", "bottom": "#1d1f24", "occupation": "Software Engineer", "personality": "witty", "likes": "electronics", "home": "home_g", "work": "office_tower", "leisure": "tech",
+     "lines": ["Have you tried turning it off and on again?", "I'm debugging my life right now.", "The tech shop has new laptops in!", "You're actually really fun.", "Best friend status: confirmed."]},
+    {"id": "sam", "name": "Sam Riley", "body": "neutral", "skin": 4, "hair": 4, "hair_color": "#5e3a8c", "top": "#2f7d4f", "bottom": "#1d1f24", "occupation": "Musician", "personality": "dreamy", "likes": "collectibles", "home": "home_e", "work": "plaza", "leisure": "park",
+     "lines": ["Hey, want to hear a song?", "This city has its own rhythm.", "Found any old vinyl lately?", "You get me, you know?", "You're my favourite person in this whole city."]}
+  ]
+}

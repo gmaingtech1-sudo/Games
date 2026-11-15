@@ -1,0 +1,24 @@
+{
+  "challenges": [
+    {"id": "business_tycoon", "name": "Business Tycoon", "rival": "Apex Holdings", "desc": "Go head-to-head with Apex Holdings. Make more business profit than they do before the deadline.", "requires": "business",
+     "difficulties": {
+       "easy": {"days": 7, "rival_daily": 1200, "reward": 5000},
+       "normal": {"days": 7, "rival_daily": 2600, "reward": 15000},
+       "hard": {"days": 7, "rival_daily": 5200, "reward": 40000}}},
+    {"id": "street_racing", "name": "Street Racing Champion", "rival": "Daniel 'Nitro' Novak", "desc": "Win a street race through the city against three rival drivers. A race car is provided if you don't have your own.", "requires": "",
+     "difficulties": {
+       "easy": {"ai_speed": 0.68, "reward": 1000},
+       "normal": {"ai_speed": 0.8, "reward": 3000},
+       "hard": {"ai_speed": 0.9, "reward": 8000}}},
+    {"id": "property_mogul", "name": "Property Mogul", "rival": "Aisha's investor clients", "desc": "Build a property portfolio fast. Own enough properties with a high enough total value before the deadline.", "requires": "",
+     "difficulties": {
+       "easy": {"days": 14, "count": 2, "value": 150000, "reward": 10000},
+       "normal": {"days": 14, "count": 3, "value": 450000, "reward": 30000},
+       "hard": {"days": 21, "count": 5, "value": 1500000, "reward": 90000}}},
+    {"id": "career_challenge", "name": "Career Challenge", "rival": "The Graduate Scheme", "desc": "A demanding week at work. Complete the required shifts with a high average performance.", "requires": "job",
+     "difficulties": {
+       "easy": {"days": 5, "shifts": 3, "avg_perf": 60, "reward": 1500},
+       "normal": {"days": 5, "shifts": 4, "avg_perf": 75, "reward": 4000},
+       "hard": {"days": 5, "shifts": 5, "avg_perf": 88, "reward": 10000}}}
+  ]
+}
