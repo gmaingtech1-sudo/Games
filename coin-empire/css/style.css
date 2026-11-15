@@ -47,7 +47,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 #boostBar span { position: relative; z-index: 1; text-shadow: 0 1px 2px #0009; }
 
 /* ---------- tap zone ---------- */
-#tapZone { display: flex; flex-direction: column; align-items: center; padding: 6px 0 8px; }
+#tapZone { position: relative; display: flex; flex-direction: column; align-items: center; padding: 6px 0 8px; }
 #coin {
   width: 132px; height: 132px; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #fff3b0 0 10%, var(--gold) 38%, var(--gold2) 75%, #b45309 100%);
@@ -62,6 +62,33 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 }
 #tapInfo { margin-top: 12px; font-size: 13px; color: var(--muted); }
 #tapVal { color: var(--gold); font-weight: 700; }
+
+/* ---------- vodka & mood ---------- */
+#vodkaBtn, #moodBox { position: absolute; top: 18px; width: 82px; padding: 8px 4px; border-radius: 16px; background: var(--card); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+#vodkaBtn { left: 12px; box-shadow: 0 3px 0 #0006; }
+#vodkaBtn .vk { font-size: 30px; line-height: 1.1; }
+#vodkaBtn b { font-size: 13px; }
+#vodkaBtn small { font-size: 12px; color: var(--muted); font-weight: 700; }
+#vodkaBtn.can { background: linear-gradient(#bfe3ff, #7cc4ff); color: #0b2742; box-shadow: 0 3px 0 #2b6cb0; }
+#vodkaBtn.can small { color: #0b2742; }
+#vodkaBtn.can:active { transform: translateY(2px); box-shadow: 0 1px 0 #2b6cb0; }
+#vodkaBtn.sick { filter: grayscale(1); opacity: .6; }
+#moodBox { right: 12px; }
+#moodFace { font-size: 28px; line-height: 1.15; }
+#moodBox b { font-size: 13px; }
+#moodBox small { font-size: 11px; color: var(--muted); }
+#moodPips { display: flex; gap: 3px; margin: 3px 0 1px; }
+#moodPips i { width: 10px; height: 10px; border-radius: 3px; background: var(--bg); }
+#moodPips i.on { background: #7cc4ff; }
+#moodPips i.on.hot { background: var(--red); }
+
+#app.drunk { animation: sway var(--sway-dur, 3s) ease-in-out infinite; filter: blur(calc(var(--blur, 0) * 1px)) hue-rotate(calc(var(--hue, 0) * 1deg)); }
+#app.drunk #coin { animation: drift calc(var(--sway-dur, 3s) * 0.7) ease-in-out infinite; filter: drop-shadow(calc(var(--dbl, 0) * 1px) calc(var(--dbl, 0) * -0.4px) 0 rgba(255, 201, 60, .45)) drop-shadow(calc(var(--dbl, 0) * -1px) 0 0 rgba(124, 196, 255, .35)); }
+#app.drunk #money, #app.drunk .biz-name { text-shadow: calc(var(--dbl, 0) * .6px) 0 0 #ffffff55, 0 2px 0 #0008; }
+#app.hangover { filter: saturate(.35) brightness(.8) sepia(.25) hue-rotate(40deg); }
+.float.miss { color: var(--muted); font-size: 16px; }
+.float.hic { color: #7cc4ff; font-size: 18px; font-style: italic; }
+#passout { position: absolute; inset: 0; z-index: 9; pointer-events: none; background: #000; animation: passout 1.6s ease-in-out forwards; }
 
 /* ---------- tabs ---------- */
 #tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 0 8px; }
@@ -153,6 +180,16 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 
 .hidden { display: none !important; }
 
+@keyframes sway {
+  0%, 100% { transform: rotate(calc(var(--sway, 0) * -1deg)) translateX(calc(var(--sway, 0) * -1.5px)); }
+  50% { transform: rotate(calc(var(--sway, 0) * 1deg)) translateX(calc(var(--sway, 0) * 1.5px)); }
+}
+@keyframes drift {
+  0%, 100% { translate: calc(var(--sway, 0) * -3px) 0; }
+  33% { translate: calc(var(--sway, 0) * 2px) calc(var(--sway, 0) * -2px); }
+  66% { translate: calc(var(--sway, 0) * 3px) calc(var(--sway, 0) * 1.5px); }
+}
+@keyframes passout { 0% { opacity: 0; } 30%, 60% { opacity: .92; } 100% { opacity: 0; } }
 @keyframes floatUp { from { transform: translate(-50%, 0); opacity: 1; } to { transform: translate(-50%, -80px); opacity: 0; } }
 @keyframes spark { from { transform: translate(0, 0) scale(1); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) scale(.2); opacity: 0; } }
 @keyframes pulse { 50% { transform: scale(1.07); } }
@@ -165,4 +202,5 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   #coin { width: 104px; height: 104px; }
   .coin-face { width: 76px; height: 76px; font-size: 46px; }
   #money { font-size: 27px; }
+  #vodkaBtn, #moodBox { top: 8px; width: 74px; }
 }

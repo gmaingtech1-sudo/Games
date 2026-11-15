@@ -37,6 +37,19 @@
     UPG.push({ id: 'all' + i, icon: '📈', name: ['Marketing Blitz', 'TV Ads', 'Worldwide Fame', 'Stock Split', 'Universe Domination'][i], desc: 'All profits ×2', cost, kind: 'all', x: 2 }));
   UPG.sort((a, b) => a.cost - b.cost);
 
+  // Vodka: each shot adds a level of drunk (max 5). Taps earn ×(1 + level),
+  // but the screen sways and some taps miss. A shot at level 5 = pass out.
+  const MOODS = [
+    { face: '😐', name: 'Sober',   sway: 0,   blur: 0,   dbl: 0,  dur: 3,   hue: 0,  miss: 0 },
+    { face: '🙂', name: 'Tipsy',   sway: 1,   blur: 0,   dbl: 2,  dur: 4,   hue: 0,  miss: 0 },
+    { face: '😊', name: 'Buzzed',  sway: 2,   blur: 0,   dbl: 4,  dur: 3.2, hue: 8,  miss: 0.05 },
+    { face: '🥴', name: 'Drunk',   sway: 3.5, blur: 0.3, dbl: 6,  dur: 2.6, hue: 18, miss: 0.12 },
+    { face: '😵‍💫', name: 'Wasted',  sway: 5,   blur: 0.7, dbl: 9,  dur: 2.2, hue: 30, miss: 0.2 },
+    { face: '🤪', name: 'Smashed', sway: 7,   blur: 1.1, dbl: 12, dur: 1.8, hue: 45, miss: 0.3 },
+  ];
+  const SOBER_UP = 20;        // seconds per drunk level
+  const HANGOVER = 30000;     // ms
+
   const STAR_BONUS = 0.1;          // +10% profit per investor
   const OFFLINE_CAP = 12 * 3600;   // seconds
   const SUFFIX = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc', 'Ud', 'Dd', 'Td', 'Qad', 'Qid', 'Sxd', 'Spd', 'Ocd', 'Nod', 'Vg'];
@@ -60,6 +73,10 @@
       sound: keep ? keep.sound : true,
       vibe: keep ? keep.vibe : true,
       mode: keep ? keep.mode : '1',
+      wobble: keep ? keep.wobble : true,
+      shots: keep ? keep.shots : 0,
+      drunk: 0,
+      hangoverUntil: 0,
     };
   }
 
@@ -133,13 +150,17 @@
     S.biz.forEach((st, i) => { if (st.n > 0 && (st.mgr || !managedOnly)) sum += profit(i, withBoost) / BIZ[i].time; });
     return sum;
   }
-  function tapValue() {
+  const drunkLevel = () => Math.min(5, Math.ceil(S.drunk - 1e-6));
+  const hungover = () => Date.now() < S.hangoverUntil;
+  function drunkMult() { return hungover() ? 0.25 : 1 + drunkLevel(); }
+  function tapValue(withDrunk = true) {
     let v = 1;
     let pct = 0;
     for (const u of UPG) if (S.upg[u.id]) { if (u.kind === 'tap') v *= u.x; if (u.kind === 'smart') pct += u.x; }
     v = v * starMult() + pct * incomePerSec(false);
-    return v * (boosted() ? 7 : 1);
+    return v * (boosted() ? 7 : 1) * (withDrunk ? drunkMult() : 1);
   }
+  function vodkaCost() { return Math.max(25, incomePerSec(false, false) * 15, tapValue(false) * 25); }
 
   function costFor(i, k) {
     const b = BIZ[i], n = S.biz[i].n;
@@ -166,6 +187,7 @@
   // Advance the simulation by dt seconds. Returns money earned.
   function advance(dt) {
     let got = 0;
+    if (S.drunk > 0) S.drunk = Math.max(0, S.drunk - dt / SOBER_UP);
     S.biz.forEach((st, i) => {
       if (st.n <= 0) return;
       if (st.mgr) st.run = true;
@@ -210,6 +232,9 @@
     tap: () => tone(900 + Math.random() * 160, 0.07, 'triangle', 0.08),
     buy: () => { tone(660, 0.08, 'square', 0.05); tone(990, 0.12, 'square', 0.05, 0.07); },
     cash: () => { tone(1320, 0.06, 'triangle', 0.06); tone(1760, 0.1, 'triangle', 0.06, 0.05); },
+    glug: () => [420, 360, 300, 250].forEach((f, k) => tone(f, 0.09, 'sine', 0.1, k * 0.08)),
+    hic: () => { tone(700, 0.04, 'square', 0.04); tone(1100, 0.06, 'triangle', 0.06, 0.04); },
+    passout: () => [400, 320, 240, 160, 90].forEach((f, k) => tone(f, 0.25, 'sawtooth', 0.05, k * 0.15)),
     gold: () => [523, 659, 784, 1047, 1319].forEach((f, k) => tone(f, 0.18, 'triangle', 0.09, k * 0.07)),
     no: () => tone(180, 0.15, 'sawtooth', 0.05),
   };
@@ -218,9 +243,9 @@
   /* ---------------- effects ---------------- */
 
   const appEl = $('app'), fx = $('fx');
-  function floatText(text, x, y, color) {
+  function floatText(text, x, y, color, cls) {
     const el = document.createElement('div');
-    el.className = 'float'; el.textContent = text;
+    el.className = 'float' + (cls ? ' ' + cls : ''); el.textContent = text;
     el.style.left = x + 'px'; el.style.top = (y - 20) + 'px';
     if (color) el.style.color = color;
     fx.appendChild(el);
@@ -277,12 +302,17 @@
   const coin = $('coin');
   coin.addEventListener('pointerdown', (e) => {
     e.preventDefault();
+    const p = localPoint(e);
+    coin.classList.add('hit'); setTimeout(() => coin.classList.remove('hit'), 70);
+    if (!hungover() && Math.random() < MOODS[drunkLevel()].miss) {
+      floatText(['missed!', 'whoops', 'oops!', 'huh?'][Math.floor(Math.random() * 4)], p.x + (Math.random() * 60 - 30), p.y, null, 'miss');
+      tone(240, 0.06, 'sine', 0.05);
+      return;
+    }
     const v = tapValue();
     earn(v); S.taps++;
-    const p = localPoint(e);
     floatText('+' + money(v), p.x + (Math.random() * 30 - 15), p.y, boosted() ? '#fde047' : null);
     if (S.taps % 5 === 0) sparks(p.x, p.y, 4);
-    coin.classList.add('hit'); setTimeout(() => coin.classList.remove('hit'), 70);
     sfx.tap(); buzz(8);
   });
   coin.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -415,6 +445,7 @@
         <div>Coin taps<b id="stTaps">${fmt(S.taps)}</b></div>
         <div>Golden coins<b>${fmt(S.goldens)}</b></div>
         <div>Times sold<b>${S.resets}</b></div>
+        <div>Vodka shots<b>${fmt(S.shots)}</b></div>
         <div>Businesses owned<b>${fmt(S.biz.reduce((a, b) => a + b.n, 0))}</b></div>
       </div>`;
     $('resetBtn').addEventListener('click', confirmReset);
@@ -436,6 +467,71 @@
       };
       c.querySelector('#noReset').onclick = closeModal;
     });
+  }
+
+  /* ---------------- vodka ---------------- */
+
+  const appClass = appEl.classList;
+  $('vodkaBtn').addEventListener('click', () => {
+    if (hungover()) { sfx.no(); toast('🤢 Too hungover to drink. Give it a moment...'); return; }
+    const c = vodkaCost();
+    if (S.money < c) { sfx.no(); toast(`🍸 A shot costs ${money(c)}`); return; }
+    S.money -= c; S.shots++;
+    if (S.drunk > 4.5) { passOut(); return; }
+    S.drunk = Math.min(5, drunkLevel() + 1);
+    const m = MOODS[drunkLevel()];
+    sfx.glug(); buzz(24);
+    const pt = centerOf($('vodkaBtn'));
+    floatText('🍸 glug!', pt.x, pt.y, '#7cc4ff');
+    toast(drunkLevel() === 5
+      ? `${m.face} ${m.name}! Taps ×6 — one more and you'll pass out!`
+      : `${m.face} ${m.name}! Taps now earn ×${1 + drunkLevel()}`);
+    applyMood();
+  });
+
+  function passOut() {
+    S.drunk = 0;
+    S.hangoverUntil = Date.now() + HANGOVER;
+    sfx.passout(); buzz(400);
+    const black = document.createElement('div');
+    black.id = 'passout'; appEl.appendChild(black);
+    setTimeout(() => black.remove(), 1700);
+    toast('😵 You passed out! Hangover: taps ×¼ for 30s');
+    applyMood();
+  }
+
+  let moodKey = '';
+  function applyMood() {
+    const lvl = drunkLevel(), sick = hungover();
+    const m = MOODS[lvl];
+    const key = lvl + '|' + sick + '|' + S.wobble;
+    if (key !== moodKey) {
+      moodKey = key;
+      appClass.toggle('drunk', lvl > 0 && !sick && S.wobble);
+      appClass.toggle('hangover', sick);
+      const st = appEl.style;
+      st.setProperty('--sway', m.sway); st.setProperty('--blur', m.blur);
+      st.setProperty('--dbl', m.dbl); st.setProperty('--hue', m.hue);
+      st.setProperty('--sway-dur', m.dur + 's');
+      document.querySelectorAll('#moodPips i').forEach((pip, k) => { pip.classList.toggle('on', k < lvl); pip.classList.toggle('hot', lvl >= 4); });
+    }
+    $('moodFace').textContent = sick ? '🤢' : m.face;
+    $('moodLabel').textContent = sick ? 'Hangover' : m.name;
+    $('moodMult').textContent = sick ? `${Math.ceil((S.hangoverUntil - Date.now()) / 1000)}s · taps ×¼` : `taps ×${1 + lvl}`;
+    const vb = $('vodkaBtn');
+    $('vodkaCost').textContent = money(vodkaCost());
+    vb.classList.toggle('can', !sick && S.money >= vodkaCost());
+    vb.classList.toggle('sick', sick);
+  }
+
+  function hiccups(dt) {
+    const lvl = drunkLevel();
+    if (lvl < 2 || hungover() || modalOpen) return;
+    if (Math.random() < dt * 0.06 * lvl) {
+      const pt = centerOf(coin);
+      floatText('hic!', pt.x + (Math.random() * 120 - 60), pt.y - 40, null, 'hic');
+      sfx.hic(); buzz(6);
+    }
   }
 
   /* ---------------- golden coin ---------------- */
@@ -501,10 +597,12 @@
     openModal(`<h2>Settings</h2>
       <div class="opt"><span>🔊 Sound</span><button class="toggle ${S.sound ? 'on' : ''}" id="tSound"></button></div>
       <div class="opt"><span>📳 Vibration</span><button class="toggle ${S.vibe ? 'on' : ''}" id="tVibe"></button></div>
-      <p style="margin-top:14px">Tap the coin, buy businesses, hire managers so they run on their own, and catch the 🪙 golden coins. When you've earned a lot, sell your empire for investors.</p>
+      <div class="opt"><span>🥴 Drunk wobble</span><button class="toggle ${S.wobble ? 'on' : ''}" id="tWobble"></button></div>
+      <p style="margin-top:14px">Tap the coin, buy businesses, hire managers so they run on their own, catch the 🪙 golden coins, and down a 🍸 vodka for bigger taps (but don't overdo it). When you've earned a lot, sell your empire for investors.</p>
       <button class="big-btn gold" id="closeSet">Done</button>
       <button class="danger" id="wipe">Delete all progress</button>`, (c) => {
       c.querySelector('#tSound').onclick = (e) => { S.sound = !S.sound; e.target.classList.toggle('on', S.sound); };
+      c.querySelector('#tWobble').onclick = (e) => { S.wobble = !S.wobble; e.target.classList.toggle('on', S.wobble); applyMood(); };
       c.querySelector('#tVibe').onclick = (e) => { S.vibe = !S.vibe; e.target.classList.toggle('on', S.vibe); buzz(20); };
       c.querySelector('#closeSet').onclick = () => { save(); closeModal(); };
       c.querySelector('#wipe').onclick = () => {
@@ -521,6 +619,7 @@
     $('rate').textContent = money(incomePerSec()) + ' / sec';
     $('starsVal').textContent = fmt(S.stars);
     $('tapVal').textContent = money(tapValue());
+    applyMood();
 
     S.biz.forEach((st, i) => {
       const el = bizEls[i], b = BIZ[i];
@@ -617,6 +716,7 @@
       advance(dt);
     }
     updateBars();
+    if (dt <= 5) hiccups(dt);
     if (now - lastText > 100) { updateText(); lastText = now; }
     if (now - lastSave > 5000) { save(); lastSave = now; }
     if (golden.classList.contains('hidden')) { if (now > goldenNext && !modalOpen) spawnGolden(); }

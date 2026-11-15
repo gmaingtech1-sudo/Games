@@ -2,7 +2,7 @@
 
 The Coin Empire idle tycoon as an installable Android app.
 
-**Download:** [`dist/coin-empire.apk`](dist/coin-empire.apk) (about 260 KB, version 1.0)
+**Download:** [`dist/coin-empire.apk`](dist/coin-empire.apk) (about 260 KB, version 1.1)
 
 ## Installing it
 
