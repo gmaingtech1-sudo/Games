@@ -32,7 +32,8 @@
   };
   ui.unlocks = function (list) {
     list.forEach((u, i) => setTimeout(() => {
-      ui.toast(u.icon, (u.kind === 'feat' ? 'Feat: {k:' : '{k:') + u.name + '}' + (u.kind === 'set' ? ' unlocked!' : ''));
+      const pre = u.kind === 'feat' ? 'Feat: {k:' : u.kind === 'charm' ? 'New charm: {k:' : '{k:';
+      ui.toast(u.icon, pre + u.name + '}' + (u.kind === 'set' ? ' unlocked!' : ''));
       A().level();
     }, i * 900));
   };
@@ -212,6 +213,9 @@
     const cb = $('btn-cast');
     cb.disabled = busy;
     cb.querySelector('.ct').textContent = f ? f.casts : 0;
+    // Glow when the dice showing would finish the monster off.
+    const lethal = !busy && f && ui.lastPreview && ui.lastPreview.dmg >= f.mon.hp && !RM.battle.rolling();
+    cb.classList.toggle('lethal', !!lethal);
   };
 
   ui.belt = function () {
@@ -247,6 +251,20 @@
       el.classList.add('bump');
     }
   }
+  // The big number spins up to its total.
+  function countUp(el, to) {
+    const t0 = performance.now();
+    const dur = Math.min(520, 220 + Math.log10(Math.max(10, to)) * 50);
+    el.classList.remove('bump');
+    const tick = (now) => {
+      const k = Math.min(1, (now - t0) / dur);
+      const e = 1 - Math.pow(1 - k, 3);
+      el.textContent = RM.fmt(to * e);
+      if (k < 1) requestAnimationFrame(tick);
+      else { el.textContent = RM.fmt(to); void el.offsetWidth; el.classList.add('bump'); }
+    };
+    requestAnimationFrame(tick);
+  }
   // r: an evaluate() result; phase: 'preview' | 'base' | step kind | 'total'
   ui.readout = function (r, phase) {
     const combo = $('ro-combo');
@@ -267,7 +285,11 @@
     combo.querySelector('.lv').textContent = 'lvl ' + r.level;
     setNum($('ro-pips'), r.pips, 'pips');
     setNum($('ro-mult'), r.mult, 'mult');
-    if (phase === 'preview' || phase === 'total') {
+    if (phase === 'total') {
+      countUp(dmgEl, r.dmg);
+      const kill = run.fight && r.dmg >= run.fight.mon.hp;
+      dmgEl.classList.toggle('kill', !!kill);
+    } else if (phase === 'preview') {
       setNum(dmgEl, r.dmg, 'dmg');
       const kill = run.fight && r.dmg >= run.fight.mon.hp;
       dmgEl.classList.toggle('kill', !!kill);
@@ -287,8 +309,11 @@
   };
   ui.preview = function () {
     const run = G().run;
-    if (!run.fight || RM.battle.rolling()) { ui.readout(null); return; }
-    ui.readout(RM.rules.best(run, false), 'preview');
+    ui.lastPreview = null;
+    if (!run.fight || RM.battle.rolling()) { ui.readout(null); ui.buttons(); return; }
+    ui.lastPreview = RM.rules.best(run, false);
+    ui.readout(ui.lastPreview, 'preview');
+    ui.buttons();
   };
 
   /* ---------------- charm & trinket details ---------------- */
@@ -456,15 +481,15 @@
   // job: {kind:'shop', item} | {kind:'boon', id:'wild'}
   ui.showEtch = function (job) {
     const run = G().run;
-    const id = job.kind === 'shop' ? job.item.id : 'wild';
+    const id = job.kind === 'shop' ? job.item.id : job.kind === 'event' ? job.stone : 'wild';
     const twin = id === 'twin';
     let pick = null; // for twin: [di, fi]
-    const name = job.kind === 'shop' ? RM.STONE[id].name : 'Wild Spark';
-    const text = job.kind === 'shop' ? RM.STONE[id].text : 'Etch {k:Wild} onto any face: it counts as whatever number you need.';
+    const name = job.kind === 'boon' ? 'Wild Spark' : RM.STONE[id].name;
+    const text = job.kind === 'boon' ? 'Etch {k:Wild} onto any face: it counts as whatever number you need.' : RM.STONE[id].text;
     const draw = () => {
       let h = '<h2>' + esc(name) + '</h2><p class="center muted">' + ui.rich(text) + '</p>';
       h += '<p class="center k" style="font-size:14px">' + (twin ? (pick ? 'Now tap the face to overwrite (same die).' : 'Tap the face to copy.') : 'Tap a face to etch it.') + '</p>';
-      h += '<div class="dice-list" id="etch-list"></div><div class="btns"><button class="btn ghost" data-act="cancel">' + (job.kind === 'boon' ? 'Back to boons' : 'Cancel') + '</button></div>';
+      h += '<div class="dice-list" id="etch-list"></div><div class="btns"><button class="btn ghost" data-act="cancel">' + (job.kind === 'boon' ? 'Back to boons' : job.kind === 'event' ? 'Back' : 'Cancel') + '</button></div>';
       const body = ui.sheet(h, { locked: true });
       const list = body.querySelector('#etch-list');
       run.dice.forEach((faces, di) => {
@@ -487,6 +512,7 @@
           else if (ok) b.classList.add('pick');
           b.addEventListener('click', () => {
             if (twin && !pick) { pick = [di, fi]; A().tap(); draw(); return; }
+            if (job.kind === 'event') { ui.closeSheet(true); G().eventChoose(job.k, [di, fi]); return; }
             let done;
             if (job.kind === 'shop') done = RM.rules.applyStone(run, job.item, di, twin ? pick[1] : fi, twin ? fi : undefined);
             else done = RM.rules.chooseBoon(run, 'wild', di, fi) === true;
@@ -505,10 +531,120 @@
         cancel: () => {
           ui.closeSheet(true);
           if (job.kind === 'boon') ui.showBoon();
+          if (job.kind === 'event') ui.showEvent();
         },
       });
     };
     draw();
+  };
+
+  /* ---------------- pickers (encounters, swapping) ---------------- */
+  const faceSize = () => Math.min(40, Math.floor((Math.min(window.innerWidth, 560) - 110) / 6 / 1.18));
+  ui.pickDie = function (title, text, cb, cancel) {
+    const run = G().run;
+    const body = ui.sheet('<h2>' + esc(title) + '</h2><p class="center muted">' + ui.rich(text) + '</p><div class="dice-list" id="pick-list"></div>' +
+      '<div class="btns"><button class="btn ghost" data-act="cancel">Back</button></div>', { locked: true });
+    const list = body.querySelector('#pick-list');
+    run.dice.forEach((faces, di) => {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'die-row pickable';
+      row.innerHTML = '<span class="no">' + (di + 1) + '</span><div class="faces"></div>';
+      faces.forEach((f) => row.querySelector('.faces').appendChild(RM.art.faceCanvas(f, faceSize(), run.set)));
+      row.addEventListener('click', () => { A().tap(); ui.closeSheet(true); cb(di); });
+      list.appendChild(row);
+    });
+    on(body, { cancel: () => { ui.closeSheet(true); if (cancel) cancel(); } });
+  };
+  ui.pickCombo = function (title, text, cb, cancel) {
+    const run = G().run;
+    const nd = RM.rules.fightFaces(run, null).length;
+    let h = '<h2>' + esc(title) + '</h2><p class="center muted">' + ui.rich(text) + '</p><div class="boons">';
+    RM.COMBOS.filter((c) => c.min <= nd).reverse().forEach((c) => {
+      const st = RM.rules.comboStats(run, c.id);
+      h += '<button class="boon slim" data-act="pick" data-id="' + c.id + '"><span><b>' + esc(c.name) + ' <small class="muted">lvl ' + st.level + '</small></b><span><span class="p">' + st.pips + '</span> × <span class="m">' + st.mult + '</span> · cast ' + (run.stats.casts[c.id] || 0) + '× this run</span></span></button>';
+    });
+    h += '</div><div class="btns"><button class="btn ghost" data-act="cancel">Back</button></div>';
+    const body = ui.sheet(h, { locked: true });
+    on(body, {
+      pick: (el) => { A().tap(); ui.closeSheet(true); cb(el.dataset.id); },
+      cancel: () => { ui.closeSheet(true); if (cancel) cancel(); },
+    });
+  };
+  ui.pickCharm = function (title, text, cb, cancel, price) {
+    const run = G().run;
+    let h = '<h2>' + esc(title) + '</h2><p class="center muted">' + ui.rich(text) + '</p><div class="boons">';
+    run.charms.forEach((c, k) => {
+      const d = RM.CHARM[c.id];
+      const val = price ? price(k) : null;
+      h += '<button class="boon slim" data-act="pick" data-k="' + k + '"' + (val === false ? ' disabled' : '') + '><span class="ic">' + d.icon + '</span><span><b>' + esc(d.name) + (val ? ' <small class="g">' + val + '</small>' : '') + '</b><span>' + ui.rich(d.text) + '</span></span></button>';
+    });
+    h += '</div><div class="btns"><button class="btn ghost" data-act="cancel">Back</button></div>';
+    const body = ui.sheet(h, { locked: true });
+    on(body, {
+      pick: (el) => { A().tap(); ui.closeSheet(true); cb(+el.dataset.k); },
+      cancel: () => { ui.closeSheet(true); if (cancel) cancel(); },
+    });
+  };
+
+  /* ---------------- encounters ---------------- */
+  ui.showEvent = function () {
+    const run = G().run;
+    const ev = run.event;
+    if (!ev) return;
+    const e = RM.EVENT[ev.id];
+    if (ev.result) { ui.showEventResult(); return; }
+    let h = '<div class="ev-icon">' + e.icon + '</div><h2>' + esc(e.name) + '</h2><p class="center muted ev-text">' + esc(e.text) + '</p><div class="boons">';
+    RM.rules.eventOptions(run).forEach((o, i) => {
+      h += '<button class="boon ev-opt" data-act="opt" data-k="' + o.k + '"' + (o.why ? ' disabled' : '') + ' style="animation-delay:' + (i * 0.07) + 's">' +
+        '<span class="ic">' + (o.cost ? '<span class="cost"><i class="coin"></i>' + o.cost + '</span>' : '›') + '</span>' +
+        '<span><b>' + ui.rich(o.label) + '</b><span>' + (o.why ? '<span class="why">' + esc(o.why) + '</span>' : ui.rich(o.text)) + '</span></span></button>';
+    });
+    h += '</div><p class="center muted" style="font-size:12.5px;margin-top:10px">You have <span class="g">$' + run.gold + '</span> · ' + run.hearts + ' / ' + run.maxHearts + ' hearts</p>';
+    const body = ui.sheet(h, { center: true, locked: true });
+    on(body, { opt: (el) => { A().tap(); G().eventChoose(+el.dataset.k); } });
+  };
+  ui.showEventResult = function () {
+    const run = G().run;
+    const ev = run.event;
+    const e = RM.EVENT[ev.id];
+    const res = ev.result;
+    let h = '<div class="ev-icon">' + e.icon + '</div><h2>' + esc(e.name) + '</h2>';
+    if (res.die) h += '<div class="ev-die" id="ev-die"></div>';
+    if (res.charm) h += '<div class="ev-charm">' + RM.CHARM[res.charm].icon + '</div><p class="center muted" style="font-size:14px">' + ui.rich(RM.CHARM[res.charm].text) + '</p>';
+    h += '<p class="center ev-result">' + ui.rich(res.text) + '</p><div class="btns"><button class="btn big gold" data-act="go">To the bazaar</button></div>';
+    const body = ui.sheet(h, { center: true, locked: true });
+    if (res.die) body.querySelector('#ev-die').appendChild(RM.art.faceCanvas({ v: res.die, g: null }, 56, run.set));
+    ui.gold(run);
+    ui.hearts(run);
+    on(body, { go: () => { A().tap(); ui.closeSheet(true); G().leaveEvent(); } });
+  };
+
+  /* ---------------- a die's six faces (long-press in a fight) ---------------- */
+  ui.showDieFaces = function (i) {
+    const run = G().run;
+    const f = run.fight;
+    if (!f || !f.dice[i]) return;
+    const d = f.dice[i];
+    const faces = f.faces[d.src];
+    const loaded = faces.filter((x) => x.g === 'loaded').length;
+    const spare = d.src >= run.dice.length;
+    let h = '<h2>Die ' + (i + 1) + (spare ? ' <small class="muted">(Spare Die)</small>' : '') + '</h2><p class="center muted">Its six faces. A reroll can land on any of them' +
+      (loaded ? ', Loaded faces twice as often' : '') + '.</p><div class="face-grid" id="fg"></div>';
+    const glyphs = [...new Set(faces.map((x) => x.g).filter(Boolean))];
+    if (glyphs.length) {
+      h += '<div class="grid" style="margin-top:12px">' + glyphs.map((g) => '<div class="entry"><div class="h"><span>' + esc(RM.GLYPHS[g].name) + '</span></div>' + ui.rich(RM.GLYPHS[g].text) + '</div>').join('') + '</div>';
+    }
+    h += '<div class="btns"><button class="btn ghost" data-act="close">Close</button></div>';
+    const body = ui.sheet(h, { center: true });
+    const fg = body.querySelector('#fg');
+    faces.forEach((face, fi) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'fg-face' + (fi === d.f ? ' now' : '');
+      wrap.appendChild(RM.art.faceCanvas(face, 52, run.set));
+      fg.appendChild(wrap);
+    });
+    on(body, { close: () => ui.closeSheet() });
   };
 
   /* ---------------- your dice / combos ---------------- */
@@ -649,10 +785,11 @@
       '<li><b class="k">Cast.</b> Your best combo showing (Pair, Full House, Straight…) hits the monster for <span class="p">Pips</span> × <span class="m">Mult</span> damage. The panel above your dice always shows what a cast would do.</li>' +
       '<li><b class="k">Win the fight</b> before your Casts run out, or you lose a heart. Lose them all and the run is over.</li>' +
       '<li><b class="k">Shop.</b> Spend gold on <b>charms</b> (they bend the rules), <b>stones</b> (etch glyphs like Flame or Prism onto a face of a die), <b>tomes</b> (level up a combo) and <b>trinkets</b> (one-off tricks you use mid-fight).</li>' +
+      '<li><b class="k">Encounters</b> wait after each minion: gamble, bargain or walk on.</li>' +
       '<li><b class="k">Bosses</b> end each Depth and each has a nasty rule. Beat one and you choose a boon.</li>' +
       '<li>Reach Depth 8 and defeat <b class="k">the Pipwyrm</b> to win. Then try harder <b>Heat</b> levels and new dice sets.</li>' +
       '</ol>' +
-      '<h3>Tips</h3><p>• A Pair of 6s has more Pips than a Pair of 2s. • Leftover Casts pay $1 each, so finishing fast pays. • Charms trigger left to right: put ×Mult charms last. • Tap any charm, monster tag or Depth to read more.</p>' +
+      '<h3>Tips</h3><p>• Press and hold a die to see all six of its faces. • A Pair of 6s has more Pips than a Pair of 2s. • Leftover Casts pay $1 each, so finishing fast pays. • Charms trigger left to right: put ×Mult charms last. • Tap any charm, monster tag or Depth to read more.</p>' +
       '<div class="btns"><button class="btn" data-act="close">Got it</button></div></div>';
     const body = ui.sheet(h);
     on(body, { close: () => ui.closeSheet() });
@@ -669,9 +806,13 @@
     const cb = body.querySelector('#codex-body');
     if (tab === 'charms') {
       const seen = Object.keys(p.seenCharms).length;
-      cb.innerHTML = '<p class="center muted">' + seen + ' of ' + RM.CHARMS.length + ' discovered. Charms are discovered when they turn up in the bazaar.</p><div class="grid">' +
+      cb.innerHTML = '<p class="center muted">' + seen + ' of ' + RM.CHARMS.length + ' discovered. Charms are discovered when they turn up in the bazaar; 🔒 ones unlock as you play.</p><div class="grid">' +
         RM.CHARMS.map((c) => {
           const known = p.seenCharms[c.id];
+          const locked = c.unlock && !c.unlock.test(p);
+          if (locked) {
+            return '<div class="entry unknown"><div class="h"><span class="ic">🔒</span><span>' + (known ? esc(c.name) : '???') + '</span></div><span class="k">' + esc(c.unlock.text) + '</span> to unlock</div>';
+          }
           return '<div class="entry ' + (known ? '' : 'unknown') + '"><div class="h"><span class="ic">' + (known ? c.icon : '❔') + '</span><span>' + (known ? esc(c.name) : '???') + '</span></div>' +
             (known ? ui.rich(c.text) : '<span class="muted">' + RARITY[c.r] + '</span>') + '</div>';
         }).join('') + '</div>';
@@ -887,11 +1028,14 @@
   ui.showItem = function (g) {
     const run = G().run;
     const can = RM.rules.canBuy(run, g);
+    const swappable = g.type === 'charm' && !can.ok && run.charms.length >= run.charmSlots && run.charms.some((c, k) => RM.rules.canSwap(run, g, k));
     let icon = goodIcon(g);
     const h = '<div class="detail-head"><div class="big-ic" id="item-ic">' + icon + '</div><div><div class="rar">' + esc(goodType(g)) + '</div><h2>' + esc(goodName(g)) + '</h2></div></div>' +
       '<p class="detail-desc">' + ui.rich(goodText(g, run)) + '</p>' +
       (can.ok ? '' : '<p class="center" style="color:var(--bad)">' + esc(can.why) + '</p>') +
-      '<div class="btns"><button class="btn big gold" data-act="buy" ' + (can.ok ? '' : 'disabled') + '>' + (g.type === 'stone' ? 'Buy &amp; etch' : 'Buy') + ' · $' + g.cost + '</button><button class="btn ghost" data-act="close">Close</button></div>';
+      '<div class="btns"><button class="btn big gold" data-act="buy" ' + (can.ok ? '' : 'disabled') + '>' + (g.type === 'stone' ? 'Buy &amp; etch' : 'Buy') + ' · $' + g.cost + '</button>' +
+      (swappable ? '<button class="btn blue" data-act="swap">Swap for one of yours</button>' : '') +
+      '<button class="btn ghost" data-act="close">Close</button></div>';
     const body = ui.sheet(h);
     if (!icon && g.type === 'stone') body.querySelector('#item-ic').appendChild(RM.art.glyphCanvas(RM.STONE[g.id].glyph, 50));
     on(body, {
@@ -904,6 +1048,17 @@
           ui.closeSheet(true);
           G().changed();
         } else A().deny();
+      },
+      swap: () => {
+        ui.closeSheet(true);
+        const d = RM.CHARM[g.id];
+        ui.pickCharm('Swap which charm?', 'It sells for half its price, then {k:' + d.name + '} ' + d.icon + ' takes its place.', (k) => {
+          if (RM.rules.swapCharm(run, g, k)) {
+            A().buy();
+            RM.profile.noteSeen([g.id]);
+            G().changed();
+          } else A().deny();
+        }, () => ui.showItem(g), (k) => (RM.rules.canSwap(run, g, k) ? '+$' + RM.rules.sellValue(run, k) : false));
       },
       close: () => ui.closeSheet(),
     });

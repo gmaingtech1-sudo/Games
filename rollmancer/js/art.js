@@ -1448,22 +1448,41 @@
      squash, flash, alpha, dying } */
   art.monster = function (ctx, m, x, y, scale, t, st) {
     const fn = BODY[m.art] || BODY.slime;
+    const s = scale * (m.size || 1);
+    if (st.flash > 0.02) {
+      // The white hit flash: draw the monster alone on a scratch canvas,
+      // whiten just its pixels, then stamp it into the scene.
+      const k = (ctx.getTransform ? ctx.getTransform().a : 1) || 1;
+      const size = Math.max(1, Math.ceil(440 * s * k));
+      if (!flashCan) flashCan = document.createElement('canvas');
+      if (flashCan.width !== size || flashCan.height !== size) { flashCan.width = size; flashCan.height = size; }
+      const g = flashCan.getContext('2d');
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.globalAlpha = 1;
+      g.clearRect(0, 0, size, size);
+      g.setTransform(s * k, 0, 0, s * k, 220 * s * k, 280 * s * k);
+      fn(g, m, t, st);
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.globalAlpha = 1;
+      g.globalCompositeOperation = 'source-atop';
+      g.fillStyle = 'rgba(255,255,255,' + Math.min(1, st.flash) + ')';
+      g.fillRect(0, 0, size, size);
+      g.globalCompositeOperation = 'source-over';
+      ctx.save();
+      if (st.alpha != null) ctx.globalAlpha = st.alpha;
+      ctx.drawImage(flashCan, x - 220 * s, y - 90 * s - 280 * s, 440 * s, 440 * s);
+      ctx.restore();
+      return;
+    }
     ctx.save();
     ctx.translate(x, y);
-    const s = scale * (m.size || 1);
     ctx.scale(s, s);
     ctx.translate(0, -90);
     if (st.alpha != null) ctx.globalAlpha = st.alpha;
     fn(ctx, m, t, st);
-    if (st.flash > 0) {
-      // A white hit flash, drawn by redrawing the silhouette in white.
-      ctx.globalCompositeOperation = 'source-atop';
-      ctx.fillStyle = 'rgba(255,255,255,' + Math.min(1, st.flash) + ')';
-      ctx.fillRect(-200, -260, 400, 400);
-      ctx.globalCompositeOperation = 'source-over';
-    }
     ctx.restore();
   };
+  let flashCan = null;
 
   /* ---------------- dungeon backdrop ----------------
      The wall is baked once per area and size into an offscreen canvas;

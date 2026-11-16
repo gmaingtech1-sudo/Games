@@ -16,7 +16,15 @@
     scale: 1, // particle count multiplier (reduced motion lowers it)
   };
 
+  // A big word that pops in, e.g. "FULL HOUSE!" or "K.O.!".
+  fx.banners = [];
+  fx.banner = function (text, color, x, y, size, life) {
+    fx.banners.length = 0;
+    fx.banners.push({ text, color, x, y, size: size || 34, life: life || 1.1, age: 0, rot: (Math.random() - 0.5) * 0.08 });
+  };
+
   fx.clear = function () {
+    fx.banners.length = 0;
     fx.parts.length = 0;
     fx.texts.length = 0;
     fx.rings.length = 0;
@@ -151,6 +159,10 @@
         if (s.onHit) s.onHit(s.x1, s.y1);
       }
     }
+    for (let i = fx.banners.length - 1; i >= 0; i--) {
+      fx.banners[i].age += dt;
+      if (fx.banners[i].age >= fx.banners[i].life) fx.banners.splice(i, 1);
+    }
     fx.shake = Math.max(0, fx.shake - dt * 60);
     fx.flash = Math.max(0, fx.flash - dt * 2.2);
   };
@@ -257,6 +269,36 @@
       ctx.strokeText(t.str, 0, 0);
       ctx.fillStyle = t.color;
       ctx.fillText(t.str, 0, 0);
+      ctx.restore();
+    });
+  };
+
+  fx.drawBanners = function (ctx) {
+    fx.banners.forEach((b) => {
+      const k = b.age / b.life;
+      const pop = b.age < 0.16 ? RM.easeBack(b.age / 0.16) : 1;
+      const scale = 0.3 + pop * 0.7 + k * 0.08;
+      ctx.save();
+      ctx.globalAlpha = k > 0.75 ? 1 - (k - 0.75) / 0.25 : 1;
+      ctx.translate(b.x, b.y - k * 14);
+      ctx.rotate(b.rot);
+      ctx.scale(scale, scale);
+      ctx.font = Math.round(b.size) + 'px "Lilita One", Nunito, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = b.size * 0.7;
+      ctx.lineWidth = b.size * 0.24;
+      ctx.strokeStyle = 'rgba(20,6,30,0.95)';
+      ctx.strokeText(b.text, 0, 0);
+      ctx.shadowBlur = 0;
+      const g = ctx.createLinearGradient(0, -b.size / 2, 0, b.size / 2);
+      g.addColorStop(0, '#ffffff');
+      g.addColorStop(0.55, b.color);
+      g.addColorStop(1, RM.art.mix(b.color.length === 7 ? b.color : '#ffe28a', '#000000', 0.25));
+      ctx.fillStyle = g;
+      ctx.fillText(b.text, 0, 0);
       ctx.restore();
     });
   };

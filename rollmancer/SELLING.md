@@ -29,7 +29,7 @@ Roll your dice. Cast your spells.
 
 Rollmancer is a dice roguelite where every combo is a spell. Roll five dice, hold the ones you like, reroll the rest, and cast: a Pair, a Full House or a Large Straight blasts the monster for Pips × Mult damage. Fight down through eight Depths of monsters and bosses, build a different engine every run, and defeat the Pipwyrm.
 
-BREAK THE RULES WITH 48 CHARMS
+BREAK THE RULES WITH 56 CHARMS
 Snake Eyes turns 1s into a Mult machine. Chameleon makes them wild. Ouroboros lets straights loop from 6 back to 1. The Metronome grows stronger every fight you win. Find the combinations that make the numbers explode.
 
 ETCH YOUR DICE
@@ -38,8 +38,11 @@ Carve glyphs onto the faces of your dice: Flame for Pips, Storm for Mult, Prism 
 12 BOSSES, EACH WITH A TWIST
 The Hydra heals after every cast. The Siren punishes repeating yourself. The Frost Lich freezes your dice. Read the boss coming up, shop for it, and outsmart it.
 
+STRANGE ENCOUNTERS
+Bet your gold with a Gambling Imp, feed a heart to a Cursed Altar, open a chest that might bite back, or dig up a twitching die in the Dice Graveyard. Every choice is a risk worth weighing.
+
 ENDLESS REPLAY
-• 9 dice sets to unlock, each a new way to play
+• 9 dice sets and 16 secret charms to unlock
 • 9 Heat levels for when you think you've mastered it
 • A Daily Run: the same dice, monsters and shops for everyone, with results you can share
 • Seeds you can replay or send to a friend

@@ -57,8 +57,13 @@
       won: false,
       endless: false,
       history: [],
+      // Charms allowed in this run's bazaar (null = every charm).
+      pool: opts.pool ? opts.pool.slice() : null,
+      buff: { casts: 0, rerolls: 0 },
+      usedEvents: [],
+      event: null,
       rng: { roll: { s: RM.hashStr(seed + ':roll') }, luck: { s: RM.hashStr(seed + ':luck') } },
-      stats: { casts: {}, bestCast: 0, bestCombo: null, totalDmg: 0, fightsWon: 0, maxGold: 0, bossOneShot: false, clutch: false },
+      stats: { casts: {}, bestCast: 0, bestCombo: null, totalDmg: 0, fightsWon: 0, maxGold: 0, bossOneShot: false, clutch: false, spent: 0, lastHeartWin: false },
       started: Date.now(),
     };
     COMBOS.forEach((c) => { run.levels[c.id] = 1; });
@@ -187,6 +192,11 @@
       last: null,
       pending: false,
     };
+    // Buffs from encounters (a campfire's rest, a training dummy) last one fight.
+    const buff = run.buff || { casts: 0, rerolls: 0 };
+    run.fight.casts += buff.casts;
+    run.fight.rerolls += buff.rerolls;
+    run.buff = { casts: 0, rerolls: 0 };
     run.phase = 'fight';
     newTurn(run);
   }
@@ -584,6 +594,7 @@
     const broken = run.charms.filter((c) => c.broken).map((c) => c.id);
     run.charms = run.charms.filter((c) => !c.broken);
     run.stats.fightsWon += 1;
+    if (run.hearts === 1) run.stats.lastHeartWin = true;
     run.stats.maxGold = Math.max(run.stats.maxGold, run.gold);
     run.history.push('W');
     const wasFinal = mon.boss && run.depth === 8 && !run.endless;
@@ -619,13 +630,19 @@
     return { phase: 'reward' };
   }
 
-  // From the reward card: a boss gives a boon first, everything goes to the shop.
+  // From the reward card: a boss gives a boon, a minion leads to an
+  // encounter, and everything ends up at the bazaar.
   function claimReward(run) {
     if (run.phase !== 'reward') return;
     const res = run.result;
     if (res.won && res.boss && !res.final) {
       makeBoons(run);
       run.phase = 'boon';
+      return;
+    }
+    if (res.won && !res.boss && run.stage === 0) {
+      makeEvent(run);
+      run.phase = 'event';
       return;
     }
     if (res.final && res.won) {
@@ -644,7 +661,8 @@
   /* ---------------- shop ---------------- */
   function charmPool(run, exclude) {
     const owned = new Set(run.charms.map((c) => c.id).concat(exclude || []));
-    return CHARMS.filter((c) => !owned.has(c.id));
+    const allowed = run.pool ? new Set(run.pool) : null;
+    return CHARMS.filter((c) => !owned.has(c.id) && (!allowed || allowed.has(c.id)));
   }
   function rollCharm(run, rng, exclude, rarity) {
     const pool = charmPool(run, exclude);
@@ -708,7 +726,7 @@
   function rerollShop(run) {
     const s = run.shop;
     if (!s || run.gold < s.rerollCost) return false;
-    run.gold -= s.rerollCost;
+    spend(run, s.rerollCost);
     s.rerolls += 1;
     s.rerollCost += 1;
     stockShop(run, new Stream(RM.hashStr(run.seed + ':reshop:' + run.depth + ':' + run.stage + ':' + s.rerolls)));
@@ -725,12 +743,22 @@
     return { ok: true };
   }
 
+  // Paying in the bazaar: Big Spender keeps count.
+  function spend(run, amount) {
+    run.gold -= amount;
+    run.stats.spent = (run.stats.spent || 0) + amount;
+    run.charms.forEach((c) => {
+      const d = CHARM[c.id];
+      if (d.spend) d.spend(run, c, amount);
+    });
+  }
+
   // Buys anything that doesn't need a die face picked. Stones go through
   // applyStone() instead, which charges only once you've chosen the face.
   function buy(run, item) {
     const c = canBuy(run, item);
     if (!c.ok || item.type === 'stone') return false;
-    run.gold -= item.cost;
+    spend(run, item.cost);
     item.sold = true;
     if (item.type === 'charm') run.charms.push(makeCharm(item.id));
     else if (item.type === 'trinket') run.belt.push(item.id);
@@ -749,6 +777,19 @@
     run.charms.splice(k, 1);
     run.gold += v;
     return v;
+  }
+  // Full charm slots: sell charm k and buy `item` into its place.
+  function canSwap(run, item, k) {
+    if (!item || item.sold || item.type !== 'charm' || !run.charms[k]) return false;
+    return run.gold + sellValue(run, k) >= item.cost;
+  }
+  function swapCharm(run, item, k) {
+    if (!canSwap(run, item, k)) return false;
+    run.gold += sellValue(run, k);
+    spend(run, item.cost);
+    item.sold = true;
+    run.charms[k] = makeCharm(item.id);
+    return true;
   }
   function moveCharm(run, k, dir) {
     const j = k + dir;
@@ -790,7 +831,7 @@
     const c = canBuy(run, item);
     if (!c.ok || item.type !== 'stone') return false;
     if (!etch(run, item.id, di, fi, fj)) return false;
-    run.gold -= item.cost;
+    spend(run, item.cost);
     item.sold = true;
     return true;
   }
@@ -835,6 +876,46 @@
       planDepth(run);
     }
     startFight(run);
+  }
+
+  /* ---------------- encounters ---------------- */
+  function makeEvent(run) {
+    const rng = placeRng(run, 'event');
+    let pool = RM.EVENTS.filter((e) => !(run.usedEvents || []).includes(e.id));
+    if (!pool.length) { run.usedEvents = []; pool = RM.EVENTS.slice(); }
+    const e = rng.pick(pool);
+    (run.usedEvents = run.usedEvents || []).push(e.id);
+    run.event = { id: e.id, result: null };
+  }
+  const evalStr = (v, run) => (typeof v === 'function' ? v(run) : v);
+  // The encounter's options as the UI shows them: {label, text, cost, why}.
+  function eventOptions(run) {
+    const e = RM.EVENT[run.event.id];
+    return e.opts.map((o, k) => {
+      let why = null;
+      if (o.can) why = o.can(run);
+      if (!why && o.cost && run.gold < o.cost) why = 'Not enough gold';
+      return { k, label: evalStr(o.label, run), text: evalStr(o.text, run), cost: o.cost || 0, target: o.target || null, stone: o.stone || null, why };
+    });
+  }
+  // Picks option k. Options with a target need `arg` (a die index, combo id,
+  // charm index or [die, face]); without it this returns {need}.
+  function chooseEvent(run, k, arg) {
+    if (run.phase !== 'event' || !run.event || run.event.result) return null;
+    const o = RM.EVENT[run.event.id].opts[k];
+    const opt = eventOptions(run)[k];
+    if (!o || opt.why) return null;
+    if (o.target && arg == null) return { need: o.target, stone: o.stone || null };
+    if (o.cost) spend(run, o.cost);
+    const res = o.go(run, luckRng(run), arg) || { text: '' };
+    run.event.result = res;
+    run.stats.maxGold = Math.max(run.stats.maxGold, run.gold);
+    return res;
+  }
+  function leaveEvent(run) {
+    if (run.phase !== 'event') return;
+    run.event = null;
+    enterShop(run);
   }
 
   /* ---------------- boons ---------------- */
@@ -963,6 +1044,7 @@
     claimReward, goEndless, enterShop, rerollShop, canBuy, buy, sellValue, sellCharm, moveCharm,
     stoneFits, applyStone, etch, alchemy, chisel, leaveShop, makeBoons, chooseBoon, useTrinket,
     castsFor, rerollsFor, fightFaces, charmMods, hasCharm, areaFor, glyphCount, comboStats,
-    historyLine, detect, evaluate, makeCharm, peekNextDepth,
+    historyLine, detect, evaluate, makeCharm, peekNextDepth, rollCharm,
+    canSwap, swapCharm, makeEvent, eventOptions, chooseEvent, leaveEvent,
   };
 })(typeof window !== 'undefined' ? window.RM : globalThis.RM);

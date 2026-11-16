@@ -54,6 +54,7 @@
       bestCast: 0,
       bestCastCombo: null,
       bestGold: 0,
+      spent: 0,
       bestHeatWon: -1,
       heatWon: {}, // per dice set: highest Heat won
       cast: {}, // lifetime casts per combo
@@ -95,6 +96,10 @@
     const s = RM.DICE_SET[id];
     return !s.unlock || s.unlock.test(P);
   }
+  // Charms the bazaar may offer you (locked ones stay out until earned).
+  function unlockedCharms() {
+    return RM.CHARMS.filter((c) => !c.unlock || c.unlock.test(P)).map((c) => c.id);
+  }
   function maxHeat(setId) {
     const w = P.heatWon[setId];
     return Math.min(8, w == null ? 0 : w + 1);
@@ -107,6 +112,14 @@
       if (!P.feats[f.id] && f.test(P)) {
         P.feats[f.id] = Date.now();
         out.push({ kind: 'feat', name: f.name, icon: f.icon, text: f.text });
+      }
+    });
+    RM.CHARMS.forEach((c) => {
+      if (!c.unlock) return;
+      const k = 'charm:' + c.id;
+      if (!P.flags[k] && c.unlock.test(P)) {
+        P.flags[k] = 1;
+        out.push({ kind: 'charm', name: c.name, icon: c.icon, text: c.text });
       }
     });
     RM.DICE_SETS.forEach((s) => {
@@ -133,6 +146,10 @@
     if (run.stats.bossOneShot) P.flags.oneShotBoss = 1;
     if (run.stats.clutch) P.flags.clutch = 1;
     if (RM.rules.glyphCount(run) >= 10) P.flags.glyph10 = 1;
+    if (run.stats.lastHeartWin) P.flags.lastHeartWin = 1;
+    const spent = run.stats.spent || 0;
+    P.spent = (P.spent || 0) + spent - (run.stats.spentNoted || 0);
+    run.stats.spentNoted = spent;
   }
   function noteSeen(ids) {
     ids.forEach((id) => { P.seenCharms[id] = 1; });
@@ -172,7 +189,7 @@
   }
 
   RM.profile = {
-    host, load, save, get: () => P, setUnlocked, maxHeat, checkUnlocks,
+    host, load, save, get: () => P, setUnlocked, maxHeat, checkUnlocks, unlockedCharms,
     noteCast, noteRun, noteSeen, noteFightWon, recordWin, finishRun,
   };
 })(window.RM);

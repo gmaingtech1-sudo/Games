@@ -4,7 +4,7 @@
 (function (RM) {
   'use strict';
 
-  RM.VERSION = '1.0.0';
+  RM.VERSION = '1.1.0';
   const $ = (id) => document.getElementById(id);
   const R = RM.rules;
   const ui = RM.ui;
@@ -47,6 +47,7 @@
     G.run = null;
     RM.profile.save(true);
     B.area = RM.AREAS[(Math.random() * 4) | 0];
+    B.pickTitleMonster();
     show('title');
     ui.renderTitle();
     A.playMusic(0, false);
@@ -80,6 +81,9 @@
       p.lastSet = opts.set;
       p.lastHeat = opts.heat;
     }
+    // The Daily Run uses every charm so it's the same for everyone; other
+    // runs only offer the charms you've unlocked.
+    if (!opts.daily && !opts.pool) opts = Object.assign({}, opts, { pool: RM.profile.unlockedCharms() });
     G.run = R.newRun(opts);
     RM.profile.noteSeen(G.run.charms.map((c) => c.id));
     p.run = G.run;
@@ -153,6 +157,10 @@
       case 'boon':
         show(null);
         ui.showBoon();
+        break;
+      case 'event':
+        show(null);
+        ui.showEvent();
         break;
       case 'shop':
         enterShop();
@@ -343,6 +351,7 @@
     R.claimReward(run);
     save();
     if (run.phase === 'boon') { show(null); ui.showBoon(); }
+    else if (run.phase === 'event') { show(null); A.whoosh(); ui.showEvent(); }
     else if (run.phase === 'victory') {
       RM.profile.recordWin(run);
       ui.unlocks(RM.profile.checkUnlocks());
@@ -360,6 +369,33 @@
     G.afterBoon();
   };
   G.afterBoon = function () {
+    save();
+    enterShop();
+  };
+
+  /* ---------------- encounters ---------------- */
+  G.eventChoose = function (k, arg) {
+    const run = G.run;
+    const res = R.chooseEvent(run, k, arg);
+    if (!res) { A.deny(); ui.showEvent(); return; }
+    if (res.need) {
+      const back = () => ui.showEvent();
+      const opt = R.eventOptions(run)[k];
+      if (res.need === 'die') ui.pickDie('Pick a die', opt.text, (di) => G.eventChoose(k, di), back);
+      else if (res.need === 'combo') ui.pickCombo('Pick a combo', opt.text, (id) => G.eventChoose(k, id), back);
+      else if (res.need === 'charm') ui.pickCharm('Pick a charm', opt.text, (ck) => G.eventChoose(k, ck), back, (ck) => '$' + RM.CHARM[run.charms[ck].id].cost);
+      else ui.showEtch({ kind: 'event', stone: res.stone, k });
+      return;
+    }
+    if (res.charm) { RM.profile.noteSeen([res.charm]); A.level(); }
+    else if (res.die) A.clack(0);
+    else A.etch();
+    haptic(14);
+    save();
+    ui.showEventResult();
+  };
+  G.leaveEvent = function () {
+    R.leaveEvent(G.run);
     save();
     enterShop();
   };
@@ -490,6 +526,13 @@
     G.applySettings();
     B.init();
     B.onTap = (i) => G.tapDie(i);
+    B.onLongPress = (i) => {
+      if (!G.run || !G.run.fight || G.targeting) return;
+      haptic(10);
+      A.tap();
+      ui.showDieFaces(i);
+    };
+    B.pickTitleMonster();
 
     const unlock = () => {
       A.unlock();

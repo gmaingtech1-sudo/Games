@@ -77,6 +77,19 @@ for (let n = 0; n < N; n++) {
       const id = pick(run.boon.choices);
       const res = R.chooseBoon(run, id);
       if (res === 'etch') R.chooseBoon(run, id, Math.floor(rnd() * run.dice.length), Math.floor(rnd() * 6));
+    } else if (run.phase === 'event') {
+      const opts = R.eventOptions(run);
+      const o = pick(opts);
+      let res = R.chooseEvent(run, o.k);
+      if (res && res.need) {
+        let arg;
+        if (res.need === 'die') arg = Math.floor(rnd() * run.dice.length);
+        else if (res.need === 'combo') arg = pick(RM.COMBOS).id;
+        else if (res.need === 'charm') arg = Math.floor(rnd() * run.charms.length);
+        else arg = [Math.floor(rnd() * run.dice.length), Math.floor(rnd() * 6)];
+        res = R.chooseEvent(run, o.k, arg);
+      }
+      R.leaveEvent(run);
     } else if (run.phase === 'shop') {
       run.gold += 6; // fuzz bonus so we can afford things
       for (let k = 0; k < 6; k++) {
@@ -90,6 +103,7 @@ for (let n = 0; n < N; n++) {
         if (rnd() < 0.15 && run.charms.length) R.sellCharm(run, Math.floor(rnd() * run.charms.length));
         if (rnd() < 0.2 && run.charms.length > 1) R.moveCharm(run, Math.floor(rnd() * run.charms.length), rnd() < 0.5 ? -1 : 1);
         if (rnd() < 0.1) R.rerollShop(run);
+        if (rnd() < 0.1 && run.charms.length) { const c = s.charms.find((x) => !x.sold); if (c) R.swapCharm(run, c, Math.floor(rnd() * run.charms.length)); }
       }
       R.leaveShop(run);
     } else if (run.phase === 'victory') {

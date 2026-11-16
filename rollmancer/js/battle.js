@@ -45,8 +45,8 @@
       ro.observe(document.getElementById('tray'));
     }
     const tray = document.getElementById('tray');
-    tray.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
+    // Tap a die to hold it; press and hold to see all six of its faces.
+    const hit = (e) => {
       const app = document.getElementById('app').getBoundingClientRect();
       const x = e.clientX - app.left;
       const y = e.clientY - app.top;
@@ -56,8 +56,37 @@
         const dd = Math.hypot(d.x - x, d.y - d.lift - y);
         if (dd < bd) { bd = dd; best = i; }
       });
-      if (best >= 0 && bd < B.dieSize * 0.9 && B.onTap) B.onTap(best);
+      return best >= 0 && bd < B.dieSize * 0.9 ? best : -1;
+    };
+    let press = null;
+    tray.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const i = hit(e);
+      if (i < 0) return;
+      press = { i, x: e.clientX, y: e.clientY, long: false };
+      B.dice[i].press = 1;
+      const me = press;
+      press.timer = setTimeout(() => {
+        if (press !== me) return;
+        me.long = true;
+        if (B.dice[i]) B.dice[i].press = 0;
+        if (B.onLongPress) B.onLongPress(i);
+      }, 430);
     });
+    const end = (e, cancel) => {
+      if (!press) return;
+      const p = press;
+      press = null;
+      clearTimeout(p.timer);
+      if (B.dice[p.i]) B.dice[p.i].press = 0;
+      if (cancel || p.long) return;
+      if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > 24) return;
+      if (B.onTap) B.onTap(p.i);
+    };
+    tray.addEventListener('pointerup', (e) => end(e, false));
+    tray.addEventListener('pointercancel', (e) => end(e, true));
+    tray.addEventListener('pointerleave', (e) => end(e, true));
+    tray.addEventListener('contextmenu', (e) => e.preventDefault());
     let last = performance.now();
     const loop = (now) => {
       const dt = Math.min(0.05, (now - last) / 1000);
@@ -189,6 +218,11 @@
 
   /* ---------------- per-frame ---------------- */
   B.frame = function (dt) {
+    // Hit-stop: a knockout plays in slow motion for a moment.
+    if (B.slow > 0) {
+      B.slow -= dt;
+      dt *= 0.22;
+    }
     B.t += dt;
     const ctx = B.ctx;
     ctx.setTransform(B.dpr, 0, 0, B.dpr, 0, 0);
@@ -206,15 +240,33 @@
     t.save();
     t.translate(sx, sy);
     fx.draw(t);
+    fx.drawBanners(t);
     t.restore();
     fx.drawFlash(t, B.W, B.H);
   };
 
+  B.pickTitleMonster = function () {
+    const keys = Object.keys(RM.MONSTERS).filter((k) => !RM.MONSTERS[k].size);
+    const k = keys[Math.floor(Math.random() * keys.length)];
+    B.titleMon = Object.assign({ key: k }, RM.MONSTERS[k]);
+    B.titleSt = { blink: 0, lx: 0, ly: -0.6, blinkAt: 2 };
+  };
   function drawTitle(ctx, dt) {
     const area = B.mode === 'shop' ? RM.AREAS[1] : B.area;
     RM.art.backdrop(ctx, B.W, B.H, area, B.t, B.H * 0.62);
     ctx.fillStyle = 'rgba(8,4,16,0.35)';
     ctx.fillRect(0, 0, B.W, B.H);
+    // A monster peeks up from the bottom of the title screen.
+    if (B.mode === 'title' && B.titleMon && !document.getElementById('title').hidden) {
+      const st = B.titleSt;
+      st.blinkAt -= dt;
+      if (st.blinkAt <= 0) { st.blink = Math.min(1, st.blink + dt * 14); if (st.blink >= 1) st.blinkAt = 1.5 + Math.random() * 3; }
+      else st.blink = Math.max(0, st.blink - dt * 10);
+      st.lx = Math.sin(B.t * 0.7) * 0.6;
+      const sc = Math.min(B.W * 0.5, B.H * 0.26) / 190;
+      const rise = Math.min(1, B.t * 0.8);
+      RM.art.monster(ctx, B.titleMon, B.W / 2, B.H + 130 * sc - RM.easeOut(rise) * 40 * sc + Math.sin(B.t * 1.6) * 3, sc, B.t, st);
+    }
     // drifting motes
     if (!B.motes) {
       B.motes = [];
@@ -299,7 +351,19 @@
       ctx.fillRect(M.x - 200 * sc, y - 280 * sc, 400 * sc, 320 * sc);
       ctx.restore();
     }
-    RM.art.monster(ctx, M.m, M.x + M.knock * 0.4, y - M.knock * 0.3, sc, B.t, st);
+    // Low on HP: it trembles and sweats.
+    let tremble = 0;
+    const frac = M.m.max ? M.m.hp / M.m.max : 1;
+    if (frac > 0 && frac < 0.3 && !M.dying) {
+      tremble = Math.sin(B.t * 45) * 1.6;
+      M.sweatAt = (M.sweatAt || 0) - dt;
+      if (M.sweatAt <= 0) {
+        M.sweatAt = 0.5 + Math.random() * 0.5;
+        const side = Math.random() < 0.5 ? -1 : 1;
+        fx.burst(M.x + side * 55 * sc, y - 170 * sc * (M.m.size || 1), 1, { color: '#9ad8ff', speed: 60, angle: -Math.PI / 2 + side * 0.9, spread: 0.3, gravity: 420, size: 4, kind: 'circle', life: 0.7 });
+      }
+    }
+    RM.art.monster(ctx, M.m, M.x + M.knock * 0.4 + tremble, y - M.knock * 0.3, sc, B.t, st);
   }
 
   function drawDice(ctx, dt) {
@@ -348,7 +412,7 @@
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.fill();
       ctx.restore();
-      const scale = 1 + d.pop * 0.28;
+      const scale = (1 + d.pop * 0.28) * (d.press ? 0.92 : 1);
       const glow = Math.max(d.glow, d.held ? 0.55 : 0);
       RM.art.die(ctx, d.x, d.y, s * scale, {
         v: d.showV != null ? d.showV : d.v,
@@ -429,6 +493,7 @@
     fx.burst(c.x, c.y, Math.min(24, 4 + n * 2), {
       kind: 'coin', color: '#ffcc3d', speed: 320, life: 1.1, size: 7, gravity: 0, drag: 1.5, tx: r.x + 18, ty: r.y + r.h / 2, home: 60,
     });
+    [650, 760, 860, 950].forEach((ms) => setTimeout(() => A().gold(), ms));
   };
 
   B.lunge = function () {
@@ -457,6 +522,11 @@
     const sp = speed();
     const scoring = new Set(r.idx);
     A().cast();
+    const def = RM.COMBO[r.combo];
+    const big = def.rank >= 7;
+    fx.banner(def.name.toUpperCase() + '!', COMBO_COL[r.combo] || '#ffe28a', B.W / 2, B.stage.y + B.stage.h * 0.62,
+      Math.min(B.W / (def.name.length * 0.62 + 1), 26 + def.rank * 2.2), big ? 1.6 : 1.15);
+    if (big) { fx.kick(8); fx.flashScreen(COMBO_COL[r.combo], 0.25); }
     B.dice.forEach((d, i) => {
       if (scoring.has(i)) { d.scoreLift = B.dieSize * 0.22; d.glowColor = '#ffffff'; d.glow = 0.7; }
       else d.dim = 1;
@@ -552,6 +622,11 @@
     A().impact(power);
     if (r.dmg > 0) A().squeal();
     B.hurtMonster(frac);
+    if (r.outcome === 'win') {
+      B.slow = 0.32;
+      const over = r.overkill >= (run.fight ? run.fight.mon.max : 1) * 0.5;
+      setTimeout(() => fx.banner(over ? 'OVERKILL!' : 'K.O.!', over ? '#ff5a6a' : '#ffe28a', B.W / 2, target.y - 10, over ? 40 : 48, 1.2), 120);
+    }
     fx.kick(6 + 18 * power);
     fx.ring(target.x, target.y, 10, 90 + 140 * power, color, 0.5, 8);
     fx.burst(target.x, target.y, 24 + Math.round(30 * power), { color: [color, '#ffffff', '#ffe28a'], speed: 380 + 300 * power, life: 0.7, size: 4.5 });

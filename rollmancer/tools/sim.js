@@ -118,6 +118,15 @@ function boon(run) {
   if (r === 'etch') R.chooseBoon(run, ch[0], 0, 5);
 }
 
+// Encounters: take the first option that's free and possible, else leave.
+function event(run) {
+  const opts = R.eventOptions(run);
+  const pickable = opts.filter((o) => !o.why && !o.target);
+  const o = pickable[0] || opts[opts.length - 1];
+  R.chooseEvent(run, o.k);
+  R.leaveEvent(run);
+}
+
 function playRun(seed) {
   const run = R.newRun({ seed, set: SET, heat: HEAT });
   let guard = 0;
@@ -126,6 +135,7 @@ function playRun(seed) {
     else if (run.phase === 'reward') R.claimReward(run);
     else if (run.phase === 'shop') shop(run);
     else if (run.phase === 'boon') boon(run);
+    else if (run.phase === 'event') event(run);
     else break;
   }
   return run;

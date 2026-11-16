@@ -166,9 +166,242 @@
         if (rng && rng.chance(1 / 3)) { run.levels[ctx.combo] = (run.levels[ctx.combo] || 1) + 1; return 'level'; }
         return null;
       } },
+
+    // ---- added in 1.1 ----
+    { id: 'runes', name: 'Glyphwork', icon: '✴️', r: 1, cost: 5, text: '{m:+1 Mult} for each {k:glyph} on your dice',
+      cur: (c, run) => '{m:+' + RM.rules.glyphCount(run) + ' Mult}',
+      after(ctx) { const n = RM.rules.glyphCount(ctx.run); if (n > 0) ctx.mult(n); } },
+    { id: 'target', name: 'Bullseye', icon: '🎯', r: 1, cost: 5, text: '{p:+40 Pips} and {m:+5 Mult} when {k:every die} scores',
+      after(ctx) { if (ctx.scoring.length === ctx.fight.dice.length) { ctx.pips(40); ctx.mult(5); } } },
+    { id: 'streak', name: 'Hot Streak', icon: '☄️', r: 2, cost: 6, text: 'Gains {m:+3 Mult} whenever a cast beats your last one\'s damage. Resets when it doesn\'t',
+      state: { m: 0, last: 0 }, cur: (c) => '{m:+' + c.s.m + ' Mult}',
+      after(ctx, c) { if (c.s.m > 0) ctx.mult(c.s.m); },
+      cast(run, r, c) {
+        const beat = r.dmg > c.s.last;
+        c.s.last = r.dmg;
+        if (beat) { c.s.m += 3; return 'grow'; }
+        c.s.m = 0;
+        return null;
+      } },
+    { id: 'seven', name: 'Lucky Seven', icon: '7️⃣', r: 2, cost: 6, text: '{x:×3 Mult} when your scoring dice add up to a {k:multiple of 7}',
+      after(ctx) { const sum = ctx.scoring.reduce((a, d) => a + d.v, 0); if (sum > 0 && sum % 7 === 0) ctx.xmult(3); } },
+    { id: 'mouse', name: 'Underdog', icon: '🐭', r: 2, cost: 5, text: '{x:×3 Mult} while you\'re down to your {k:last heart}',
+      after(ctx) { if (ctx.run.hearts === 1) ctx.xmult(3); } },
+    { id: 'card', name: 'Big Spender', icon: '💳', r: 2, cost: 6, text: 'Gains {m:+1 Mult} for every {g:$5} you spend in the bazaar',
+      state: { m: 0, sp: 0 }, cur: (c) => '{m:+' + c.s.m + ' Mult}',
+      after(ctx, c) { if (c.s.m > 0) ctx.mult(c.s.m); },
+      spend(run, c, amount) {
+        c.s.sp += amount;
+        const n = Math.floor(c.s.sp / 5);
+        c.s.m += n;
+        c.s.sp -= n * 5;
+      } },
+    { id: 'watch', name: 'Pocket Watch', icon: '⌚', r: 2, cost: 6, text: '{k:+1 Reroll} each fight', mods: { rerolls: 1 } },
+    { id: 'cloud', name: 'Thunderhead', icon: '⛈️', r: 3, cost: 8, text: '{k:Storm} glyphs also give {x:×1.25 Mult}',
+      die(ctx, d) { if (d.g === 'storm') ctx.xmult(1.25); } },
   ];
   const CHARM = {};
   CHARMS.forEach((c) => { CHARM[c.id] = c; });
+
+  /* Charms you unlock by playing. Until then they never turn up in the
+     bazaar (the Daily Run uses every charm regardless). p is the profile. */
+  const CHARM_UNLOCKS = {
+    hourglass: ['Win 10 fights', (p) => p.fightsWon >= 10],
+    spare: ['Reach Depth 4', (p) => p.bestDepth >= 4],
+    streak: ['Reach Depth 5', (p) => p.bestDepth >= 5],
+    book: ['Reach Depth 6', (p) => p.bestDepth >= 6],
+    seven: ['Play 5 runs', (p) => p.runs >= 5],
+    bell: ['Cast a Four of a Kind', (p) => !!(p.cast && (p.cast.four || p.cast.five || p.cast.six))],
+    lizard: ['Cast a Five of a Kind', (p) => !!(p.cast && (p.cast.five || p.cast.six))],
+    spiral: ['Cast a Large Straight', (p) => !!(p.cast && (p.cast.lgstraight || p.cast.grand))],
+    eye: ['Deal 5,000 damage in one cast', (p) => p.bestCast >= 5000],
+    moon: ['Win 25 fights', (p) => p.fightsWon >= 25],
+    orb: ['Fill every charm slot', (p) => !!(p.flags && p.flags.fullCharms)],
+    mouse: ['Win a fight on your last heart', (p) => !!(p.flags && p.flags.lastHeartWin)],
+    card: ['Spend $150 in the bazaar', (p) => (p.spent || 0) >= 150],
+    runes: ['Have 10 glyphs on your dice at once', (p) => !!(p.flags && p.flags.glyph10)],
+    metro: ['Win a run', (p) => p.wins >= 1],
+    cloud: ['Win a run on Heat 1 or higher', (p) => (p.bestHeatWon || 0) >= 1],
+  };
+  Object.keys(CHARM_UNLOCKS).forEach((id) => {
+    const [text, test] = CHARM_UNLOCKS[id];
+    CHARM[id].unlock = { text, test };
+  });
+
+  /* ---------------- encounters ----------------
+     After every minion you win against, something happens on the way to
+     the bazaar. Each option: label/text (strings or fns of run), cost (gold),
+     can(run) → why not (or null), target ('die' | 'combo' | 'charm' | 'face'),
+     go(run, rng, arg) → { text, die?, charm? }. */
+  const R = () => RM.rules;
+  const freeCharm = (run, rng, rarity) => {
+    const id = R().rollCharm(run, rng, [], rarity);
+    if (!id) return null;
+    run.charms.push(R().makeCharm(id));
+    return id;
+  };
+  const roomForCharm = (run) => (run.charms.length >= run.charmSlots ? 'Your charm slots are full' : null);
+  const EVENTS = [
+    { id: 'well', name: 'Wishing Well', icon: '⛲', text: 'A mossy well, glittering with old coins. Something hums down in the dark.',
+      opts: [
+        { label: 'Toss in a coin', text: '{k:1 in 2}: a random charm floats up', cost: 4, can: roomForCharm,
+          go(run, rng) {
+            if (rng.chance(0.5)) {
+              const id = freeCharm(run, rng, rng.chance(0.25) ? 2 : 1);
+              if (id) return { text: 'Something floats up: {k:' + CHARM[id].name + '} ' + CHARM[id].icon, charm: id };
+            }
+            return { text: 'Plink. Just ripples.' };
+          } },
+        { label: 'Walk on', text: 'Keep your gold', go: () => ({ text: 'You leave the well to its wishes.' }) },
+      ] },
+    { id: 'altar', name: 'Cursed Altar', icon: '🗿', text: 'A stone face with an open mouth. Its eyes follow your heartbeat.',
+      opts: [
+        { label: 'Feed it a heart', text: 'Lose {k:1 heart}, gain a {k:rare charm}',
+          can: (run) => (run.hearts < 2 ? 'You can\'t spare a heart' : roomForCharm(run)),
+          go(run, rng) {
+            run.hearts -= 1;
+            const id = freeCharm(run, rng, 3);
+            return id ? { text: 'The altar drinks. In its mouth: {k:' + CHARM[id].name + '} ' + CHARM[id].icon, charm: id } : { text: 'The altar drinks, and gives nothing back.' };
+          } },
+        { label: 'Back away', text: 'Probably wise', go: () => ({ text: 'You back away slowly. The eyes keep watching.' }) },
+      ] },
+    { id: 'imp', name: 'Gambling Imp', icon: '👺', text: '"A game, friend? One die. Four or more and I double your stake."',
+      opts: [
+        { label: (run) => 'Bet $' + Math.max(2, Math.floor(run.gold / 2)), text: 'Roll {k:4+} to double it', can: (run) => (run.gold < 2 ? 'You need at least $2' : null),
+          go(run, rng) {
+            const bet = Math.max(2, Math.floor(run.gold / 2));
+            const roll = rng.int(1, 6);
+            if (roll >= 4) { run.gold += bet; return { text: 'The die shows {k:' + roll + '}. You win {g:$' + bet + '}!', die: roll }; }
+            run.gold -= bet;
+            return { text: 'The die shows {k:' + roll + '}. The imp cackles and pockets {g:$' + bet + '}.', die: roll };
+          } },
+        { label: 'No thanks', text: 'Keep your gold', go: () => ({ text: '"Suit yourself," it sulks.' }) },
+      ] },
+    { id: 'mason', name: 'Old Mason', icon: '⚒️', text: 'A stonecutter with a chisel and a squint. "Hand me a die. I\'ll make it heavier."',
+      opts: [
+        { label: 'Hire her', text: '{k:+1 pip} on every face of one die', cost: 5, target: 'die',
+          go(run, rng, di) {
+            run.dice[di].forEach((f) => { f.v = Math.min(9, f.v + 1); });
+            return { text: 'Tap, tap, tap. Die ' + (di + 1) + ' is heavier now: every face {k:+1}.' };
+          } },
+        { label: 'Walk on', text: 'Keep your gold', go: () => ({ text: '"Your loss," she shrugs.' }) },
+      ] },
+    { id: 'spring', name: 'Glyph Spring', icon: '💧', text: 'Water glows with drifting runes. They settle on whatever you dip in.',
+      opts: [
+        { label: 'Bathe your dice', text: '{k:2 random faces} gain {k:random glyphs}',
+          go(run, rng) {
+            const a = R().alchemy(run, rng);
+            const b = R().alchemy(run, rng);
+            return { text: [a, b].filter(Boolean).map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join('. ') || 'Your dice are already covered in glyphs.' };
+          } },
+        { label: 'Fill a vial', text: 'Etch a {k:Prism} glyph wherever you like', cost: 4, target: 'face', stone: 'st-prism',
+          go(run, rng, pick) {
+            R().etch(run, 'st-prism', pick[0], pick[1]);
+            return { text: 'Die ' + (pick[0] + 1) + ' now shimmers with a {k:Prism} glyph.' };
+          } },
+      ] },
+    { id: 'library', name: 'Forgotten Library', icon: '🏛️', text: 'Shelves of spellbooks, half eaten by moths. One lamp still burns.',
+      opts: [
+        { label: 'Study all night', text: 'A combo of your choice gains {k:+2 levels}', cost: 5, target: 'combo',
+          go(run, rng, id) { run.levels[id] = (run.levels[id] || 1) + 2; return { text: '{k:' + COMBO[id].name + '} rises to level ' + run.levels[id] + '.' }; } },
+        { label: 'Skim a page', text: 'A {k:random} combo gains a level',
+          go(run, rng) {
+            const nd = R().fightFaces(run, null).length;
+            const c = rng.pick(COMBOS.filter((x) => x.min <= nd && x.id !== 'high'));
+            run.levels[c.id] = (run.levels[c.id] || 1) + 1;
+            return { text: 'You learn a trick for {k:' + c.name + '}: now level ' + run.levels[c.id] + '.' };
+          } },
+      ] },
+    { id: 'healer', name: 'Wandering Healer', icon: '🧙', text: 'A hooded figure stirs a pot that smells of mint and thunder.',
+      opts: [
+        { label: 'A tonic', text: 'Restore {k:1 heart}', cost: 5, can: (run) => (run.hearts >= run.maxHearts ? 'Your hearts are full' : null),
+          go(run) { run.hearts += 1; return { text: 'Warmth spreads through you. {k:+1 heart}.' }; } },
+        { label: 'A blessing', text: '{k:+1 max heart} (and fill it)', cost: 12,
+          go(run) { run.maxHearts += 1; run.hearts += 1; return { text: 'Your heart beats stronger. {k:+1 max heart}.' }; } },
+        { label: 'Walk on', text: 'Keep your gold', go: () => ({ text: 'The healer nods and goes back to stirring.' }) },
+      ] },
+    { id: 'peddler', name: 'Trinket Peddler', icon: '💼', text: 'A goblin with a coat full of pockets. Every pocket jingles.',
+      opts: [
+        { label: 'Take a sample', text: 'A {k:free trinket} for your belt', can: (run) => (run.belt.length >= run.beltSlots ? 'Your belt is full' : null),
+          go(run, rng) { const t = rng.pick(TRINKETS); run.belt.push(t.id); return { text: 'She presses a {k:' + t.name + '} ' + t.icon + ' into your hand.' }; } },
+        { label: 'Sell your trinkets', text: '{g:$5} for each one on your belt', can: (run) => (run.belt.length ? null : 'Your belt is empty'),
+          go(run) { const n = run.belt.length; run.belt = []; run.gold += 5 * n; return { text: 'She buys ' + n + ' trinket' + (n > 1 ? 's' : '') + ' for {g:$' + 5 * n + '}.' }; } },
+      ] },
+    { id: 'chest', name: 'A Lonely Chest', icon: '📦', text: 'A treasure chest sits in the middle of the corridor. Alone. Suspiciously.',
+      opts: [
+        { label: 'Open it', text: 'Gold inside... unless it\'s a {k:Mimic} (1 in 4)',
+          go(run, rng) {
+            if (rng.chance(0.25)) {
+              if (run.hearts > 1) { run.hearts -= 1; return { text: 'It was a Mimic! It bites you and scuttles off. {k:−1 heart}.' }; }
+              const lost = Math.floor(run.gold / 2);
+              run.gold -= lost;
+              return { text: 'It was a Mimic! It snatches {g:$' + lost + '} and scuttles off.' };
+            }
+            const g = rng.int(8, 15);
+            run.gold += g;
+            return { text: 'Just treasure! {g:+$' + g + '}.' };
+          } },
+        { label: 'Leave it', text: 'Nothing good is ever alone', go: () => ({ text: 'As you leave, the chest licks its lips.' }) },
+      ] },
+    { id: 'grave', name: 'Dice Graveyard', icon: '⚰️', text: 'Old dice rest here in tiny graves. Some of them still twitch.',
+      opts: [
+        { label: 'Dig one up', text: 'Swap one of your dice for an old die: random faces {k:2–8} and {k:2 glyphs}', target: 'die',
+          go(run, rng, di) {
+            const faces = [0, 1, 2, 3, 4, 5].map(() => ({ v: rng.int(2, 8), g: null }));
+            const a = rng.int(0, 5);
+            let b = rng.int(0, 5);
+            if (b === a) b = (a + 3) % 6;
+            faces[a].g = rng.pick(GLYPH_IDS.filter((g) => g !== 'wild'));
+            faces[b].g = rng.pick(GLYPH_IDS.filter((g) => g !== 'wild'));
+            run.dice[di] = faces;
+            return { text: 'Die ' + (di + 1) + ' is now: ' + faces.map((f) => f.v).join(' · ') + '.' };
+          } },
+        { label: 'Let them rest', text: 'Leave the dead in peace', go: () => ({ text: 'You tip your hat to the fallen dice.' }) },
+      ] },
+    { id: 'shrine', name: 'Shrine of Chance', icon: '⛩️', text: 'A shrine of a thousand dice. Pray, and fortune rerolls your purse.',
+      opts: [
+        { label: 'Pray', text: 'Your gold becomes a random amount from {g:$0} to {k:double}', can: (run) => (run.gold < 1 ? 'You have no gold' : null),
+          go(run, rng) {
+            const before = run.gold;
+            run.gold = rng.int(0, before * 2);
+            return { text: 'The dice clatter... {g:$' + before + '} becomes {g:$' + run.gold + '}.' };
+          } },
+        { label: 'Walk on', text: 'Fortune favours the careful', go: () => ({ text: 'You keep your purse closed.' }) },
+      ] },
+    { id: 'collector', name: 'Strange Collector', icon: '🧐', text: '"Ooh, what a charming charm. I\'ll pay full price. No questions."',
+      opts: [
+        { label: 'Sell a charm', text: 'Get its {k:full price} back', target: 'charm', can: (run) => (run.charms.length ? null : 'You have no charms'),
+          go(run, rng, k) {
+            const c = run.charms[k];
+            const d = CHARM[c.id];
+            run.charms.splice(k, 1);
+            run.gold += d.cost;
+            return { text: 'The collector pockets your {k:' + d.name + '} and pays {g:$' + d.cost + '}.' };
+          } },
+        { label: 'Walk on', text: 'Not for sale', go: () => ({ text: '"Pity," he sighs.' }) },
+      ] },
+    { id: 'dojo', name: 'Training Dummy', icon: '🥋', text: 'A battered dummy, still standing. Perfect for practice.',
+      opts: [
+        { label: 'Drill your best combo', text: 'Your {k:most-cast} combo gains {k:+1 level}',
+          go(run) {
+            const top = Object.entries(run.stats.casts).sort((a, b) => b[1] - a[1])[0];
+            const id = top ? top[0] : 'pair';
+            run.levels[id] = (run.levels[id] || 1) + 1;
+            return { text: '{k:' + COMBO[id].name + '} is now level ' + run.levels[id] + '.' };
+          } },
+        { label: 'Warm up', text: '{k:+2 Rerolls} in your next fight',
+          go(run) { run.buff.rerolls += 2; return { text: 'Loose and ready: {k:+2 Rerolls} next fight.' }; } },
+      ] },
+    { id: 'camp', name: 'Campfire', icon: '⛺', text: 'An abandoned camp, the fire still warm. Someone left in a hurry.',
+      opts: [
+        { label: 'Rest', text: '{k:+1 Cast} in your next fight',
+          go(run) { run.buff.casts += 1; return { text: 'You wake refreshed: {k:+1 Cast} next fight.' }; } },
+        { label: 'Search the packs', text: 'Find {g:$5}',
+          go(run) { run.gold += 5; return { text: 'Tucked in a boot: {g:$5}.' }; } },
+      ] },
+  ];
+  const EVENT = {};
+  EVENTS.forEach((e) => { EVENT[e.id] = e; });
 
   /* ---------------- shop items (used the moment you buy them) ---------------- */
   // Stones go onto a die face you choose.
@@ -302,7 +535,7 @@
   /* ---------------- HP curve ----------------
      Minion HP by Depth; brutes ×1.5, bosses ×2, the Pipwyrm ×2.5.
      Past Depth 8 (endless) it keeps climbing steeply. */
-  const BASE_HP = [0, 120, 340, 900, 2200, 5000, 10500, 21000, 40000];
+  const BASE_HP = [0, 120, 340, 900, 2250, 5300, 11500, 23500, 46000];
   function monsterHp(depth, stage, heat) {
     let base = depth < BASE_HP.length ? BASE_HP[depth] : BASE_HP[8] * Math.pow(2.6, depth - 8);
     const k = stage === 0 ? 1 : stage === 1 ? 1.5 : depth === 8 ? 2.5 : 2;
@@ -395,7 +628,7 @@
 
   Object.assign(RM, {
     COMBOS, COMBO, PAIRISH, STRAIGHTS, GLYPHS, GLYPH_IDS,
-    CHARMS, CHARM, STONES, STONE, TRINKETS, TRINKET, BOONS, BOON,
+    CHARMS, CHARM, STONES, STONE, TRINKETS, TRINKET, BOONS, BOON, EVENTS, EVENT,
     AREAS, MONSTERS, BOSSES, FINAL_BOSS, BOSS, TRAITS, TRAIT,
     BASE_HP, monsterHp, REWARD, DICE_SETS, DICE_SET, HEAT, FEATS,
   });

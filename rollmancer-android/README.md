@@ -2,7 +2,7 @@
 
 The Rollmancer dice roguelite as a regular Android app: install it and it gets its own icon on your home screen. It's also the build that goes on Google Play (see [`../rollmancer/SELLING.md`](../rollmancer/SELLING.md)).
 
-**Download:** [`dist/rollmancer.apk`](dist/rollmancer.apk) (about 650 KB, version 1.0.0) · Play Store upload: [`dist/rollmancer.aab`](dist/rollmancer.aab)
+**Download:** [`dist/rollmancer.apk`](dist/rollmancer.apk) (about 660 KB, version 1.1.0) · Play Store upload: [`dist/rollmancer.aab`](dist/rollmancer.aab)
 
 ## Installing the APK
 

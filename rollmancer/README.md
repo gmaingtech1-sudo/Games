@@ -1,6 +1,6 @@
 # Rollmancer
 
-A dice roguelite for phones. Roll your dice, hold the ones you like, reroll the rest, and **Cast**: your best combo showing becomes a spell that hits the monster for **Pips × Mult** damage. Fight down through eight Depths of monsters and bosses, collect charms that bend the rules, etch glyphs onto the faces of your dice, and defeat the Pipwyrm. Then turn up the Heat.
+A dice roguelite for phones. Roll your dice, hold the ones you like, reroll the rest, and **Cast**: your best combo showing becomes a spell that hits the monster for **Pips × Mult** damage. Fight down through eight Depths of monsters and bosses, meet strange characters on the way, collect charms that bend the rules, etch glyphs onto the faces of your dice, and defeat the Pipwyrm. Then turn up the Heat.
 
 It's plain HTML, CSS and JavaScript. There's no build step and nothing to install. The monsters, dice, effects, sound effects and music are all drawn or synthesised in code, and the fonts ship with it, so it works fully offline. There's also an installable Android app in [`../rollmancer-android`](../rollmancer-android), and [`SELLING.md`](SELLING.md) covers putting it on Google Play and itch.io.
 
@@ -11,9 +11,9 @@ It's plain HTML, CSS and JavaScript. There's no build step and nothing to instal
 | Step | What you do |
 | --- | --- |
 | **Roll** | Every turn starts with your dice rolled. |
-| **Hold** | Tap a die to hold it (it lifts up and glows). Held dice stay put when you reroll. |
+| **Hold** | Tap a die to hold it (it lifts up and glows). Held dice stay put when you reroll. Press and hold a die to see all six of its faces. |
 | **Reroll** | Throws every die you didn't hold. Rerolls are shared across the whole fight (3 to start with), so spend them wisely. |
-| **Cast** | Your best combo showing hits the monster. The panel above your dice always shows what a Cast would do right now; the damage turns gold when it would finish the monster off. |
+| **Cast** | Your best combo showing hits the monster. The panel above your dice always shows what a Cast would do right now; the damage turns gold, and the Cast button glows, when it would finish the monster off. |
 
 You have 4 Casts per fight. Bring the monster's HP to zero before they run out, or you lose a heart (and no gold) and get driven deeper anyway. Lose your last heart and the run is over. The exception is the Pipwyrm at the bottom of Depth 8: lose to it and you face it again after a trip to the bazaar.
 
@@ -57,11 +57,15 @@ The **Chisel** carves +1 pip onto a face (up to 9, so straights can run past 6),
 
 After every fight you visit the Wandering Bazaar. It sells:
 
-- **Charms** (5 slots): 48 of them, common to rare. Flat bonuses (*Whetted Blade*: +4 Mult), conditions (*Snake Eyes*: scoring 1s give +8 Mult), multipliers (*Last Word*: ×3 Mult on your final cast), scaling (*Grindstone* gains Mult every triple; *Metronome* gains ×0.15 Mult every win), economy (*Piggy Bank*, *Midas Touch*, *Overkill*), rule-breakers (*Chameleon*: 1s are wild; *Ouroboros*: straights loop 6→1; *Spare Die*: roll a sixth die) and more. Charms work left to right, so you can reorder them; tap one to move or sell it.
+- **Charms** (5 slots): 56 of them, common to rare. Flat bonuses (*Whetted Blade*: +4 Mult), conditions (*Snake Eyes*: scoring 1s give +8 Mult), multipliers (*Last Word*: ×3 Mult on your final cast), scaling (*Grindstone* gains Mult every triple; *Metronome* gains ×0.15 Mult every win), economy (*Piggy Bank*, *Midas Touch*, *Overkill*), rule-breakers (*Chameleon*: 1s are wild; *Ouroboros*: straights loop 6→1; *Spare Die*: roll a sixth die) and more. Charms work left to right, so you can reorder them; tap one to move or sell it. With every slot full, a charm in the bazaar can be **swapped** for one of yours. 40 charms are available from the start; the other 16 unlock as you play (reach Depth 4, cast a Five of a Kind, win on your last heart…), and the codex shows how.
 - **Stones** to etch glyphs, **tomes** that level up a combo, a **Heart Tonic** now and then, and **trinkets**: one-use tricks kept on your belt for mid-fight emergencies (*Nudge* a die up one pip, *Flip* one to its opposite face, *Copycat* one die onto another, +1 Cast, +2 Rerolls, or ×2 Mult on your next cast).
 - **New stock** for $2, rising by $1 each time.
 
 The bar at the bottom shows the next monster and, for a boss, its rule, so you can shop for it.
+
+### Encounters
+
+After every minion you beat, something happens on the way to the bazaar: one of 14 encounters, each with a choice. Toss a coin in a Wishing Well, feed a heart to a Cursed Altar for a rare charm, bet half your gold with a Gambling Imp, open a suspiciously lonely chest (1 in 4 it's a Mimic), dig up an old die in the Dice Graveyard, sell a charm to the Strange Collector at full price, rest at a Campfire for an extra Cast next fight, and more. Some options cost gold or a heart; you can always walk on.
 
 ### Depths, brutes and bosses
 
@@ -144,14 +148,14 @@ Then open <http://localhost:8000>. Opening `index.html` straight from the file s
 | `index.html` | Layout: title, setup, the battle HUD, the bazaar, and the sheet that every pop-up uses |
 | `css/style.css` | All styling. Mobile-first portrait, safe areas, reduced motion; a centred column on wide screens |
 | `js/core.js` | Maths, seeded random streams, seed codes, number formatting |
-| `js/data.js` | The catalogue: combos, glyphs, all 48 charms, stones, trinkets, boons, monsters, bosses, traits, the HP curve, dice sets, Heat and feats |
-| `js/rules.js` | The rules on a plain JSON `run` object: fights, rolling, combo detection (including wilds), the scoring pipeline, shops, boons, trinkets. No DOM, so it also runs in Node |
+| `js/data.js` | The catalogue: combos, glyphs, all 56 charms and their unlocks, stones, trinkets, boons, encounters, monsters, bosses, traits, the HP curve, dice sets, Heat and feats |
+| `js/rules.js` | The rules on a plain JSON `run` object: fights, rolling, combo detection (including wilds), the scoring pipeline, shops, encounters, boons, trinkets. No DOM, so it also runs in Node |
 | `js/profile.js` | Your save, unlocks and feats; the bridge to the Android app (storage, vibration, sharing) |
 | `js/art.js` | Draws the dice, glyphs, 12 monster body plans with all their variants and bosses, and the dungeon backdrops |
 | `js/fx.js` | Particles, floating numbers, rings, lightning, spell orbs, shake and flashes |
 | `js/battle.js` | The scene canvas: monster, dice tray, rolling animation and the step-by-step cast |
-| `js/ui.js` | The HUD, shop, setup, title and every sheet (rewards, boons, etching, charms, dice, combos, codex, settings, how to play) |
-| `js/audio.js` | Sound effects and per-area music, synthesised with WebAudio |
+| `js/ui.js` | The HUD, shop, setup, title and every sheet (rewards, encounters, boons, etching, pickers, charms, a die's faces, combos, codex, settings, how to play) |
+| `js/audio.js` | Sound effects and per-area music (pads, arpeggios, a melody and soft drums), synthesised with WebAudio |
 | `js/main.js` | Game flow, actions, saving, first-run tips, the Android back button |
 | `sw.js`, `manifest.webmanifest`, `icons/`, `fonts/` | Installable app + offline support; the fonts are Lilita One and Nunito (SIL Open Font License, licences in `fonts/`) |
 | `privacy.html` | The privacy policy the stores ask for |
@@ -162,7 +166,7 @@ Progress is saved after every action, so closing the app mid-fight is safe.
 
 | Tool | What it does |
 | --- | --- |
-| `node tools/sim.js [runs] [set] [heat]` | Balance simulator: a plain bot plays many runs with the real rules and reports how deep it gets (about 8% wins on Heat 0, 0% on Heat 8) |
+| `node tools/sim.js [runs] [set] [heat]` | Balance simulator: a plain bot plays many runs with the real rules and reports how deep it gets (about 9% wins on Heat 0, 4% on Heat 4, 0% on Heat 8) |
 | `node tools/fuzz.js [runs]` | Plays thousands of random-choice runs on every set and Heat and checks the run stays consistent |
 | `tools/gallery.html` | Every monster and glyph face on one page, for checking the art |
 | `node tools/store-shots.js` | Rebuilds the store images in `store/` from the live game (serve the folder on port 8123 first) |
@@ -172,7 +176,7 @@ Progress is saved after every action, so closing the app mid-fight is safe.
 ### Tuning
 
 - Monster HP: `BASE_HP` and `monsterHp()` in `js/data.js`. Rewards: `REWARD`.
-- Charm effects and prices: `CHARMS` in `js/data.js`. Shop odds: `rollCharm()` and `rollGood()` in `js/rules.js`.
+- Charm effects and prices: `CHARMS` in `js/data.js`; which ones start locked: `CHARM_UNLOCKS`. Encounters: `EVENTS`. Shop odds: `rollCharm()` and `rollGood()` in `js/rules.js`.
 - Casts and Rerolls per fight: `castsFor()` and `rerollsFor()` in `js/rules.js`.
 - After changing the balance, run `node tools/sim.js` to see the effect, and `node tools/fuzz.js` to make sure nothing broke.
 - When you change any file, bump `CACHE` in `sw.js` so installed copies pick up the update.

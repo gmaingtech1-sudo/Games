@@ -270,6 +270,75 @@
     o.stop(t + 0.7);
   }
 
+  // Soft percussion for the music bus.
+  function hat(t, vol) {
+    const src = ac.createBufferSource();
+    src.buffer = noiseBuf;
+    const f = ac.createBiquadFilter();
+    f.type = 'highpass';
+    f.frequency.value = 7000;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+    src.connect(f);
+    f.connect(g);
+    g.connect(mus);
+    src.start(t, Math.random() * 0.5);
+    src.stop(t + 0.06);
+  }
+  function kick(t, vol) {
+    const o = ac.createOscillator();
+    o.frequency.setValueAtTime(130, t);
+    o.frequency.exponentialRampToValueAtTime(42, t + 0.16);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g);
+    g.connect(mus);
+    o.start(t);
+    o.stop(t + 0.25);
+  }
+  function lead(freq, t, dur, vol) {
+    const o = ac.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    const v = ac.createOscillator(); // a little vibrato
+    v.frequency.value = 5.2;
+    const vg = ac.createGain();
+    vg.gain.value = freq * 0.006;
+    v.connect(vg);
+    vg.connect(o.frequency);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g);
+    g.connect(mus);
+    o.start(t);
+    v.start(t);
+    o.stop(t + dur + 0.05);
+    v.stop(t + dur + 0.05);
+  }
+  // A four-bar melody per area, made once from a seed so each area keeps
+  // its own tune: scale degrees (minor pentatonic) or null for a rest.
+  const PENT = [0, 3, 5, 7, 10, 12, 15, 17];
+  function makePhrase(seed) {
+    let x = seed * 9301 + 49297;
+    const rnd = () => { x = (x * 9301 + 49297) % 233280; return x / 233280; };
+    const out = [];
+    let deg = 3;
+    for (let i = 0; i < 32; i++) {
+      const on = i % 8 === 0 ? 0.9 : i % 2 === 0 ? 0.4 : 0.12;
+      if (rnd() < on) {
+        deg = Math.max(0, Math.min(PENT.length - 1, deg + Math.round((rnd() - 0.5) * 3)));
+        out.push(deg);
+      } else out.push(null);
+    }
+    out[31] = null;
+    out[30] = null;
+    return out;
+  }
+
   function schedule() {
     if (!ac || !music.on) return;
     const sc = SCALES[music.area % SCALES.length];
@@ -290,6 +359,14 @@
       const k = pattern[b % 8];
       if (k >= 0) pluck(f(chord[k]) * (b % 16 >= 8 ? 2 : 1), t, music.boss ? 0.07 : 0.055);
       if (music.boss && b % 2 === 0) note(f(chord[0]) / 4, t, beatLen * 0.9, 'sawtooth', 0.06);
+      // percussion and melody come in after the first four bars
+      if (b >= 32) {
+        if (b % 2 === 1) hat(t, music.boss ? 0.05 : 0.025);
+        if (music.boss ? b % 4 === 0 : b % 8 === 0) kick(t, music.boss ? 0.2 : 0.11);
+        const ph = music.phrase || (music.phrase = makePhrase(music.area + 3));
+        const deg = ph[b % 32];
+        if (deg != null && Math.floor(b / 32) % 2 === 1) lead(sc.root * 2 * Math.pow(2, PENT[deg] / 12), t, beatLen * 1.8, music.boss ? 0.045 : 0.035);
+      }
       music.beat += 1;
       music.next += beatLen;
     }
@@ -298,6 +375,7 @@
   function playMusic(area, boss) {
     if (!init()) return;
     const changed = music.area !== area || music.boss !== !!boss;
+    if (music.area !== area) music.phrase = null;
     music.area = area;
     music.boss = !!boss;
     if (!music.on) {

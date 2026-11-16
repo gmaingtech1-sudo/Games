@@ -125,16 +125,17 @@ const SETUP = () => {
   await p.waitForTimeout(700);
   await shot('6-etch');
 
-  // a boon
+  // an encounter
   await p.evaluate(() => {
     const run = RM.game.run;
     RM.ui.closeSheet(true);
-    run.phase = 'boon';
-    run.boon = { choices: ['cast', 'relic', 'study'], relic: 'metro' };
+    run.gold = 18;
+    run.phase = 'event';
+    run.event = { id: 'imp', result: null };
     RM.game.continueRun();
   });
-  await p.waitForTimeout(1600);
-  await shot('7-boon');
+  await p.waitForTimeout(1200);
+  await shot('7-event');
 
   // the win screen
   await p.evaluate(() => {
@@ -157,9 +158,9 @@ const SETUP = () => {
     '2-boss': ['Hold. Reroll. Cast.', 'Every combo is a spell'],
     '3-cast': ['Chain huge combos', 'Pips × Mult = damage'],
     '4-hit': ['Smash 12 bosses', 'each with a nasty twist'],
-    '5-shop': ['48 rule-bending charms', 'Build a new engine every run'],
+    '5-shop': ['56 rule-bending charms', 'Build a new engine every run'],
     '6-etch': ['Etch glyphs onto your dice', 'Flame, Storm, Prism, Wild…'],
-    '7-boon': ['Choose your boons', 'Every run plays differently'],
+    '7-event': ['Strange encounters', 'Gamble, bargain or walk away'],
     '8-win': ['Beat the Pipwyrm', 'then turn up the Heat'],
   };
   const fp = await b.newPage({ viewport: { width: 1080, height: 1920 } });
