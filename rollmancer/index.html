@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Rollmancer</title>
+<meta name="description" content="A dice roguelite. Roll, hold and cast combos to blast through eight Depths of monsters, collect charms that break the rules, and etch glyphs onto your dice.">
+<meta name="theme-color" content="#120c1f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rollmancer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preload" href="fonts/lilita-one.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="scene" aria-hidden="true"></canvas>
+
+  <!-- ===================== Title ===================== -->
+  <section id="title" class="screen title" aria-label="Title">
+    <div class="logo">
+      <canvas id="logo-dice" aria-hidden="true"></canvas>
+      <h1>ROLL<span>MANCER</span></h1>
+      <p class="tag">a dice roguelite</p>
+    </div>
+    <div class="menu">
+      <button id="btn-continue" class="btn big gold" type="button" hidden>Continue run</button>
+      <button id="btn-new" class="btn big" type="button">New run</button>
+      <button id="btn-daily" class="btn" type="button"><span>Daily run</span><small id="daily-sub"></small></button>
+      <div class="row2">
+        <button id="btn-codex" class="btn ghost" type="button">Codex</button>
+        <button id="btn-howto" class="btn ghost" type="button">How to play</button>
+      </div>
+    </div>
+    <div id="title-stats" class="title-stats"></div>
+    <button id="btn-settings" class="icon-btn corner" type="button" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.5"/><circle cx="9.5" cy="17" r="2.5"/></svg>
+    </button>
+  </section>
+
+  <!-- ===================== New run ===================== -->
+  <section id="setup" class="screen setup" aria-label="New run" hidden>
+    <header class="bar">
+      <button class="icon-btn back" type="button" data-back aria-label="Back">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h2>Choose your dice</h2>
+    </header>
+    <div class="set-pick">
+      <button id="set-prev" class="arrow" type="button" aria-label="Previous dice set">‹</button>
+      <div id="set-card" class="set-card"></div>
+      <button id="set-next" class="arrow" type="button" aria-label="Next dice set">›</button>
+    </div>
+    <div id="set-dots" class="dots"></div>
+    <div class="heat">
+      <div class="heat-head"><span>Heat</span><b id="heat-val">0</b></div>
+      <div class="heat-row">
+        <button id="heat-down" class="arrow small" type="button" aria-label="Less heat">−</button>
+        <div id="heat-pips" class="heat-pips"></div>
+        <button id="heat-up" class="arrow small" type="button" aria-label="More heat">+</button>
+      </div>
+      <p id="heat-desc" class="heat-desc"></p>
+    </div>
+    <div class="seed-row">
+      <label for="seed-in">Seed</label>
+      <input id="seed-in" type="text" maxlength="7" placeholder="random" autocomplete="off" autocapitalize="characters" spellcheck="false">
+    </div>
+    <button id="btn-start" class="btn big gold" type="button">Descend</button>
+  </section>
+
+  <!-- ===================== Battle HUD ===================== -->
+  <section id="battle" class="screen battle" aria-label="Battle" hidden>
+    <header class="hud-top">
+      <div id="hearts" class="hearts" aria-label="Hearts"></div>
+      <button id="depth" class="depth" type="button" aria-label="Run map"></button>
+      <div id="gold" class="gold-pill" aria-label="Gold"><i class="coin"></i><span>0</span></div>
+      <button id="btn-pause" class="icon-btn" type="button" aria-label="Menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+      </button>
+    </header>
+    <div id="stage" class="stage">
+      <div class="mon-info">
+        <div id="mon-name" class="mon-name"></div>
+        <div id="mon-tags" class="mon-tags"></div>
+      </div>
+      <div class="hpbar" id="hpbar"><i class="chip"></i><i class="fill"></i><span id="hp-text"></span></div>
+    </div>
+    <div id="charms" class="charms" aria-label="Your charms"></div>
+    <div id="readout" class="readout" aria-live="polite">
+      <div id="ro-combo" class="ro-combo"><span class="nm"></span><span class="lv"></span></div>
+      <div class="ro-math">
+        <span id="ro-pips" class="pips">0</span><b>×</b><span id="ro-mult" class="mult">0</span><b>=</b><span id="ro-dmg" class="dmg">0</span>
+      </div>
+    </div>
+    <div id="tray" class="tray" aria-label="Your dice. Tap a die to hold it."></div>
+    <div id="belt" class="belt" aria-label="Trinkets"></div>
+    <div id="prompt" class="prompt" hidden></div>
+    <div class="actions">
+      <button id="btn-reroll" class="btn act reroll" type="button"><span class="lbl">Reroll</span><span class="ct"></span></button>
+      <button id="btn-cast" class="btn act cast" type="button"><span class="lbl">Cast</span><span class="ct"></span></button>
+    </div>
+  </section>
+
+  <!-- ===================== Shop ===================== -->
+  <section id="shop" class="screen shop" aria-label="Shop" hidden>
+    <header class="hud-top">
+      <div id="shop-hearts" class="hearts"></div>
+      <div class="shop-title">The Wandering Bazaar</div>
+      <div id="shop-gold" class="gold-pill"><i class="coin"></i><span>0</span></div>
+    </header>
+    <div class="shop-body">
+      <div class="merchant-row">
+        <canvas id="merchant" aria-hidden="true"></canvas>
+        <div id="merchant-say" class="say"></div>
+      </div>
+      <h3 class="sec">Charms</h3>
+      <div id="shop-charms" class="shelf"></div>
+      <h3 class="sec">Goods</h3>
+      <div id="shop-goods" class="shelf"></div>
+      <button id="btn-reshop" class="btn small ghost" type="button"></button>
+      <h3 class="sec">Your charms <small id="slots-text"></small></h3>
+      <div id="own-charms" class="own-charms"></div>
+      <div class="shop-links">
+        <button id="btn-dice" class="btn small ghost" type="button">Your dice</button>
+        <button id="btn-combos" class="btn small ghost" type="button">Combos</button>
+      </div>
+    </div>
+    <div class="shop-foot">
+      <div id="next-up" class="next-up"></div>
+      <button id="btn-leave" class="btn big gold" type="button">Next fight</button>
+    </div>
+  </section>
+
+  <!-- ===================== Overlay sheets ===================== -->
+  <div id="sheet" class="sheet" hidden>
+    <div class="sheet-card" role="dialog" aria-modal="true">
+      <div id="sheet-body"></div>
+    </div>
+  </div>
+
+  <canvas id="fxtop" aria-hidden="true"></canvas>
+  <div id="tip" class="tip" hidden></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+</div>
+
+<script src="js/core.js"></script>
+<script src="js/data.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/profile.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/art.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/battle.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 432 432">
+  <defs>
+    <linearGradient id="die" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffaf0"/><stop offset="0.55" stop-color="#f3ead8"/><stop offset="1" stop-color="#d9ccb4"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#b98cff" stop-opacity="0.7"/><stop offset="1" stop-color="#b98cff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe08a"/><stop offset="1" stop-color="#ff6a2a"/>
+    </linearGradient>
+  </defs>
+  <circle cx="216" cy="222" r="150" fill="url(#glow)"/>
+  <g transform="translate(216 226) rotate(-12) scale(0.52)">
+    <rect x="-128" y="-106" width="256" height="256" rx="54" fill="#6e5a3e"/>
+    <rect x="-128" y="-128" width="256" height="256" rx="54" fill="url(#die)" stroke="#3a2650" stroke-width="8"/>
+    <rect x="-104" y="-114" width="208" height="46" rx="22" fill="#ffffff" opacity="0.5"/>
+    <g fill="#2b1d3a">
+      <circle cx="-66" cy="-62" r="24"/><circle cx="66" cy="-62" r="24"/>
+      <circle cx="-66" cy="4" r="24"/><circle cx="66" cy="4" r="24"/>
+      <circle cx="-66" cy="70" r="24"/><circle cx="66" cy="70" r="24"/>
+    </g>
+  </g>
+  <path d="M256 40 C 300 92 318 130 300 168 C 292 186 272 196 256 196 C 240 196 220 186 212 168 C 196 132 226 110 236 80 C 244 104 258 110 262 98 C 268 80 262 60 256 40 Z" fill="url(#flame)" stroke="#9a2d0c" stroke-width="6" transform="translate(172 92) scale(0.36)"/>
+</svg>

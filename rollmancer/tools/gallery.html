@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rollmancer art gallery</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  html, body { overflow: auto; height: auto; }
+  body { padding: 12px; }
+  .g { display: grid; grid-template-columns: repeat(auto-fill, 180px); gap: 10px; }
+  .c { background: #1c1330; border-radius: 12px; padding: 6px; text-align: center; font-size: 13px; }
+  .dice { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+</style>
+</head>
+<body>
+<h2>Monsters</h2>
+<div class="g" id="g"></div>
+<h2>Glyph faces</h2>
+<div class="dice" id="d"></div>
+<script src="../js/core.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/art.js"></script>
+<script>
+  // Every monster and boss, drawn by the game's own art code (for checking the art).
+  const g = document.getElementById('g');
+  const list = Object.entries(RM.MONSTERS).map(([k, m]) => Object.assign({ key: k }, m))
+    .concat(RM.BOSSES.map((b) => Object.assign({ key: b.id, boss: true, size: 1.15 }, b)))
+    .concat([Object.assign({ key: 'wyrm', boss: true, size: 1.2 }, RM.FINAL_BOSS)]);
+  list.forEach((m) => {
+    const d = document.createElement('div');
+    d.className = 'c';
+    d.appendChild(RM.art.monsterCanvas(m, 168, 168, 0.8));
+    d.appendChild(document.createTextNode(m.name));
+    g.appendChild(d);
+  });
+  const dd = document.getElementById('d');
+  [null].concat(RM.GLYPH_IDS).forEach((gl, i) => {
+    dd.appendChild(RM.art.faceCanvas({ v: (i % 9) + 1, g: gl }, 64, 'apprentice'));
+  });
+  RM.DICE_SETS.forEach((s) => dd.appendChild(RM.art.faceCanvas({ v: 5, g: null }, 64, s.id)));
+</script>
+</body>
+</html>

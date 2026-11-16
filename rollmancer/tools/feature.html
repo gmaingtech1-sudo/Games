@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rollmancer feature graphic</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  html, body { margin: 0; width: 1024px; height: 500px; overflow: hidden; background: #120c1f; }
+  #c { position: absolute; inset: 0; width: 1024px; height: 500px; }
+  .t { position: absolute; left: 0; right: 0; top: 46px; text-align: center; }
+  .t h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 104px; line-height: 1; color: #fff; text-shadow: 0 6px 0 #3b1f86, 0 12px 0 #1c0f42, 0 16px 40px rgba(140, 80, 255, 0.6); }
+  .t h1 span { color: var(--gold); text-shadow: 0 6px 0 #9a5d06, 0 12px 0 #4a2a02, 0 16px 40px rgba(255, 180, 60, 0.5); }
+  .t p { margin: 12px 0 0; font-family: var(--body); font-weight: 900; font-size: 26px; letter-spacing: 0.32em; color: #d8c8ff; text-transform: uppercase; text-shadow: 0 2px 8px #000; }
+</style>
+</head>
+<body>
+<canvas id="c" width="2048" height="1000"></canvas>
+<div class="t"><h1>ROLL<span>MANCER</span></h1><p>a dice roguelite</p></div>
+<script src="../js/core.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/art.js"></script>
+<script>
+  // Draws the Play Store feature graphic with the game's own art.
+  const c = document.getElementById('c');
+  const g = c.getContext('2d');
+  g.scale(2, 2);
+  const area = RM.AREAS[3];
+  RM.art.backdrop(g, 1024, 500, area, 0.4, 330);
+  const mon = (key, x, y, s, flip) => {
+    const m = Object.assign({ key }, RM.MONSTERS[key] || RM.BOSS[key]);
+    g.save();
+    if (flip) { g.translate(x * 2, 0); g.scale(-1, 1); }
+    RM.art.monster(g, m, x, y, s, 0.7, { blink: 0, lx: flip ? 0.5 : -0.5, ly: 0.3 });
+    g.restore();
+  };
+  mon('slime', 96, 470, 0.62);
+  mon('skull', 230, 440, 0.6);
+  mon('imp', 800, 450, 0.62);
+  mon('eye', 935, 445, 0.6);
+  // dice in the middle
+  const faces = [{ v: 6, g: 'flame' }, { v: 6, g: 'prism' }, { v: 6, g: 'storm' }, { v: 6, g: 'wild' }, { v: 6, g: null }];
+  faces.forEach((f, i) => {
+    const x = 512 + (i - 2) * 96;
+    const y = 392 + Math.abs(i - 2) * 8;
+    g.beginPath();
+    g.ellipse(x, y + 46, 34, 7, 0, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(0,0,0,0.45)';
+    g.fill();
+    RM.art.die(g, x, y, 76, { v: f.v, g: f.g, rot: (i - 2) * 0.08, glow: 0.55, glowColor: f.g ? RM.GLYPHS[f.g].color : '#ffe28a' });
+  });
+</script>
+</body>
+</html>
