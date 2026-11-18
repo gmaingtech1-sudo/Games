@@ -198,8 +198,83 @@
 
   /* Draws a die centred on (x, y), `size` px across.
      o: { v, g, held, frozen, dim, glow (0..1), rot, sx, sy, lift, set, wild, asleep } */
+  // The extra touches on a skin's face, drawn under the pips.
+  function skinFx(ctx, k, s, r, cols, body) {
+    ctx.save();
+    rr(ctx, -s / 2, -s / 2, s, s, r);
+    ctx.clip();
+    if (k === 'grain') {
+      ctx.strokeStyle = 'rgba(60,30,10,0.22)';
+      ctx.lineWidth = Math.max(1, s * 0.025);
+      for (let i = 0; i < 5; i++) {
+        const y0 = -s * 0.42 + i * s * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(-s / 2, y0);
+        ctx.bezierCurveTo(-s * 0.15, y0 - s * 0.08, s * 0.15, y0 + s * 0.1, s / 2, y0 + s * 0.02);
+        ctx.stroke();
+      }
+    } else if (k === 'cracks') {
+      ctx.strokeStyle = 'rgba(90,60,40,0.4)';
+      ctx.lineWidth = Math.max(1, s * 0.022);
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.5, -s * 0.18); ctx.lineTo(-s * 0.3, -s * 0.1); ctx.lineTo(-s * 0.36, s * 0.04);
+      ctx.moveTo(s * 0.5, s * 0.3); ctx.lineTo(s * 0.32, s * 0.22); ctx.lineTo(s * 0.28, s * 0.36);
+      ctx.stroke();
+    } else if (k === 'gem') {
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.beginPath();
+      ctx.moveTo(-s / 2, -s / 2); ctx.lineTo(s * 0.2, -s / 2); ctx.lineTo(-s / 2, s * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.16)';
+      ctx.beginPath();
+      ctx.moveTo(s / 2, s / 2); ctx.lineTo(-s * 0.1, s / 2); ctx.lineTo(s / 2, -s * 0.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = Math.max(1, s * 0.02);
+      rr(ctx, -s * 0.38, -s * 0.38, s * 0.76, s * 0.76, r * 0.6);
+      ctx.stroke();
+    } else if (k === 'crystal') {
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = Math.max(1, s * 0.025);
+      rr(ctx, -s * 0.42, -s * 0.42, s * 0.84, s * 0.84, r * 0.7);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.translate(-s * 0.3, s * 0.3);
+      star(ctx, 4, s * 0.09, s * 0.025, 0);
+      ctx.fill();
+    } else if (k === 'stars') {
+      const g = ctx.createRadialGradient(s * 0.15, s * 0.1, 0, s * 0.15, s * 0.1, s * 0.6);
+      g.addColorStop(0, 'rgba(200,90,255,0.45)');
+      g.addColorStop(1, 'rgba(200,90,255,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(-s / 2, -s / 2, s, s);
+      STARS.forEach(([sx, sy, a]) => {
+        ctx.globalAlpha = a;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(sx * s, sy * s, Math.max(0.6, s * 0.014), 0, TAU);
+        ctx.fill();
+      });
+    }
+    ctx.restore();
+  }
+
+  const lum = (h) => {
+    const c = hexToRgb(h);
+    return (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255;
+  };
+  // Fixed speckle positions for the Galaxy skin (so the stars don't flicker).
+  const STARS = [[-0.32, -0.12, 1], [0.3, 0.2, 0.7], [-0.12, 0.34, 0.8], [0.18, -0.36, 0.6], [-0.36, 0.3, 0.5], [0.36, -0.05, 0.9], [0.05, 0.08, 0.4], [-0.2, -0.38, 0.5]];
+  art.skin = 'classic';
+
   art.die = function (ctx, x, y, size, o) {
-    const cols = setColors(o.set);
+    let cols = setColors(o.set);
+    const skin = RM.SKIN ? RM.SKIN[o.skin !== undefined ? o.skin : art.skin] : null;
+    if (skin && skin.body) cols = { body: skin.body, pip: skin.pip };
+    const fxk = skin && skin.fx;
+    const dark = lum(cols.body) < 0.35;
     const G = o.g ? RM.GLYPHS[o.g] : null;
     const s = size;
     const r = s * 0.2;
@@ -228,15 +303,32 @@
     grad.addColorStop(0, mix(body, '#ffffff', G ? 0.35 : 0.55));
     grad.addColorStop(0.5, body);
     grad.addColorStop(1, mix(body, '#000000', 0.12));
+    if (fxk === 'metal') {
+      grad.addColorStop(0.3, mix(body, '#ffffff', 0.2));
+      grad.addColorStop(0.42, mix(body, '#000000', 0.18));
+      grad.addColorStop(0.62, mix(body, '#ffffff', 0.35));
+    }
     ctx.fillStyle = grad;
+    if (fxk === 'crystal') ctx.globalAlpha = 0.78;
     rr(ctx, -s / 2, -s / 2, s, s, r);
     ctx.fill();
+    ctx.globalAlpha = 1;
+    if (fxk) skinFx(ctx, fxk, s, r, cols, body);
     // rim
+    rr(ctx, -s / 2, -s / 2, s, s, r);
     ctx.lineWidth = Math.max(1, s * 0.035);
-    ctx.strokeStyle = G ? G.dark : 'rgba(60,40,70,0.55)';
-    ctx.stroke();
+    ctx.strokeStyle = G ? G.dark : dark ? 'rgba(255,255,255,0.28)' : 'rgba(60,40,70,0.55)';
+    if (fxk === 'neon') {
+      ctx.save();
+      ctx.strokeStyle = cols.pip;
+      ctx.shadowColor = cols.pip;
+      ctx.shadowBlur = s * 0.25;
+      ctx.lineWidth = Math.max(1.5, s * 0.05);
+      ctx.stroke();
+      ctx.restore();
+    } else ctx.stroke();
     // top sheen
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillStyle = dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.35)';
     rr(ctx, -s / 2 + s * 0.08, -s / 2 + s * 0.06, s - s * 0.16, s * 0.2, r * 0.6);
     ctx.fill();
 
@@ -248,7 +340,11 @@
     const layout = PIPS[Math.max(1, Math.min(9, v))] || PIPS[1];
     const spread = v >= 8 ? s * 0.27 : s * 0.26;
     const pr = v >= 7 ? s * 0.075 : v === 1 ? s * 0.12 : s * 0.088;
-    const pipCol = G ? G.dark : cols.pip;
+    const pipCol = G ? (dark ? G.color : G.dark) : cols.pip;
+    if (fxk === 'neon' || fxk === 'stars') {
+      ctx.shadowColor = pipCol;
+      ctx.shadowBlur = s * (fxk === 'neon' ? 0.16 : 0.08);
+    }
     if (o.g === 'wild' || o.wild) {
       // A wild face shows a big star and its number.
       art.glyph(ctx, 'wild', 0, s * 0.02, s * 0.3, 1);
@@ -270,6 +366,7 @@
         ctx.fill();
       });
     }
+    ctx.shadowBlur = 0;
     if (o.frozen) {
       ctx.fillStyle = 'rgba(160,220,255,0.45)';
       rr(ctx, -s / 2, -s / 2, s, s + depth, r);

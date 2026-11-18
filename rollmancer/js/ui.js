@@ -32,7 +32,7 @@
   };
   ui.unlocks = function (list) {
     list.forEach((u, i) => setTimeout(() => {
-      const pre = u.kind === 'feat' ? 'Feat: {k:' : u.kind === 'charm' ? 'New charm: {k:' : '{k:';
+      const pre = u.kind === 'feat' ? 'Feat: {k:' : u.kind === 'charm' ? 'New charm: {k:' : u.kind === 'skin' ? 'New dice skin: {k:' : '{k:';
       ui.toast(u.icon, pre + u.name + '}' + (u.kind === 'set' ? ' unlocked!' : ''));
       A().level();
     }, i * 900));
@@ -173,6 +173,11 @@
     let tags = '';
     if (m.boss) tags += '<div class="tag-chip curse"><b>Boss</b>' + ui.rich(RM.BOSS[m.key].curse) + '</div>';
     if (m.trait) tags += '<div class="tag-chip trait"><b>' + esc(RM.TRAIT[m.trait].name) + '</b>' + ui.rich(RM.TRAIT[m.trait].text) + '</div>';
+    if (m.move) {
+      const mv = RM.MOVES[m.move];
+      const when = (m.mcd || 2) <= 1 ? 'after your next cast' : 'in ' + m.mcd + ' casts';
+      tags += '<div class="tag-chip move' + ((m.mcd || 2) <= 1 ? ' soon' : '') + '"><b>' + mv.icon + ' ' + esc(mv.name) + '</b>' + when + ': ' + ui.rich(mv.text) + '</div>';
+    }
     $('mon-tags').innerHTML = tags;
     $('hpbar').classList.toggle('boss', !!m.boss);
     ui.hp(true);
@@ -430,7 +435,8 @@
     const run = summary.run;
     const st = run.stats;
     const fav = Object.entries(st.casts).sort((a, b) => b[1] - a[1])[0];
-    let h = '<h2 class="big-title ' + (run.won ? '' : 'bad') + '">' + (run.won ? 'Triumph!' : 'Run over') + '</h2>';
+    let h = '<h2 class="big-title ' + (run.won ? '' : 'bad') + '">' + (run.won ? (run.trial ? 'Trial complete!' : 'Triumph!') : 'Run over') + '</h2>';
+    if (run.trial) h += '<p class="center"><span class="k">' + RM.TRIAL[run.trial].icon + ' ' + esc(RM.TRIAL[run.trial].name) + '</span>' + (run.won ? ': medal earned' : '') + '</p>';
     h += '<p class="center muted">' + esc(RM.DICE_SET[run.set].name) + (run.heat ? ' · Heat ' + run.heat : '') + (run.daily ? ' · Daily #' + RM.dailyNumber(new Date(run.daily + 'T12:00:00')) : '') + ' · Seed ' + RM.seedCode(run.seed) + '</p>';
     h += '<div class="history">' + RM.rules.historyLine(run) + '</div>';
     h += '<div class="over-stats">' +
@@ -454,7 +460,7 @@
   ui.showVictory = function () {
     const run = G().run;
     const h = '<h2 class="big-title">The Pipwyrm falls!</h2>' +
-      '<p class="center">You are a true <span class="k">Rollmancer</span>.</p>' +
+      (run.trial ? '<p class="center">' + RM.TRIAL[run.trial].icon + ' <span class="k">' + esc(RM.TRIAL[run.trial].name) + '</span> trial complete: medal earned!</p>' : '<p class="center">You are a true <span class="k">Rollmancer</span>.</p>') +
       '<p class="center muted">The run counts as a win. You can stop here, or keep descending into endless Depths where the monsters never stop getting stronger.</p>' +
       '<div class="btns"><button class="btn big gold" data-act="endless">Keep descending</button><button class="btn ghost" data-act="end">End the run</button></div>';
     const body = ui.sheet(h, { center: true, locked: true });
@@ -718,6 +724,7 @@
       let tag = '';
       if (m.boss) tag = ui.rich(RM.BOSS[m.key].curse);
       else if (m.trait) tag = '<b>' + esc(RM.TRAIT[m.trait].name) + ':</b> ' + ui.rich(RM.TRAIT[m.trait].text);
+      if (m.move) tag += (tag ? '<br>' : '') + RM.MOVES[m.move].icon + ' <b>' + esc(RM.MOVES[m.move].name) + ':</b> every 2nd cast, ' + ui.rich(RM.MOVES[m.move].text);
       info.innerHTML = '<div style="font-family:var(--display);font-size:17px">' + esc(m.name) + ' <span class="muted" style="font-family:var(--body);font-size:12px">' + label + ' · ' + RM.fmt(m.hp) + ' HP</span></div><div class="muted">' + tag + '</div>' +
         (res ? '<div style="color:' + (res === 'W' ? 'var(--good)' : 'var(--bad)') + '">' + (res === 'W' ? 'Defeated' : 'Lost a heart') + '</div>' : s === run.stage ? '<div class="k">Now</div>' : '');
       row.appendChild(info);
@@ -753,6 +760,7 @@
     const s = P().settings;
     const tog = (k, label) => '<div class="set-row"><span>' + label + '</span><button type="button" class="toggle ' + (s[k] ? 'on' : '') + '" data-act="tog" data-k="' + k + '" aria-label="' + label + '"></button></div>';
     const h = '<h2>Settings</h2>' + tog('sound', 'Sound effects') + tog('music', 'Music') + tog('haptics', 'Vibration') + tog('motion', 'Screen shake &amp; flashes') + tog('tips', 'Tips for new players') +
+      '<div class="set-row"><span>Dice skin</span><button type="button" class="btn small ghost" data-act="skins">' + esc(RM.SKIN[s.skin] ? RM.SKIN[s.skin].name : 'Classic') + ' ›</button></div>' +
       '<div class="set-row"><span>Animation speed</span><div class="seg">' + [1, 2, 3].map((v) => '<button type="button" data-act="speed" data-v="' + v + '" class="' + (s.speed === v ? 'on' : '') + '">' + ['1×', '2×', '3×'][v - 1] + '</button>').join('') + '</div></div>' +
       '<div class="btns"><button class="btn ghost small" data-act="reset">Reset all progress</button><button class="btn" data-act="close">Done</button></div>' +
       '<p class="center muted" style="font-size:12px;margin-top:14px">Rollmancer v' + RM.VERSION + ' · Fonts: Lilita One &amp; Nunito (SIL OFL)</p>';
@@ -771,6 +779,7 @@
         G().applySettings();
         A().tap();
       },
+      skins: () => { ui.closeSheet(true); ui.showSkins(() => ui.showSettings(back)); },
       reset: () => ui.confirm('Reset everything?', 'This wipes your stats, unlocks, feats and any run in progress. It can\'t be undone.', 'Reset', () => G().resetAll()),
       close: () => ui.closeSheet(),
     });
@@ -799,7 +808,7 @@
   ui.showCodex = function (tab) {
     tab = tab || 'charms';
     const p = P();
-    const tabs = [['charms', 'Charms'], ['combos', 'Combos'], ['glyphs', 'Glyphs'], ['bosses', 'Bosses'], ['feats', 'Feats'], ['stats', 'Stats']];
+    const tabs = [['charms', 'Charms'], ['runs', 'Runs'], ['combos', 'Combos'], ['glyphs', 'Glyphs'], ['bosses', 'Bosses'], ['feats', 'Feats'], ['stats', 'Stats']];
     let h = '<h2>Codex</h2><div class="tabs">' + tabs.map(([k, n]) => '<button type="button" data-act="tab" data-t="' + k + '" class="' + (k === tab ? 'on' : '') + '">' + n + '</button>').join('') + '</div><div id="codex-body"></div>' +
       '<div class="btns"><button class="btn ghost" data-act="close">Close</button></div>';
     const body = ui.sheet(h);
@@ -826,6 +835,18 @@
       cb.innerHTML = '<div class="grid">' + RM.BOSSES.concat([RM.FINAL_BOSS]).map((b) =>
         '<div class="entry"><div class="h"><span>' + esc(b.name) + '</span></div>' + ui.rich(b.curse) + '</div>').join('') + '</div>' +
         '<h3>Brute traits</h3><div class="grid">' + RM.TRAITS.map((t) => '<div class="entry"><div class="h">' + esc(t.name) + '</div>' + ui.rich(t.text) + '</div>').join('') + '</div>';
+    } else if (tab === 'runs') {
+      if (!p.history.length) cb.innerHTML = '<p class="center muted">Your finished runs will appear here.</p>';
+      else {
+        cb.innerHTML = '<p class="center muted">Your last ' + p.history.length + ' runs. Tap one to play its seed again.</p><div class="run-list">' + p.history.map((h, i) => {
+          const d = new Date(h.at);
+          const tag = h.daily ? 'Daily' : h.trial ? RM.TRIAL[h.trial].icon + ' ' + RM.TRIAL[h.trial].name : esc(RM.DICE_SET[h.set].name) + (h.heat ? ' · Heat ' + h.heat : '');
+          return '<button type="button" class="run-row' + (h.won ? ' won' : '') + '" data-act="replay" data-i="' + i + '">' +
+            '<span class="rr-top"><b>' + (h.won ? '👑 Won' : 'Depth ' + h.depth) + '</b><span>' + tag + '</span><span class="muted">' + d.toLocaleDateString() + '</span></span>' +
+            '<span class="rr-line">' + (h.line || '') + '</span>' +
+            '<span class="rr-bot">' + h.fights + ' fights · best cast ' + RM.fmt(h.best) + (h.bestCombo ? ' (' + esc(RM.COMBO[h.bestCombo].short) + ')' : '') + ' · seed ' + RM.seedCode(h.seed) + '</span></button>';
+        }).join('') + '</div>';
+      }
     } else if (tab === 'feats') {
       const got = RM.FEATS.filter((f) => p.feats[f.id]).length;
       cb.innerHTML = '<p class="center muted">' + got + ' of ' + RM.FEATS.length + ' earned.</p><div class="grid">' + RM.FEATS.map((f) =>
@@ -842,9 +863,17 @@
         '<span>Most gold at once</span><b>$' + RM.fmt(p.bestGold) + '</b>' +
         '<span>Favourite combo</span><b>' + (fav ? esc(RM.COMBO[fav[0]].short) : '–') + '</b>' +
         '<span>Daily runs finished</span><b>' + p.dailyDone + '</b>' +
+        '<span>Trial medals</span><b>' + Object.keys(p.trials || {}).length + ' / ' + RM.TRIALS.length + '</b>' +
         '</div>';
     }
     on(body, {
+      replay: (el) => {
+        const h = p.history[+el.dataset.i];
+        A().tap();
+        ui.closeSheet(true);
+        if (h.trial) { G().startTrial(h.trial, h.seed); return; }
+        G().toSetup(h.daily ? null : h.set, h.daily ? null : h.heat, RM.seedCode(h.seed));
+      },
       tab: (el) => { A().tap(); ui.closeSheet(true); ui.showCodex(el.dataset.t); },
       close: () => ui.closeSheet(),
     });
@@ -906,6 +935,7 @@
     $('btn-start').textContent = unlocked ? 'Descend' : 'Locked';
   }
   ui.setupState = () => ({ set: RM.DICE_SETS[setup.i].id, heat: setup.heat });
+  ui.setSeed = (code) => { $('seed-in').value = code || ''; };
   $('set-prev').addEventListener('click', () => { A().tap(); setup.i = (setup.i + RM.DICE_SETS.length - 1) % RM.DICE_SETS.length; drawSetup(); });
   $('set-next').addEventListener('click', () => { A().tap(); setup.i = (setup.i + 1) % RM.DICE_SETS.length; drawSetup(); });
   $('heat-down').addEventListener('click', () => { A().tap(); setup.heat = Math.max(0, setup.heat - 1); drawSetup(); });
@@ -1108,6 +1138,49 @@
     // a die in its hand
     RM.art.die(g, 22, 22, 22, { v: 5, g: 'gold', glow: 0.5 });
     $('merchant-say').textContent = QUIPS[Math.floor(Math.random() * QUIPS.length)];
+  };
+
+  /* ---------------- trials ---------------- */
+  ui.showTrials = function () {
+    const p = P();
+    let h = '<h2>Trials</h2><p class="center muted">Special runs with twisted rules, on the Apprentice Dice. Beat the Pipwyrm in one to earn its medal; medals unlock dice skins.</p><div class="boons">';
+    RM.TRIALS.forEach((t, i) => {
+      const done = (p.trials || {})[t.id];
+      h += '<button class="boon trial' + (done ? ' done' : '') + '" data-act="go" data-id="' + t.id + '" style="animation-delay:' + i * 0.05 + 's"><span class="ic">' + t.icon + '</span>' +
+        '<span><b>' + esc(t.name) + (done ? ' <small class="medal">🏅 Medal</small>' : '') + '</b><span>' + ui.rich(t.text) + '</span></span></button>';
+    });
+    h += '</div><div class="btns"><button class="btn ghost" data-act="close">Close</button></div>';
+    const body = ui.sheet(h);
+    on(body, {
+      go: (el) => { A().tap(); ui.closeSheet(true); G().startTrial(el.dataset.id); },
+      close: () => ui.closeSheet(),
+    });
+  };
+
+  /* ---------------- dice skins ---------------- */
+  ui.showSkins = function (back) {
+    const p = P();
+    let h = '<h2>Dice skins</h2><p class="center muted">How your dice look in every run. Unlock more by playing.</p><div class="skin-grid" id="skin-grid"></div>' +
+      '<div class="btns"><button class="btn" data-act="close">Done</button></div>';
+    const body = ui.sheet(h, { onClose: back });
+    const grid = body.querySelector('#skin-grid');
+    RM.SKINS.forEach((k) => {
+      const ok = RM.profile.skinUnlocked(k.id);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'skin' + (p.settings.skin === k.id ? ' on' : '') + (ok ? '' : ' locked');
+      b.appendChild(RM.art.faceCanvas({ v: 5, g: null }, 48, p.lastSet || 'apprentice', { skin: k.id }));
+      b.insertAdjacentHTML('beforeend', '<b>' + esc(k.name) + '</b><span>' + (ok ? (k.text ? esc(k.text) : '&nbsp;') : '🔒 ' + esc(k.unlock[0])) + '</span>');
+      b.addEventListener('click', () => {
+        if (!ok) { A().deny(); return; }
+        p.settings.skin = k.id;
+        G().applySettings();
+        A().etch();
+        grid.querySelectorAll('.skin').forEach((x) => x.classList.toggle('on', x === b));
+      });
+      grid.appendChild(b);
+    });
+    on(body, { close: () => ui.closeSheet() });
   };
 
   /* ---------------- coach marks (first run) ---------------- */

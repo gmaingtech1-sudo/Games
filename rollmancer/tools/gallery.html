@@ -39,6 +39,13 @@
     dd.appendChild(RM.art.faceCanvas({ v: (i % 9) + 1, g: gl }, 64, 'apprentice'));
   });
   RM.DICE_SETS.forEach((s) => dd.appendChild(RM.art.faceCanvas({ v: 5, g: null }, 64, s.id)));
+  const sk = document.createElement('div');
+  sk.className = 'dice';
+  document.body.appendChild(sk);
+  RM.SKINS.forEach((k, i) => {
+    sk.appendChild(RM.art.faceCanvas({ v: (i % 6) + 1, g: null }, 64, 'apprentice', { skin: k.id }));
+    sk.appendChild(RM.art.faceCanvas({ v: 5, g: ['flame', 'prism', 'storm', 'gold'][i % 4] }, 64, 'apprentice', { skin: k.id }));
+  });
 </script>
 </body>
 </html>

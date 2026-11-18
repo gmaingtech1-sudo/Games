@@ -44,7 +44,8 @@ for (let n = 0; n < N; n++) {
   const set = pick(RM.DICE_SETS).id;
   const heat = Math.floor(rnd() * 9);
   // A rich run: give it gold so the shop paths all get exercised.
-  const run = R.newRun({ seed: 777 + n * 31, set, heat });
+  const trial = n % 3 === 1 ? pick(RM.TRIALS).id : null;
+  const run = R.newRun({ seed: 777 + n * 31, set, heat, trial });
   let guard = 0;
   while (guard++ < 3000) {
     steps++;

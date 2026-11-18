@@ -489,6 +489,29 @@
     mimicbrute: { name: 'Hoardmaw', art: 'mimic', pal: ['#5b6b8a', '#252e42', '#ffe46b', '#ff4f6d'], size: 1.15, horns: true },
   };
 
+  /* ---------------- monster moves ----------------
+     Every minion and brute has a signature move it uses after every
+     second cast it survives. The HUD shows what's coming. */
+  const MOVES = {
+    regrow: { name: 'Regrow', icon: '💚', text: 'heals {k:12%} of its max HP' },
+    swoop: { name: 'Swoop', icon: '💸', text: 'steals {g:$2}' },
+    pilfer: { name: 'Pilfer', icon: '💸', text: 'steals {g:$3}' },
+    gobble: { name: 'Gobble', icon: '💰', text: 'eats {g:$4}' },
+    spores: { name: 'Spores', icon: '🍄', text: 'you lose {k:1 Reroll}' },
+    hex: { name: 'Hex', icon: '💤', text: 'one of your charms {k:sleeps} next turn' },
+    fade: { name: 'Fade', icon: '👻', text: 'your next cast deals {k:half damage}' },
+    harden: { name: 'Harden', icon: '🛡️', text: 'your next cast deals {k:30% less} damage' },
+    web: { name: 'Web', icon: '🕸️', text: 'a die gets {k:stuck} next turn (no rerolling it)' },
+    stare: { name: 'Stare', icon: '👁️', text: 'a die is {k:frozen} next turn (no rerolling it)' },
+  };
+  const MONSTER_MOVES = {
+    slime: 'regrow', bigslime: 'regrow', magslime: 'regrow', bat: 'swoop', shroom: 'spores', thornshroom: 'spores',
+    skull: 'hex', bonelord: 'hex', ghost: 'fade', wraith: 'fade', spider: 'web', widow: 'web',
+    imp: 'pilfer', pitimp: 'pilfer', golem: 'harden', slaggolem: 'harden', eye: 'stare', elder: 'stare',
+    mimic: 'gobble', mimicbrute: 'gobble',
+  };
+  Object.keys(MONSTER_MOVES).forEach((k) => { MONSTERS[k].move = MONSTER_MOVES[k]; });
+
   /* ---------------- bosses and their curses ---------------- */
   const BOSSES = [
     { id: 'oddmaw', name: 'The Oddmaw', art: 'slime', pal: ['#b06bff', '#4b1e88', '#ffe1ff', '#1a0730'], tier: 1,
@@ -624,12 +647,47 @@
     { id: 'sets', name: 'Collector', icon: '🧰', text: 'Unlock every dice set.', test: (p) => DICE_SETS.every((d) => !d.unlock || d.unlock.test(p)) },
     { id: 'charms', name: 'Charmed Life', icon: '🍀', text: 'Discover 30 different charms.', test: (p) => Object.keys(p.seenCharms || {}).length >= 30 },
     { id: 'runs', name: 'Regular', icon: '🎟️', text: 'Play 25 runs.', test: (p) => p.runs >= 25 },
+    { id: 'trial1', name: 'On Trial', icon: '⚖️', text: 'Complete a Trial.', test: (p) => Object.keys(p.trials || {}).length >= 1 },
+    { id: 'trialall', name: 'Tried and True', icon: '🏅', text: 'Complete every Trial.', test: (p) => TRIALS.every((t) => (p.trials || {})[t.id]) },
   ];
+
+  /* ---------------- trials: special runs with their own rules ----------------
+     Played on the Apprentice Dice at Heat 0. Winning one earns its medal
+     (and medals unlock dice skins). */
+  const TRIALS = [
+    { id: 'glass', name: 'Glass Cannon', icon: '🔨', text: 'Start with the {k:Glass Eye} and {k:Dark Pact}, but only {k:1 heart}.' },
+    { id: 'pauper', name: 'Pauper', icon: '🥣', text: 'Monsters drop {k:no gold} (leftover Casts still pay). Start with {g:$30} and make it last.' },
+    { id: 'wild', name: 'Wild West', icon: '🤠', text: 'Every die\'s 6 is {k:Wild}, but the bazaar sells {k:no stones} and monsters are {k:60% tougher}.' },
+    { id: 'coin', name: 'Heads or Tails', icon: '🪙', text: 'Your dice only show {k:1s and 6s}, and monsters have {k:more than double} the HP.' },
+    { id: 'blitz', name: 'Blitz', icon: '⚡', text: 'Only {k:2 Casts} each fight, but {k:+4 Rerolls} (monsters are a little softer).' },
+    { id: 'bosses', name: 'Boss Rush', icon: '👑', text: '{k:Every} fight is a boss fight.' },
+  ];
+  const TRIAL = {};
+  TRIALS.forEach((t) => { TRIAL[t.id] = t; });
+
+  /* ---------------- dice skins (cosmetic) ---------------- */
+  const SKINS = [
+    { id: 'classic', name: 'Classic', text: 'Each dice set\'s own colours' },
+    { id: 'oak', name: 'Oak', body: '#b47c46', pip: '#3a210c', fx: 'grain', unlock: ['Play 5 runs', (p) => p.runs >= 5] },
+    { id: 'bone', name: 'Bone', body: '#ebe0c6', pip: '#6b1a1a', fx: 'cracks', unlock: ['Reach Depth 3', (p) => p.bestDepth >= 3] },
+    { id: 'obsidian', name: 'Obsidian', body: '#2e2838', pip: '#ffcf4f', fx: 'gem', unlock: ['Reach Depth 5', (p) => p.bestDepth >= 5] },
+    { id: 'emerald', name: 'Emerald', body: '#1c9a62', pip: '#ecfff4', fx: 'gem', unlock: ['Finish a Daily Run', (p) => (p.dailyDone || 0) >= 1] },
+    { id: 'sapphire', name: 'Sapphire', body: '#2c5ed6', pip: '#eef4ff', fx: 'gem', unlock: ['Cast a Four of a Kind', (p) => !!(p.cast && (p.cast.four || p.cast.five || p.cast.six))] },
+    { id: 'ruby', name: 'Ruby', body: '#c42a44', pip: '#fff0f2', fx: 'gem', unlock: ['Win 30 fights', (p) => p.fightsWon >= 30] },
+    { id: 'gold', name: 'Gold', body: '#f2bd33', pip: '#5a3a02', fx: 'metal', unlock: ['Win a run', (p) => p.wins >= 1] },
+    { id: 'crystal', name: 'Crystal', body: '#c8ecff', pip: '#1f5f9e', fx: 'crystal', unlock: ['Deal 100,000 damage in one cast', (p) => p.bestCast >= 100000] },
+    { id: 'galaxy', name: 'Galaxy', body: '#1d1645', pip: '#ffffff', fx: 'stars', unlock: ['Win a run on Heat 4', (p) => (p.bestHeatWon || 0) >= 4] },
+    { id: 'neon', name: 'Neon', body: '#140f1f', pip: '#3dffb5', fx: 'neon', unlock: ['Complete 3 Trials', (p) => Object.keys(p.trials || {}).length >= 3] },
+    { id: 'royal', name: 'Royal', body: '#6a2fb8', pip: '#ffd24f', fx: 'metal', unlock: ['Complete every Trial', (p) => TRIALS.every((t) => (p.trials || {})[t.id])] },
+  ];
+  const SKIN = {};
+  SKINS.forEach((k) => { SKIN[k.id] = k; });
+
 
   Object.assign(RM, {
     COMBOS, COMBO, PAIRISH, STRAIGHTS, GLYPHS, GLYPH_IDS,
     CHARMS, CHARM, STONES, STONE, TRINKETS, TRINKET, BOONS, BOON, EVENTS, EVENT,
     AREAS, MONSTERS, BOSSES, FINAL_BOSS, BOSS, TRAITS, TRAIT,
-    BASE_HP, monsterHp, REWARD, DICE_SETS, DICE_SET, HEAT, FEATS,
+    BASE_HP, monsterHp, REWARD, DICE_SETS, DICE_SET, HEAT, FEATS, MOVES, TRIALS, TRIAL, SKINS, SKIN,
   });
 })(typeof window !== 'undefined' ? window.RM : globalThis.RM);

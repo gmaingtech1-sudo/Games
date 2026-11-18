@@ -46,7 +46,9 @@
   function defaults() {
     return {
       v: 1,
-      settings: { sound: true, music: true, haptics: true, speed: 1, motion: true, tips: true },
+      settings: { sound: true, music: true, haptics: true, speed: 1, motion: true, tips: true, skin: 'classic' },
+      trials: {}, // trial id → won
+      history: [], // the last 40 runs, newest first
       runs: 0,
       wins: 0,
       fightsWon: 0,
@@ -79,6 +81,8 @@
     try { p = raw ? JSON.parse(raw) : null; } catch (e) { p = null; }
     P = Object.assign(defaults(), p || {});
     P.settings = Object.assign(defaults().settings, (p && p.settings) || {});
+    if (!P.trials) P.trials = {};
+    if (!Array.isArray(P.history)) P.history = [];
     return P;
   }
 
@@ -122,6 +126,14 @@
         out.push({ kind: 'charm', name: c.name, icon: c.icon, text: c.text });
       }
     });
+    RM.SKINS.forEach((k) => {
+      if (!k.unlock) return;
+      const f = 'skin:' + k.id;
+      if (!P.flags[f] && k.unlock[1](P)) {
+        P.flags[f] = 1;
+        out.push({ kind: 'skin', name: k.name, icon: '🎨', text: 'New dice skin' });
+      }
+    });
     RM.DICE_SETS.forEach((s) => {
       if (!s.unlock) return;
       const k = 'set:' + s.id;
@@ -162,7 +174,8 @@
     if (run.winRecorded) return;
     run.winRecorded = true;
     P.wins += 1;
-    if (!run.daily) {
+    if (run.trial) P.trials[run.trial] = Date.now();
+    if (!run.daily && !run.trial) {
       const prev = P.heatWon[run.set];
       if (prev == null || run.heat > prev) P.heatWon[run.set] = run.heat;
       P.bestHeatWon = Math.max(P.bestHeatWon, run.heat);
@@ -183,13 +196,24 @@
       d.done = true;
       P.daily[run.daily] = d;
     }
+    // Run history, for the codex.
+    P.history.unshift({
+      at: Date.now(), set: run.set, heat: run.heat, daily: run.daily || null, trial: run.trial || null,
+      seed: run.seed, depth: run.depth, fights: run.stats.fightsWon, best: run.stats.bestCast,
+      bestCombo: run.stats.bestCombo, won: !!run.won, line: RM.rules.historyLine(run), how,
+    });
+    P.history.length = Math.min(P.history.length, 40);
     P.run = null;
     save(true);
     return how;
   }
+  function skinUnlocked(id) {
+    const k = RM.SKIN[id];
+    return !!k && (!k.unlock || k.unlock[1](P));
+  }
 
   RM.profile = {
-    host, load, save, get: () => P, setUnlocked, maxHeat, checkUnlocks, unlockedCharms,
+    host, load, save, get: () => P, setUnlocked, maxHeat, checkUnlocks, unlockedCharms, skinUnlocked,
     noteCast, noteRun, noteSeen, noteFightWon, recordWin, finishRun,
   };
 })(window.RM);

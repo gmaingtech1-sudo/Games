@@ -128,7 +128,7 @@ function event(run) {
 }
 
 function playRun(seed) {
-  const run = R.newRun({ seed, set: SET, heat: HEAT });
+  const run = R.newRun({ seed, set: SET, heat: HEAT, trial: process.env.TRIAL || null });
   let guard = 0;
   while (guard++ < 400) {
     if (run.phase === 'fight') playFight(run);

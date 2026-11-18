@@ -41,13 +41,18 @@ The Hydra heals after every cast. The Siren punishes repeating yourself. The Fro
 STRANGE ENCOUNTERS
 Bet your gold with a Gambling Imp, feed a heart to a Cursed Altar, open a chest that might bite back, or dig up a twitching die in the Dice Graveyard. Every choice is a risk worth weighing.
 
+MONSTERS THAT FIGHT BACK
+Gloops regrow, bats steal your gold, ghosts fade out of reach. Every monster has a move, and you can see it coming.
+
 ENDLESS REPLAY
 • 9 dice sets and 16 secret charms to unlock
+• 6 Trials with twisted rules: Glass Cannon, Pauper, Boss Rush and more
+• 12 dice skins to earn, from Oak and Ruby to Galaxy and Neon
 • 9 Heat levels for when you think you've mastered it
 • A Daily Run: the same dice, monsters and shops for everyone, with results you can share
 • Seeds you can replay or send to a friend
 • Endless mode after you win
-• 24 feats and a codex to fill in
+• 26 feats, a codex to fill in and a history of your runs
 
 MADE FOR PHONES
 One-handed portrait play, quick runs you can pause any time (it saves after every move), and no internet needed. No ads. No tracking. No in-app purchases. Pay once and it's yours.

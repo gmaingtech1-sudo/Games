@@ -67,10 +67,45 @@
       started: Date.now(),
     };
     COMBOS.forEach((c) => { run.levels[c.id] = 1; });
+    run.mods = {};
+    if (opts.trial && RM.TRIAL[opts.trial]) applyTrial(run, opts.trial);
     (made.charms || []).forEach((id) => run.charms.push(makeCharm(id)));
     planDepth(run);
     startFight(run);
     return run;
+  }
+
+  // Trials bend the rules of a whole run.
+  function applyTrial(run, id) {
+    run.trial = id;
+    switch (id) {
+      case 'glass':
+        run.charms.push(makeCharm('eye'), makeCharm('skull'));
+        run.hearts = run.maxHearts = 1;
+        break;
+      case 'pauper':
+        run.mods.noReward = true;
+        run.gold = 30;
+        break;
+      case 'wild':
+        run.dice.forEach((faces) => { faces[5].g = 'wild'; });
+        run.mods.noStones = true;
+        run.mods.hpMul = 1.6;
+        break;
+      case 'coin':
+        run.dice = run.dice.map(() => [1, 1, 1, 6, 6, 6].map((v) => ({ v, g: null })));
+        run.mods.hpMul = 2.2;
+        break;
+      case 'blitz':
+        run.bonus.casts -= 2;
+        run.bonus.rerolls += 4;
+        run.mods.hpMul = 0.7;
+        break;
+      case 'bosses':
+        run.mods.bossRush = true;
+        break;
+      default: break;
+    }
   }
 
   function makeCharm(id) {
@@ -96,10 +131,22 @@
     const rng = new Stream(RM.hashStr(run.seed + ':plan:' + depth));
     const area = areaFor(depth);
     const plan = [];
-    plan.push(monsterFrom(run, rng.pick(area.minions), 0, rng, depth));
-    plan.push(monsterFrom(run, rng.pick(area.brutes), 1, rng, depth));
+    const bossRush = run.mods && run.mods.bossRush;
+    if (!bossRush) {
+      plan.push(monsterFrom(run, rng.pick(area.minions), 0, rng, depth));
+      plan.push(monsterFrom(run, rng.pick(area.brutes), 1, rng, depth));
+    }
+    while (plan.length < 3) {
+      const stage = plan.length;
+      plan.push(bossFor(run, depth, stage, usedBosses, rng));
+    }
+    const mul = run.mods && run.mods.hpMul;
+    if (mul) plan.forEach((m) => { m.hp = Math.round(m.hp * mul); });
+    return plan;
+  }
+  function bossFor(run, depth, stage, usedBosses, rng) {
     let boss;
-    if (depth === 8) boss = FINAL_BOSS;
+    if (depth === 8 && stage === 2) boss = FINAL_BOSS;
     else {
       const tier = depth <= 2 ? 1 : depth <= 4 ? 2 : depth <= 6 ? 3 : 9;
       let pool = BOSSES.filter((b) => (tier === 9 ? true : b.tier === tier) && !usedBosses.includes(b.id));
@@ -108,12 +155,11 @@
       boss = rng.pick(pool);
       usedBosses.push(boss.id);
     }
-    plan.push({
+    return {
       key: boss.id, name: boss.name, art: boss.art, pal: boss.pal, boss: true, curse: boss.id,
       size: boss.art === 'dragon' ? 1.2 : 1.15, crown: !!boss.crown, horns: !!boss.horns, twin: !!boss.twin, snakes: !!boss.snakes,
-      hp: monsterHp(depth, 2, run.heat),
-    });
-    return plan;
+      hp: Math.round(monsterHp(depth, stage, run.heat) * (stage < 2 ? 1.2 : 1)),
+    };
   }
   function planDepth(run) {
     run.plan = makePlan(run, run.depth, run.usedBosses);
@@ -130,6 +176,7 @@
     return {
       key, name: m.name, art: m.art, pal: m.pal, boss: false, curse: null, trait,
       size: m.size || 1, crown: !!m.crown, horns: !!m.horns, spikes: !!m.spikes,
+      move: m.move || null, mcd: 2,
       hp: monsterHp(depth, stage, run.heat),
     };
   }
@@ -214,10 +261,15 @@
     });
     f.rerolledTurn = false;
     f.pending = false;
-    f.frozen = f.mon.curse === 'lich' ? rng.int(0, f.dice.length - 1) : -1;
+    f.frozen = f.mon.curse === 'lich' || (f.next && f.next.freeze) ? rng.int(0, f.dice.length - 1) : -1;
     f.asleep = [];
     if (f.mon.curse === 'mimiclord' && run.charms.length) f.asleep.push(0);
     if (f.mon.curse === 'wyrm' && run.charms.length) f.asleep.push(rng.int(0, run.charms.length - 1));
+    if (f.next && f.next.hex && run.charms.length) {
+      const k = rng.int(0, run.charms.length - 1);
+      if (!f.asleep.includes(k)) f.asleep.push(k);
+    }
+    if (f.next) { f.next.freeze = false; f.next.hex = false; }
   }
 
   function toggleHold(run, i) {
@@ -456,6 +508,7 @@
     if (mon.curse === 'siren' && f.used.includes(cand.c)) { dmg = 0; notes.push('already cast'); }
     if (mon.trait === 'armored') { dmg = Math.floor(dmg * 0.75); notes.push('armor'); }
     if (mon.trait === 'warded' && f.castNo === 0) { dmg = Math.floor(dmg / 2); notes.push('warded'); }
+    if (f.weak) { dmg = Math.floor(dmg * f.weak); notes.push(f.weak <= 0.5 ? 'faded' : 'hardened'); }
     if (mon.curse === 'warden') {
       const block = Math.floor(mon.max * 0.15);
       dmg = Math.max(0, dmg - block);
@@ -511,6 +564,7 @@
     f.casts -= 1;
     f.castNo += 1;
     f.scroll = 0;
+    f.weak = 0;
     f.used.push(r.combo);
     f.last = r;
     f.pending = true;
@@ -540,6 +594,15 @@
       mon.hp = Math.min(mon.max, mon.hp + heal);
     }
     r.heal = heal;
+    // The monster's own move, after every second cast it survives.
+    r.move = null;
+    if (mon.hp > 0 && mon.move && f.casts > 0) {
+      mon.mcd = (mon.mcd || 2) - 1;
+      if (mon.mcd <= 0) {
+        mon.mcd = 2;
+        r.move = doMove(run, mon);
+      }
+    }
     r.killed = mon.hp <= 0;
     r.overkill = Math.max(0, overkill);
     r.hpAfter = mon.hp;
@@ -554,6 +617,41 @@
     }
     st.maxGold = Math.max(st.maxGold, run.gold);
     return r;
+  }
+
+  function doMove(run, mon) {
+    const f = run.fight;
+    const M = RM.MOVES[mon.move];
+    const out = { id: mon.move, name: M.name, icon: M.icon, say: '' };
+    f.next = f.next || {};
+    const steal = (n) => {
+      const lost = Math.min(run.gold, n);
+      run.gold -= lost;
+      return lost;
+    };
+    switch (mon.move) {
+      case 'regrow': {
+        const h = Math.min(mon.max - mon.hp, Math.floor(mon.max * 0.12));
+        mon.hp += h;
+        out.say = '+' + RM.fmt(h) + ' HP';
+        out.heal = h;
+        break;
+      }
+      case 'swoop': out.say = '−$' + steal(2); out.gold = true; break;
+      case 'pilfer': out.say = '−$' + steal(3); out.gold = true; break;
+      case 'gobble': out.say = '−$' + steal(4); out.gold = true; break;
+      case 'spores':
+        out.say = f.rerolls > 0 ? '−1 Reroll' : 'No rerolls to lose';
+        f.rerolls = Math.max(0, f.rerolls - 1);
+        break;
+      case 'hex': f.next.hex = true; out.say = 'A charm sleeps'; break;
+      case 'fade': f.weak = 0.5; out.say = 'Next cast halved'; break;
+      case 'harden': f.weak = 0.7; out.say = 'Next cast −30%'; break;
+      case 'web': f.next.freeze = true; out.say = 'A die gets stuck'; break;
+      case 'stare': f.next.freeze = true; out.say = 'A die freezes'; break;
+      default: break;
+    }
+    return out;
   }
 
   // After the cast animation: roll a new turn, or settle the fight.
@@ -571,7 +669,8 @@
     const f = run.fight;
     const mon = f.mon;
     const lines = [];
-    const base = REWARD[run.stage];
+    const pauper = run.mods && run.mods.noReward;
+    const base = pauper ? 0 : REWARD[run.stage];
     run.gold += base;
     lines.push({ text: mon.boss ? 'Boss defeated' : mon.trait ? 'Brute defeated' : 'Monster defeated', gold: base });
     if (f.casts > 0) {
@@ -635,12 +734,12 @@
   function claimReward(run) {
     if (run.phase !== 'reward') return;
     const res = run.result;
-    if (res.won && res.boss && !res.final) {
+    if (res.won && res.boss && !res.final && run.stage === 2) {
       makeBoons(run);
       run.phase = 'boon';
       return;
     }
-    if (res.won && !res.boss && run.stage === 0) {
+    if (res.won && run.stage === 0) {
       makeEvent(run);
       run.phase = 'event';
       return;
@@ -681,7 +780,7 @@
     const x = rng.next();
     const hurt = run.hearts < run.maxHearts;
     if (hurt && x < 0.07) return { type: 'potion', id: 'tonic', cost: 6 };
-    if (x < 0.5) {
+    if (x < 0.5 && !(run.mods && run.mods.noStones)) {
       const s = rng.weighted(STONES.filter((s) => !taken.includes(s.id)), (s) => s.w);
       return { type: 'stone', id: s.id, cost: s.cost };
     }
@@ -1044,7 +1143,7 @@
     claimReward, goEndless, enterShop, rerollShop, canBuy, buy, sellValue, sellCharm, moveCharm,
     stoneFits, applyStone, etch, alchemy, chisel, leaveShop, makeBoons, chooseBoon, useTrinket,
     castsFor, rerollsFor, fightFaces, charmMods, hasCharm, areaFor, glyphCount, comboStats,
-    historyLine, detect, evaluate, makeCharm, peekNextDepth, rollCharm,
+    historyLine, detect, evaluate, makeCharm, peekNextDepth, rollCharm, applyTrial,
     canSwap, swapCharm, makeEvent, eventOptions, chooseEvent, leaveEvent,
   };
 })(typeof window !== 'undefined' ? window.RM : globalThis.RM);

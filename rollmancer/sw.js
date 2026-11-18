@@ -1,6 +1,6 @@
 /* Rollmancer — offline support. Serves the cached game instantly and
    refreshes the cache in the background, so updates land on the next launch. */
-const CACHE = 'rollmancer-v2';
+const CACHE = 'rollmancer-v3';
 const SHELL = [
   './',
   'index.html',

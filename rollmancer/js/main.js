@@ -4,7 +4,7 @@
 (function (RM) {
   'use strict';
 
-  RM.VERSION = '1.1.0';
+  RM.VERSION = '1.2.0';
   const $ = (id) => document.getElementById(id);
   const R = RM.rules;
   const ui = RM.ui;
@@ -53,17 +53,29 @@
     A.playMusic(0, false);
   };
 
-  G.toSetup = function (set, heat) {
+  G.toSetup = function (set, heat, seedCode) {
     if (P().run) {
       ui.confirm('Start a new run?', 'Your run in progress will be abandoned.', 'New run', () => {
         abandonSaved();
-        G.toSetup(set, heat);
+        G.toSetup(set, heat, seedCode);
       });
       return;
     }
     G.run = null;
     show('setup');
     ui.renderSetup(set, heat);
+    ui.setSeed(seedCode || '');
+  };
+
+  G.startTrial = function (id, seed) {
+    if (P().run) {
+      ui.confirm('Start the ' + RM.TRIAL[id].name + ' trial?', 'Your run in progress will be abandoned.', 'Start trial', () => {
+        abandonSaved();
+        G.startTrial(id, seed);
+      });
+      return;
+    }
+    G.startRun({ set: 'apprentice', heat: 0, trial: id, seed: seed == null ? null : seed });
   };
 
   function abandonSaved() {
@@ -77,7 +89,7 @@
   G.startRun = function (opts) {
     const p = P();
     p.runs += 1;
-    if (!opts.daily) {
+    if (!opts.daily && !opts.trial) {
       p.lastSet = opts.set;
       p.lastHeat = opts.heat;
     }
@@ -459,6 +471,7 @@
     const s = P().settings;
     A.setOpts({ sound: s.sound, music: s.music });
     RM.fx.scale = s.motion ? 1 : 0.3;
+    RM.art.skin = RM.profile.skinUnlocked(s.skin) ? s.skin : 'classic';
     RM.profile.save();
   };
   G.resetAll = function () {
@@ -549,6 +562,7 @@
     click('btn-new', () => G.toSetup());
     click('btn-daily', () => G.startDaily());
     click('btn-codex', () => ui.showCodex());
+    click('btn-trials', () => ui.showTrials());
     click('btn-howto', () => ui.showHowTo());
     click('btn-settings', () => ui.showSettings());
     document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => { A.tap(); G.toTitle(); }));

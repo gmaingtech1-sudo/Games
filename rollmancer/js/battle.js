@@ -246,7 +246,8 @@
   };
 
   B.pickTitleMonster = function () {
-    const keys = Object.keys(RM.MONSTERS).filter((k) => !RM.MONSTERS[k].size);
+    // (not the spider: its thread would run up through the menu)
+    const keys = Object.keys(RM.MONSTERS).filter((k) => !RM.MONSTERS[k].size && RM.MONSTERS[k].art !== 'spider');
     const k = keys[Math.floor(Math.random() * keys.length)];
     B.titleMon = Object.assign({ key: k }, RM.MONSTERS[k]);
     B.titleSt = { blink: 0, lx: 0, ly: -0.6, blinkAt: 2 };
@@ -643,6 +644,20 @@
       fx.text(target.x + 40, target.y, '+' + RM.fmt(r.heal), { color: '#5fe08a', size: 24, life: 1, vy: -40 });
       fx.burst(target.x, target.y, 14, { color: '#5fe08a', speed: 120, life: 0.8, size: 3, gravity: -60, kind: 'star' });
       await wait(0.5);
+    }
+    // The monster's own move.
+    if (r.move) {
+      await wait(0.55);
+      const M = B.mon;
+      if (M) { M.lunge = 0.7; M.st.squash = 0.15; }
+      A().squeal();
+      A().whoosh();
+      fx.banner(r.move.name.toUpperCase() + '!', '#ff9a5a', target.x, target.y + 10, 32, 1.2);
+      fx.text(target.x, target.y + 54, r.move.icon + ' ' + r.move.say, { color: r.move.gold ? '#ffcc3d' : r.move.heal ? '#5fe08a' : '#ffd0b0', size: 20, life: 1.4, vy: -30, font: 'Nunito' });
+      if (r.move.gold) ui.gold(run);
+      if (r.move.heal) ui.hp();
+      fx.kick(5);
+      await wait(1.0);
     }
     if (r.grew && r.grew.length) {
       r.grew.forEach((g) => {

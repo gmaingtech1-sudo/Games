@@ -69,7 +69,9 @@ After every minion you beat, something happens on the way to the bazaar: one of 
 
 ### Depths, brutes and bosses
 
-Each Depth has three fights: a minion, a **brute** with a trait (*Armored*, *Swift*, *Greedy*, *Regenerating* or *Warded*) and a **boss** with a rule that works against you. Every two Depths is a new area: the Mossy Cellar, the Bone Crypt, the Ember Forge and the Void Sanctum.
+Each Depth has three fights: a minion, a **brute** with a trait (*Armored*, *Swift*, *Greedy*, *Regenerating* or *Warded*) and a **boss** with a rule that works against you.
+
+Minions and brutes also fight back: each kind has a **move** it uses after every second cast it survives, and the chip under its name counts down to it. Gloops regrow 12% HP, bats and imps steal gold, mimics eat it, Sporecaps cost you a Reroll, skulls put a charm to sleep, ghosts halve your next cast, golems harden against it, and spiders and gazers stick a die in place for a turn. Finish them before they get to act. Every two Depths is a new area: the Mossy Cellar, the Bone Crypt, the Ember Forge and the Void Sanctum.
 
 | Boss | Its rule |
 | --- | --- |
@@ -108,10 +110,28 @@ Each run starts with a dice set. The others unlock as you play.
 
 **Heat** is the difficulty, from 0 to 8, unlocked one step at a time per dice set by winning. Each level stacks: more monster HP, fewer Rerolls, pricier shops, fewer hearts, traits on every monster and finally one fewer Cast.
 
+### Trials
+
+Six special runs on the Apprentice Dice, each with its own twisted rules. Beat the Pipwyrm in one to earn its medal.
+
+| Trial | Rules |
+| --- | --- |
+| Glass Cannon | Start with the Glass Eye and Dark Pact, but only 1 heart |
+| Pauper | Monsters drop no gold (leftover Casts still pay); start with $30 |
+| Wild West | Every die's 6 is Wild, but no stones in the bazaar and monsters are 60% tougher |
+| Heads or Tails | Your dice only show 1s and 6s; monsters have 2.2× HP |
+| Blitz | Only 2 Casts a fight, but +4 Rerolls; monsters are a little softer |
+| Boss Rush | Every fight is a boss fight |
+
+### Dice skins
+
+Twelve looks for your dice, picked in **Settings → Dice skin**: Classic (each set's colours), Oak, Bone, Obsidian, Emerald, Sapphire, Ruby, Gold, Crystal, Galaxy, Neon and Royal. All but Classic are unlocked by playing: reaching Depths, winning runs, finishing a Daily, winning on Heat 4, and collecting Trial medals.
+
 ### Daily Run, feats and the codex
 
 - **Daily Run:** everyone gets the same dice set, monsters and shops each day (on Heat 1). Your first attempt counts; share your result as a row of squares.
-- **Feats:** 24 achievements, from *First Blood* to dealing 10 million damage in one cast.
+- **Feats:** 26 achievements, from *First Blood* to dealing 10 million damage in one cast.
+- **Run history:** the codex's **Runs** tab keeps your last 40 runs; tap one to play its seed again.
 - **Codex:** every charm you've discovered, combo values, glyphs, bosses, feats and your lifetime stats.
 - Every run has a **seed** (like `K7Q-2MX`), shown on the run map and the summary. Type it into the seed box on the setup screen to play the same run again, or send it to a friend.
 
@@ -148,10 +168,10 @@ Then open <http://localhost:8000>. Opening `index.html` straight from the file s
 | `index.html` | Layout: title, setup, the battle HUD, the bazaar, and the sheet that every pop-up uses |
 | `css/style.css` | All styling. Mobile-first portrait, safe areas, reduced motion; a centred column on wide screens |
 | `js/core.js` | Maths, seeded random streams, seed codes, number formatting |
-| `js/data.js` | The catalogue: combos, glyphs, all 56 charms and their unlocks, stones, trinkets, boons, encounters, monsters, bosses, traits, the HP curve, dice sets, Heat and feats |
+| `js/data.js` | The catalogue: combos, glyphs, all 56 charms and their unlocks, stones, trinkets, boons, encounters, monsters and their moves, bosses, traits, the HP curve, dice sets, Heat, trials, skins and feats |
 | `js/rules.js` | The rules on a plain JSON `run` object: fights, rolling, combo detection (including wilds), the scoring pipeline, shops, encounters, boons, trinkets. No DOM, so it also runs in Node |
 | `js/profile.js` | Your save, unlocks and feats; the bridge to the Android app (storage, vibration, sharing) |
-| `js/art.js` | Draws the dice, glyphs, 12 monster body plans with all their variants and bosses, and the dungeon backdrops |
+| `js/art.js` | Draws the dice (and their twelve skins), glyphs, 12 monster body plans with all their variants and bosses, and the dungeon backdrops |
 | `js/fx.js` | Particles, floating numbers, rings, lightning, spell orbs, shake and flashes |
 | `js/battle.js` | The scene canvas: monster, dice tray, rolling animation and the step-by-step cast |
 | `js/ui.js` | The HUD, shop, setup, title and every sheet (rewards, encounters, boons, etching, pickers, charms, a die's faces, combos, codex, settings, how to play) |
@@ -166,7 +186,7 @@ Progress is saved after every action, so closing the app mid-fight is safe.
 
 | Tool | What it does |
 | --- | --- |
-| `node tools/sim.js [runs] [set] [heat]` | Balance simulator: a plain bot plays many runs with the real rules and reports how deep it gets (about 9% wins on Heat 0, 4% on Heat 4, 0% on Heat 8) |
+| `node tools/sim.js [runs] [set] [heat]` (`TRIAL=boss` etc. for a trial) | Balance simulator: a plain bot plays many runs with the real rules and reports how deep it gets (about 9% wins on Heat 0, 4% on Heat 4, 0% on Heat 8) |
 | `node tools/fuzz.js [runs]` | Plays thousands of random-choice runs on every set and Heat and checks the run stays consistent |
 | `tools/gallery.html` | Every monster and glyph face on one page, for checking the art |
 | `node tools/store-shots.js` | Rebuilds the store images in `store/` from the live game (serve the folder on port 8123 first) |
