@@ -589,14 +589,24 @@
 
   /* ---------- Keyboard ---------- */
 
+  // Step back one place. Returns false on the title screen with nothing
+  // open, where the Android app closes instead.
+  function back() {
+    if (sheet) closeSheet();
+    else if (overlay === els.intro) {
+      introThen = null;
+      closeOverlay();
+    } else if (overlay === els.win || screen === 'game') leaveGame();
+    else if (screen === 'levels') show('worlds');
+    else if (screen !== 'title') show('title');
+    else return false;
+    A.play('click');
+    return true;
+  }
+
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (sheet) closeSheet();
-      else if (overlay === els.intro) els.introGo.click();
-      else if (overlay === els.win) leaveGame();
-      else if (screen === 'game') leaveGame();
-      else if (screen === 'levels') show('worlds');
-      else if (screen !== 'title') show('title');
+      back();
       e.preventDefault();
       return;
     }
@@ -649,12 +659,12 @@
   }
 
   function registerSW() {
-    if (!('serviceWorker' in navigator) || window.top !== window) return;
+    if (HD.native || !('serviceWorker' in navigator) || window.top !== window) return;
     if (location.protocol !== 'https:' && location.hostname !== 'localhost') return;
     navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is optional */ });
   }
 
-  HD.ui = { toast, showWin, hideWin, show };
+  HD.ui = { toast, showWin, hideWin, show, back };
 
   applySettings();
   buildLegend();

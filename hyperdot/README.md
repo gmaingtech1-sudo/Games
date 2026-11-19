@@ -2,6 +2,8 @@
 
 A puzzle game for phones that climbs from one dimension to five. You are a glowing dot. Collect every shard to open the exit, using keys, doors, crates, plates and gates along the way. The rules never change, but each world gives you one more direction to move in: a line, a plane, space, a tesseract and finally a penteract.
 
+There's also an Android app: [`../hyperdot-android`](../hyperdot-android) ([download the APK](../hyperdot-android/dist/hyperdot.apk)).
+
 It's plain HTML, CSS and JavaScript. There's no build step and nothing to install. The levels, the 3D views, the hypercube art, the sound effects and the music are all made in code, so the only image files are the app icons. After the first visit it also works offline.
 
 ## Playing
@@ -83,7 +85,7 @@ Then open <http://localhost:8000>. To try it on your phone, connect it to the sa
 | --- | --- |
 | `index.html` | Layout: the title, worlds, levels and Endless screens, the play screen, the world intro, the win card, settings and help |
 | `css/style.css` | All styling. Mobile-first, respects safe areas (notches) and reduced-motion settings; on wide or landscape screens the pad moves beside the view |
-| `js/core.js` | Maths, the seeded random generator, the five axes and their colours, and storage |
+| `js/core.js` | Maths, the seeded random generator, the five axes and their colours, and storage (through the Android app's bridge when it's there) |
 | `js/grid.js` | The N-dimensional grid: turns a level's text map into cells, and finds a cell's neighbour along any axis |
 | `js/rules.js` | The rules: one `move()` function that the game, the hint button and the solver all share |
 | `js/solver.js` | A breadth-first search that finds the shortest win. It gives every level its par and powers hints |

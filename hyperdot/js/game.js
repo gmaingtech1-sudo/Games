@@ -283,8 +283,11 @@
   }
 
   function vibe(p) {
-    if (!P.data.settings.vibe || !navigator.vibrate) return;
-    try { navigator.vibrate(p); } catch (e) { /* ignore */ }
+    if (!P.data.settings.vibe) return;
+    try {
+      if (HD.native) HD.native.vibrate(JSON.stringify([].concat(p)));
+      else if (navigator.vibrate) navigator.vibrate(p);
+    } catch (e) { /* ignore */ }
   }
 
   /* ---------- HUD ---------- */

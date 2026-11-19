@@ -86,26 +86,39 @@
   // k < 0 darkens towards black, k > 0 lightens towards white.
   const shade = (hex, k) => (k < 0 ? mix(hex, '#000000', -k) : mix(hex, '#ffffff', k));
 
-  /* ---------- Storage ---------- */
+  /* ---------- Storage ----------
+     Inside the Android app (hyperdot-android), window.AndroidHost keeps the
+     save in the app's own storage and drives the vibration motor. In a
+     browser it's localStorage. */
+
+  const native = typeof window !== 'undefined' && window.AndroidHost ? window.AndroidHost : null;
 
   const store = {
     read(key) {
       try {
-        const raw = localStorage.getItem(key);
+        const raw = native ? native.load(key) : localStorage.getItem(key);
         return raw ? JSON.parse(raw) : null;
       } catch (e) {
         return null;
       }
     },
     write(key, value) {
-      try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage may be blocked */ }
+      try {
+        const json = JSON.stringify(value);
+        if (native) native.save(key, json);
+        else localStorage.setItem(key, json);
+      } catch (e) { /* storage may be blocked */ }
     },
     remove(key) {
-      try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+      try {
+        if (native) native.remove(key);
+        else localStorage.removeItem(key);
+      } catch (e) { /* ignore */ }
     },
   };
 
   HD.AXES = AXES;
   HD.store = store;
+  HD.native = native;
   HD.util = { TAU, clamp, lerp, easeOut, easeInOut, easeBack, seeded, hexToRgb, rgba, mix, shade };
 })(window.HD = window.HD || {});
