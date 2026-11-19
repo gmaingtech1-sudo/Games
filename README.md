@@ -11,6 +11,8 @@ Small games for phones. Each one lives in its own folder.
 | [Riftborn](riftborn/) | An AR game on your real streets, mixing Ingress, Pokémon GO and Jurassic World Alive. Fight over Rifts for your faction, catch prehistoric creatures in your camera, collect their DNA and fuse hybrids. |
 | [Cosmos 360](cosmos-360/) | A to-scale universe to explore in 360°. Look around by dragging or moving your phone, fly to real planets and moons where they are today, scan them for your logbook, and jump to Alpha Centauri, TRAPPIST-1 and the black hole at the centre of the Milky Way. |
 | [Starforge](starforge/) | A space shooter where you build your own starfighter. Pick its hull, wings, engine, weapon and special, paint it, then blast through waves of enemy ships and bosses to earn credits for better parts. |
+| [Nested Arcade](nested-arcade/) | A game inside a game inside a game. Walk around an arcade and play the Star Hopper cabinet; inside it, find a handheld console and play Pip Dash on that. Each game is drawn inside the screen of the one around it, and time runs slower the deeper you go — win the Golden Cartridge before the arcade closes at midnight. |
+| [Nested Arcade for Android](nested-arcade-android/) | The same game as an installable Android app. [Download the APK](nested-arcade-android/dist/nested-arcade.apk). |
 
 ## Books
 

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#120d24">
+<title>Nested Arcade</title>
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="hidden">
+  <div class="bar">
+    <div class="clock"><b id="clock">8:00 PM</b><small id="rate">time ×1</small></div>
+    <div class="stat" title="Coins"><i class="coin"></i><b id="coins">3</b></div>
+    <div class="stat" title="Tickets"><i class="ticket"></i><b id="tix">0</b></div>
+    <button id="pauseBtn" aria-label="Pause">II</button>
+  </div>
+  <div id="crumbs"><span data-d="1">Arcade</span><em>›</em><span data-d="2">Star Hopper</span><em>›</em><span data-d="3">Pip Dash</span></div>
+</div>
+
+<button id="act" class="hidden"></button>
+<button id="out" class="hidden">⤴ Step out</button>
+<div id="toast"></div>
+
+<section id="title" class="panel">
+  <div class="card">
+    <div class="logo"><span>NESTED</span><span>ARCADE</span></div>
+    <p class="tag">a game inside a game inside a game</p>
+    <ol class="how">
+      <li><b>The Arcade.</b> Walk around, grab coins before the robot vacuum does, and feed one into the <b>Star Hopper</b> cabinet.</li>
+      <li><b>Star Hopper.</b> Hold the left or right side of the screen to steer your astronaut up through space. Find a <b>handheld console</b> floating up there…</li>
+      <li><b>Pip Dash.</b> …and play the game on it. Tap left or right to dodge blocks and catch pips. Pips fire up a rocket back in Star Hopper.</li>
+    </ol>
+    <p class="twist">The deeper you go, the slower time passes outside: <b>×1</b> in the arcade, <b>×¼</b> in the cabinet, <b>×1/16</b> in the handheld. Win tickets and claim the <b>Golden Cartridge</b> before the arcade closes at midnight.</p>
+    <button id="playBtn" class="big">Play</button>
+    <p id="bestLine" class="best"></p>
+  </div>
+</section>
+
+<section id="shop" class="panel hidden">
+  <div class="card">
+    <h2>Prize Counter</h2>
+    <p class="sub">You have <b id="shopTix">0</b> tickets.</p>
+    <div id="prizes"></div>
+    <button id="shopClose" class="ghost">Back to the arcade</button>
+  </div>
+</section>
+
+<section id="pause" class="panel hidden">
+  <div class="card small">
+    <h2>Paused</h2>
+    <p class="sub">The clock has stopped. For now.</p>
+    <button id="resumeBtn" class="big">Keep playing</button>
+    <button id="muteBtn" class="ghost">Sound: on</button>
+    <button id="quitBtn" class="ghost">Quit to title</button>
+  </div>
+</section>
+
+<section id="result" class="panel hidden">
+  <div class="card">
+    <h2 id="resTitle"></h2>
+    <div id="resBody"></div>
+    <button id="againBtn" class="big">Play again</button>
+  </div>
+</section>
+
+<script src="js/game.js"></script>
+</body>
+</html>

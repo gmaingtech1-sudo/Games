@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nested Arcade</string>
+    <color name="shell">#1A1033</color>
+
+    <style name="NestedArcade" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/shell</item>
+        <item name="android:statusBarColor">#0B0816</item>
+        <item name="android:navigationBarColor">#0B0816</item>
+    </style>
+</resources>
