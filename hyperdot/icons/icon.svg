@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="80%">
+      <stop offset="0" stop-color="#1A2366"/>
+      <stop offset="0.6" stop-color="#0B0F33"/>
+      <stop offset="1" stop-color="#05060F"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#7DF9FF" stop-opacity="0.9"/>
+      <stop offset="0.35" stop-color="#7DF9FF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#7DF9FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="dot" cx="40%" cy="38%" r="60%">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.6" stop-color="#D6FDFF"/>
+      <stop offset="1" stop-color="#7DF9FF"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <g stroke-width="14" stroke-linecap="round" fill="none">
+    <!-- the W edges join the two cubes' corners -->
+    <g stroke="#C07CFF" opacity="0.9">
+      <path d="M118 118L196 196M394 118L316 196M118 394L196 316M394 394L316 316"/>
+    </g>
+    <!-- inner square -->
+    <path d="M196 196H316M196 316H316" stroke="#FF5C70" opacity="0.75"/>
+    <path d="M196 196V316M316 196V316" stroke="#5EE07E" opacity="0.75"/>
+    <!-- outer square -->
+    <path d="M118 118H394M118 394H394" stroke="#FF5C70"/>
+    <path d="M118 118V394M394 118V394" stroke="#5EE07E"/>
+  </g>
+  <g fill="#E8ECFF">
+    <circle cx="118" cy="394" r="9"/><circle cx="394" cy="394" r="9"/><circle cx="118" cy="118" r="9"/>
+    <circle cx="196" cy="196" r="7"/><circle cx="316" cy="196" r="7"/><circle cx="196" cy="316" r="7"/><circle cx="316" cy="316" r="7"/>
+  </g>
+  <circle cx="394" cy="118" r="96" fill="url(#glow)"/>
+  <circle cx="394" cy="118" r="34" fill="url(#dot)"/>
+</svg>

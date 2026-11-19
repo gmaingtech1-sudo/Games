@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Hyperdot</title>
+<meta name="description" content="A puzzle game that climbs from one dimension to five. Collect shards, open doors and push crates on a line, a plane, in space, in a tesseract and in a penteract.">
+<meta name="theme-color" content="#070917">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hyperdot">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== Title ===================== -->
+  <section id="title" class="screen title" aria-label="Hyperdot">
+    <canvas id="title-art" class="title-art" aria-hidden="true"></canvas>
+    <button id="btn-settings" class="icon-btn corner" type="button" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.5"/><circle cx="9.5" cy="17" r="2.5"/></svg>
+    </button>
+    <div class="title-main">
+      <div id="title-dim" class="title-dim" aria-hidden="true"></div>
+      <h1 class="logo">hyper<b>dot</b></h1>
+      <p class="tagline">One dot. Five dimensions.</p>
+    </div>
+    <nav class="title-menu" aria-label="Main menu">
+      <button id="btn-play" class="btn primary big" type="button"><span id="play-label">Play</span><small id="play-sub"></small></button>
+      <div class="row">
+        <button id="btn-worlds" class="btn" type="button">Worlds</button>
+        <button id="btn-endless" class="btn" type="button">Endless</button>
+      </div>
+      <p id="title-stars" class="title-stars"></p>
+    </nav>
+  </section>
+
+  <!-- ===================== Worlds ===================== -->
+  <section id="worlds" class="screen list-screen" aria-label="Worlds" hidden>
+    <header class="bar">
+      <button class="icon-btn back" type="button" data-back="title" aria-label="Back">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h2>Worlds</h2>
+      <span id="worlds-stars" class="bar-stars"></span>
+    </header>
+    <div id="world-list" class="scroll world-list"></div>
+  </section>
+
+  <!-- ===================== Levels ===================== -->
+  <section id="levels" class="screen list-screen" aria-label="Levels" hidden>
+    <header class="bar">
+      <button class="icon-btn back" type="button" data-back="worlds" aria-label="Back to worlds">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h2 id="levels-title">World</h2>
+      <span id="levels-stars" class="bar-stars"></span>
+    </header>
+    <div class="scroll">
+      <div class="levels-head">
+        <canvas id="levels-art" class="levels-art" aria-hidden="true"></canvas>
+        <div>
+          <div id="levels-dim" class="levels-dim">1D</div>
+          <p id="levels-sub" class="levels-sub"></p>
+          <button id="levels-intro" class="link" type="button">Read the intro again</button>
+        </div>
+      </div>
+      <div id="level-grid" class="level-grid"></div>
+    </div>
+  </section>
+
+  <!-- ===================== Endless ===================== -->
+  <section id="endless" class="screen list-screen" aria-label="Endless" hidden>
+    <header class="bar">
+      <button class="icon-btn back" type="button" data-back="title" aria-label="Back">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h2>Endless</h2>
+      <span class="bar-stars"></span>
+    </header>
+    <div class="scroll">
+      <p class="endless-intro">Fresh puzzles made on the spot, as many as you like. They get a little longer the more you solve. Each dimension opens once you finish its world.</p>
+      <div id="endless-list" class="endless-list"></div>
+    </div>
+  </section>
+
+  <!-- ===================== Game ===================== -->
+  <section id="game" class="screen game" aria-label="Puzzle" hidden>
+    <header class="g-top">
+      <button id="g-back" class="icon-btn" type="button" aria-label="Back to levels">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="g-title">
+        <small id="g-world"></small>
+        <b id="g-name"></b>
+      </div>
+      <div class="g-count" aria-live="polite">
+        <b id="g-moves">0</b>
+        <small>moves · par <span id="g-par">0</span></small>
+      </div>
+    </header>
+    <div id="g-status" class="g-status" aria-live="polite"></div>
+    <button id="g-tip" class="g-tip" type="button" aria-label="Tip. Tap to hide." hidden></button>
+    <div id="g-stage" class="g-stage">
+      <canvas id="g-canvas" aria-label="The puzzle. Drag to turn the view, tap a glowing neighbour to step there."></canvas>
+      <button id="g-peek" class="g-peek" type="button" hidden></button>
+    </div>
+    <div class="g-tools">
+      <button id="g-undo" class="tool" type="button" aria-label="Undo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span>Undo</span>
+      </button>
+      <button id="g-restart" class="tool" type="button" aria-label="Restart">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Restart</span>
+      </button>
+      <button id="g-hint" class="tool" type="button" aria-label="Hint">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg><span>Hint</span>
+      </button>
+      <button id="g-view" class="tool" type="button" aria-label="Reset the view">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg><span>View</span>
+      </button>
+      <button id="g-help" class="tool" type="button" aria-label="How to play">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17.5v.01"/></svg><span>Help</span>
+      </button>
+    </div>
+    <div id="pad" class="pad"></div>
+  </section>
+
+  <!-- ===================== Overlays ===================== -->
+  <div id="intro" class="overlay" role="dialog" aria-modal="true" aria-labelledby="intro-name" hidden>
+    <div class="card intro-card">
+      <canvas id="intro-art" class="intro-art" aria-hidden="true"></canvas>
+      <div id="intro-dim" class="intro-dim">1D</div>
+      <h2 id="intro-name">The Line</h2>
+      <p id="intro-l1" class="intro-l1"></p>
+      <p id="intro-l2" class="intro-l2"></p>
+      <div id="intro-axes" class="intro-axes" aria-hidden="true"></div>
+      <button id="intro-go" class="btn primary" type="button">Begin</button>
+    </div>
+  </div>
+
+  <div id="win" class="overlay" role="dialog" aria-modal="true" aria-labelledby="win-title" hidden>
+    <div class="card win-card">
+      <h2 id="win-title">Solved</h2>
+      <div id="win-stars" class="win-stars" aria-hidden="true"><i></i><i></i><i></i></div>
+      <p id="win-line" class="win-line"></p>
+      <p id="win-note" class="win-note"></p>
+      <div class="row">
+        <button id="win-retry" class="btn" type="button">Retry</button>
+        <button id="win-next" class="btn primary" type="button">Next</button>
+      </div>
+      <button id="win-list" class="link" type="button">All levels</button>
+    </div>
+  </div>
+
+  <div id="scrim" class="scrim" hidden></div>
+
+  <div id="sheet-settings" class="sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+    <header class="sheet-head"><h3 id="settings-title">Settings</h3><button id="settings-close" class="icon-btn" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+    <label class="toggle"><span>Sound effects</span><input type="checkbox" data-setting="sound"><i></i></label>
+    <label class="toggle"><span>Music</span><input type="checkbox" data-setting="music"><i></i></label>
+    <label class="toggle"><span>Vibration</span><input type="checkbox" data-setting="vibe"><i></i></label>
+    <button id="btn-howto" class="btn" type="button">How to play</button>
+    <button id="btn-reset" class="btn danger" type="button">Reset progress</button>
+    <p class="fine">Hyperdot keeps your progress on this device only.</p>
+  </div>
+
+  <div id="sheet-help" class="sheet" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
+    <header class="sheet-head"><h3 id="help-title">How to play</h3><button id="help-close" class="icon-btn" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+    <div class="scroll help-body">
+      <p>Move one cell at a time. Pick up every <b>shard</b> to open the <b>exit</b>, then step onto it. Par is the fewest moves the puzzle can be solved in: match it for three stars.</p>
+      <ul id="legend" class="legend"></ul>
+      <h4>Moving</h4>
+      <p>Use the pad, swipe on the board (1D and 2D) or tap a glowing neighbour (3D and up). In 3D and up, drag the view to turn it. The pad turns with it, so <b>up</b> on the pad is always away from you.</p>
+      <p>From 4D on, the panels above the view show every 3D slice. W moves you from one slice to the next (<b>ana</b> is +W, <b>kata</b> is −W); in 5D, V moves you down the grid. A dashed ring in a panel shows where a jump would land. Tap a panel to look into that slice without moving.</p>
+      <h4>Keyboard</h4>
+      <table class="keys">
+        <tr><td>Arrows / WASD</td><td>Move on the pad</td></tr>
+        <tr><td>R · F</td><td>Up · down (Z)</td></tr>
+        <tr><td>T · G</td><td>Ana · kata (W)</td></tr>
+        <tr><td>Y · H</td><td>+V · −V</td></tr>
+        <tr><td>Q · E</td><td>Turn the view</td></tr>
+        <tr><td>Z / U / Backspace</td><td>Undo</td></tr>
+        <tr><td>X</td><td>Restart</td></tr>
+        <tr><td>/</td><td>Hint</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</div>
+
+<script src="js/core.js"></script>
+<script src="js/grid.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/solver.js"></script>
+<script src="js/gen.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/progress.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/view.js"></script>
+<script src="js/art.js"></script>
+<script src="js/controls.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
