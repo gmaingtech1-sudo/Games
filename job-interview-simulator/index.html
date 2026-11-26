@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Job Interview Simulator</title>
+<meta name="description" content="A job interview where you can finally answer the way you really want to.">
+<meta name="theme-color" content="#1f2a44">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <header id="hud">
+    <div class="hud-who">
+      <div id="hud-name">Gary Pemberton</div>
+      <div id="hud-title">Regional Manager</div>
+      <div class="bar"><div id="hp-fill" class="fill hp"></div></div>
+    </div>
+    <div class="hud-mid">
+      <div class="hud-label">HIRE CHANCE</div>
+      <div class="bar"><div id="hire-fill" class="fill hire"></div></div>
+      <div id="hire-num" class="hud-small">50%</div>
+    </div>
+    <div class="hud-right">
+      <div id="hud-q" class="hud-small">Q 1/12</div>
+      <div id="hud-chaos" class="hud-small">Chaos 0</div>
+      <button id="mute" aria-label="Sound on or off">🔊</button>
+    </div>
+  </header>
+
+  <canvas id="scene"></canvas>
+
+  <section id="panel">
+    <div id="speech">
+      <div id="who"></div>
+      <div id="line"></div>
+    </div>
+    <div id="answers"></div>
+  </section>
+
+  <div id="overlay">
+    <div id="title-card" class="card">
+      <div class="logo">JOB<br>INTERVIEW<br><span>SIMULATOR</span></div>
+      <p class="tag">Synergex Solutions Ltd. is hiring.<br>Answer the questions however you like. <b>However</b> you like.</p>
+      <button id="start" class="big">START INTERVIEW</button>
+      <p class="hint">Tip: tap the interviewer for a cheeky slap any time.</p>
+      <p id="best" class="hint"></p>
+    </div>
+    <div id="end-card" class="card hidden">
+      <div id="end-stamp" class="stamp">HIRED</div>
+      <p id="end-text"></p>
+      <div id="end-stats"></div>
+      <div id="end-score"></div>
+      <button id="again" class="big">REAPPLY</button>
+    </div>
+  </div>
+</div>
+<script src="js/game.js"></script>
+</body>
+</html>
