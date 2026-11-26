@@ -17,3 +17,4 @@ Small games for phones. Each one lives in its own folder.
 | Book | Description |
 | --- | --- |
 | [The Magic Sword](the-magic-sword/) | A fantasy adventure in twelve chapters. Leo Smith is scared of almost everything, but when his grandad vanishes through a little door at the back of the forge, Leo takes the family's magic sword and goes after him. |
+| [Riftborn: The Last War](riftborn-the-last-war/) | The rulebook for a tabletop miniatures wargame, with a [printable PDF](riftborn-the-last-war/riftborn-the-last-war.pdf). Four hundred years after the Great Shattering, every Rift is drifting into one colossal wound in the sky, and every army marches to reach it first. The world and its history, the six factions with the Varkonian Dominion and the Riftspawn in full, and the core rules for turns, movement, shooting and melee. |

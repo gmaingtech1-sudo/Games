@@ -1,0 +1,111 @@
+@font-face { font-family: "Cinzel"; font-weight: 600; src: url(fonts/Cinzel-600.ttf); }
+@font-face { font-family: "Cinzel"; font-weight: 800; src: url(fonts/Cinzel-800.ttf); }
+@font-face { font-family: "Crimson Pro"; font-weight: 400; src: url(fonts/Crimson-400.ttf); }
+@font-face { font-family: "Crimson Pro"; font-weight: 400; font-style: italic; src: url(fonts/Crimson-400i.ttf); }
+@font-face { font-family: "Crimson Pro"; font-weight: 600; src: url(fonts/Crimson-600.ttf); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 500; src: url(fonts/Barlow-500.ttf); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 700; src: url(fonts/Barlow-700.ttf); }
+
+:root {
+  --ink: #1d1a22;
+  --muted: #5c5566;
+  --paper: #fbf8f2;
+  --rift: #6d3fd1;
+  --rift-soft: #efe8fb;
+  --night: #120f19;
+  --rule: #d9d1c4;
+}
+
+@page {
+  size: A4;
+  margin: 22mm 20mm 24mm 20mm;
+  background: var(--paper);
+  @top-left { content: string(part); font: 500 8.5pt "Barlow Condensed"; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  @top-right { content: string(chapter); font: 500 8.5pt "Barlow Condensed"; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  @bottom-center { content: counter(page); font: 600 9pt "Cinzel"; color: var(--rift); }
+}
+@page cover { margin: 0; background: var(--night); @top-left { content: none } @top-right { content: none } @bottom-center { content: none } }
+@page dark { margin: 0; background: var(--night); @top-left { content: none } @top-right { content: none } @bottom-center { content: none } }
+@page front { @top-left { content: none } @top-right { content: none } @bottom-center { content: none } }
+
+html { font: 400 11pt/1.45 "Crimson Pro", serif; color: var(--ink); }
+body { margin: 0; }
+p { margin: 0 0 .6em; orphans: 3; widows: 3; text-align: justify; hyphens: auto; }
+strong { font-weight: 600; }
+
+/* ---------- cover ---------- */
+.cover { page: cover; height: 297mm; position: relative; color: #f3eefc; text-align: center; break-after: page; }
+.cover svg { position: absolute; left: 0; top: 0; width: 210mm; height: 297mm; }
+.cover .titles { position: absolute; left: 0; width: 210mm; top: 168mm; }
+.cover .riftborn { font: 800 54pt/1 "Cinzel"; letter-spacing: .08em; margin: 0; }
+.cover .lastwar { font: 600 17pt "Cinzel"; letter-spacing: .5em; margin: 5mm 0 0; color: #c9b4f5; }
+.cover .sub { font: 400 italic 14pt "Crimson Pro"; color: #b7adc8; margin-top: 14mm; }
+.cover .edition { position: absolute; left: 0; width: 210mm; bottom: 20mm; font: 500 10pt "Barlow Condensed"; letter-spacing: .3em; text-transform: uppercase; color: #8c82a0; }
+
+/* ---------- front matter ---------- */
+.front { page: front; }
+.titlepage { break-after: page; text-align: center; padding-top: 70mm; }
+.titlepage .riftborn { font: 800 34pt "Cinzel"; letter-spacing: .08em; margin: 0; }
+.titlepage .lastwar { font: 600 13pt "Cinzel"; letter-spacing: .45em; color: var(--rift); margin: 3mm 0 12mm; }
+.titlepage .sub { font-style: italic; font-size: 13pt; color: var(--muted); }
+.titlepage .quote { margin: 40mm auto 0; width: 110mm; font-style: italic; color: var(--muted); }
+
+nav.toc { break-after: page; }
+nav.toc h2 { font: 800 22pt "Cinzel"; margin: 0 0 10mm; letter-spacing: .06em; border: 0; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; }
+nav.toc li.part { margin: 7mm 0 2mm; }
+nav.toc li.part > a { font: 700 12pt "Barlow Condensed"; letter-spacing: .14em; text-transform: uppercase; color: var(--rift); }
+nav.toc li.chap { margin: 1.2mm 0 0 6mm; }
+nav.toc a { color: var(--ink); text-decoration: none; display: block; }
+nav.toc a::after { content: leader(". ") target-counter(attr(href), page); color: var(--muted); }
+nav.toc li.part > a::after { content: leader(" ") target-counter(attr(href), page); }
+
+/* ---------- part title pages ---------- */
+section.part { page: dark; height: 297mm; break-before: page; break-after: page; color: #f3eefc; text-align: center; position: relative; }
+section.part svg { position: absolute; left: 0; top: 0; width: 210mm; height: 297mm; }
+section.part .inner { position: absolute; left: 25mm; width: 160mm; top: 112mm; }
+section.part .num { font: 700 12pt "Barlow Condensed"; letter-spacing: .4em; text-transform: uppercase; color: #c9b4f5; margin: 0; }
+section.part h1 { font: 800 40pt/1.1 "Cinzel"; letter-spacing: .05em; margin: 6mm 0 8mm; string-set: part content(); }
+section.part .tag { font: italic 14pt "Crimson Pro"; color: #b7adc8; margin: 0 auto; width: 120mm; text-align: center; }
+
+/* ---------- headings ---------- */
+h2 { font: 800 21pt/1.15 "Cinzel"; letter-spacing: .03em; margin: 0 0 6mm; padding-bottom: 3mm; border-bottom: 1.5pt solid var(--rift); break-before: page; string-set: chapter content(); }
+h2.cont { break-before: auto; margin-top: 10mm; }
+h3 { font: 600 13.5pt/1.2 "Cinzel"; color: var(--rift); margin: 6mm 0 2mm; break-after: avoid; }
+h3 + p, h2 + p { text-indent: 0; }
+
+ul, ol { margin: 0 0 .7em; padding-left: 6mm; }
+li { margin: 0 0 .25em; }
+li p { margin: 0; }
+ul li::marker { color: var(--rift); }
+ol li::marker { color: var(--rift); font-weight: 600; }
+
+/* ---------- epigraphs and callouts ---------- */
+.epigraph { break-before: avoid; margin: 2mm 12mm 7mm; text-align: center; break-inside: avoid; }
+.epigraph blockquote { margin: 0; }
+.epigraph p { text-align: center; color: var(--muted); font-size: 12pt; }
+.epigraph em { color: var(--ink); }
+
+.callout { background: var(--rift-soft); border-left: 3pt solid var(--rift); padding: 4mm 5mm 2.5mm; margin: 4mm 0 6mm; break-inside: avoid; }
+.callout > p:first-child { font: 700 11pt "Barlow Condensed"; letter-spacing: .12em; text-transform: uppercase; color: var(--rift); margin-bottom: 2mm; }
+.callout > p:first-child strong { font-weight: 700; }
+.callout p { text-align: left; }
+
+/* ---------- tables ---------- */
+table { width: 100%; border-collapse: collapse; margin: 3mm 0 6mm; font: 500 10.5pt/1.3 "Barlow Condensed"; break-inside: avoid; }
+thead { display: table-header-group; }
+th { background: var(--night); color: #f3eefc; text-align: left; padding: 1.6mm 2.5mm; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 9.5pt; }
+th strong { font-weight: 700; }
+td { padding: 1.5mm 2.5mm; border-bottom: .6pt solid var(--rule); vertical-align: top; }
+td strong { font-weight: 700; }
+tbody tr:nth-child(even) td { background: #f2ede3; }
+table.glossary { break-inside: auto; }
+table.glossary tr { break-inside: avoid; }
+td p, th p { margin: 0; text-align: left; }
+
+/* stat-line tables (all-short columns) are centred */
+table.stats td, table.stats th { text-align: center; }
+table.stats td:first-child, table.stats th:first-child { text-align: left; }
+
+.end { text-align: center; margin-top: 14mm; color: var(--rift); font: 600 14pt "Cinzel"; letter-spacing: .4em; }
+.cover p, section.part p, .titlepage p, .end { text-align: center; }
