@@ -28,7 +28,11 @@
     </div>
   </header>
 
-  <canvas id="scene"></canvas>
+  <div id="stage">
+    <canvas id="scene"></canvas>
+    <div id="fx-layer"></div>
+    <div id="flash"></div>
+  </div>
 
   <section id="panel">
     <div id="speech">
@@ -55,6 +59,6 @@
     </div>
   </div>
 </div>
-<script src="js/game.js"></script>
+<script type="module" src="js/game.js"></script>
 </body>
 </html>
