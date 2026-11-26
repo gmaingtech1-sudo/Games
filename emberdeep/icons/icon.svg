@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="62%" r="75%">
+      <stop offset="0" stop-color="#4A1E2A"/>
+      <stop offset="0.55" stop-color="#1E1022"/>
+      <stop offset="1" stop-color="#0C060E"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="58%" r="50%">
+      <stop offset="0" stop-color="#FF9B3D" stop-opacity="0.75"/>
+      <stop offset="0.5" stop-color="#FF7A2E" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#FF7A2E" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="outer" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFB443"/>
+      <stop offset="0.6" stop-color="#FF7A2E"/>
+      <stop offset="1" stop-color="#D9462B"/>
+    </linearGradient>
+    <linearGradient id="inner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.5" stop-color="#FFF0B0"/>
+      <stop offset="1" stop-color="#FFC94A"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- cave mouth -->
+  <path d="M0 512V250C40 150 110 92 170 70c30 22 50 18 86 6 36 12 56 16 86-6 60 22 130 80 170 180v262z" fill="#2A1630" opacity="0.65"/>
+  <path d="M60 512V300c26-90 80-150 130-176 22 16 42 14 66 4 24 10 44 12 66-4 50 26 104 86 130 176v212z" fill="#140A18"/>
+  <!-- stalactites -->
+  <g fill="#2A1630">
+    <path d="M150 70l14 70 16-62z"/><path d="M230 78l10 46 14-48z"/><path d="M300 78l12 56 12-60z"/><path d="M360 76l8 40 14-38z"/>
+  </g>
+  <circle cx="256" cy="300" r="210" fill="url(#glow)"/>
+  <!-- ember motes -->
+  <g fill="#FFC46B">
+    <circle cx="170" cy="210" r="5"/><circle cx="350" cy="190" r="4"/><circle cx="380" cy="270" r="3.5"/>
+    <circle cx="135" cy="300" r="3"/><circle cx="315" cy="150" r="3"/><circle cx="200" cy="150" r="2.5"/>
+  </g>
+  <!-- the flame -->
+  <path d="M256 96c46 58 92 98 92 166a92 92 0 01-184 0c0-46 24-74 44-104 0 34 10 52 30 62-14-46 0-86 18-124z" fill="url(#outer)" stroke="#2A0E04" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M256 200c26 34 48 54 48 86a48 48 0 01-96 0c0-30 24-54 48-86z" fill="url(#inner)"/>
+  <!-- ground -->
+  <path d="M60 430c60-18 130-24 196-24s136 6 196 24v82H60z" fill="#24132A"/>
+  <ellipse cx="256" cy="400" rx="96" ry="14" fill="#FF7A2E" opacity="0.3"/>
+</svg>
