@@ -355,8 +355,11 @@
 
   /* ---------- Saving ---------- */
 
+  // Saves go through ED.host: localStorage in a browser, the app's own
+  // storage on Android.
   function load(now) {
-    const raw = ED.store.read(SAVE_KEY);
+    let raw = null;
+    try { raw = JSON.parse(ED.host.loadSave() || 'null'); } catch (e) { raw = null; }
     if (raw && typeof raw === 'object' && raw.v) {
       try { return migrate(raw, now); } catch (e) { /* fall through to a new save */ }
     }
@@ -364,11 +367,11 @@
   }
 
   function save(S) {
-    return ED.store.write(SAVE_KEY, S);
+    ED.host.writeSave(JSON.stringify(S));
   }
 
   function wipe() {
-    ED.store.remove(SAVE_KEY);
+    ED.host.clearSave();
   }
 
   // A save as a shareable text code, and back.

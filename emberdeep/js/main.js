@@ -23,8 +23,7 @@
   /* ---------- Helpers ---------- */
 
   game.haptic = (pattern) => {
-    if (!game.S.settings.vibe || !navigator.vibrate) return;
-    try { navigator.vibrate(pattern); } catch (e) { /* ignore */ }
+    if (game.S.settings.vibe) ED.host.haptic(pattern);
   };
 
   game.stats = () => ST.stats(game.S, ST.buffMult(game.S, Date.now()));
@@ -342,8 +341,54 @@
 
   game.wipe = () => {
     ST.wipe();
+    cancelCamp();
     game.replace(ST.defaults(Date.now()));
   };
+
+  /* ---------- Camp reminder (Android) ---------- */
+
+  // When you leave, the app sets an OS alarm for the moment your party will
+  // have delved as long as it can without you, so a notification can call
+  // you back even though the game itself isn't running. Browsers can't do
+  // that, so this is Android-only.
+  const notify = ED.host.notify;
+  game.canNotify = () => notify.supported();
+
+  function scheduleCamp() {
+    const S = game.S;
+    if (!notify.supported() || !S.settings.notify || notify.permission() !== 'granted') return;
+    const cap = ST.stats(S).offlineCap;
+    notify.schedule(cap / 60, 'Your party has made camp',
+      `${U.fmt(cap / 3600)} hours of delving done without you. Come and see how deep they got.`);
+  }
+  function cancelCamp() {
+    if (notify.supported()) notify.cancel();
+  }
+
+  // Turning the reminder on asks Android for permission the first time;
+  // the answer comes back later as a 'notifyPermission' message.
+  game.setNotify = (on) => {
+    const S = game.S;
+    S.seenHint.notifyAsked = true;
+    if (!on) {
+      S.settings.notify = false;
+      cancelCamp();
+    } else if (notify.permission() === 'granted') {
+      S.settings.notify = true;
+      ED.ui.toast('You\'ll get a nudge when your party makes camp.', 'skill');
+    } else {
+      notify.request();
+    }
+    save();
+    ED.ui.syncNotify();
+  };
+
+  ED.host.on('notifyPermission', (m) => {
+    game.S.settings.notify = !!m.granted;
+    save();
+    ED.ui.syncNotify();
+    ED.ui.toast(m.granted ? 'You\'ll get a nudge when your party makes camp.' : 'Notifications are off. You can allow them in Android\'s settings for Emberdeep.', m.granted ? 'skill' : 'warn');
+  });
 
   function applySettings() {
     const s = game.S.settings;
@@ -423,25 +468,39 @@
     requestAnimationFrame(loop);
   }
 
+  // Leaving and coming back. A browser tells us through visibilitychange;
+  // the Android app also sends pause/resume, which are more reliable inside
+  // a WebView. Whichever comes first wins; the other is a no-op.
+  function goAway() {
+    if (hiddenAt) return;
+    hiddenAt = Date.now();
+    save();
+    A.suspend(true);
+    scheduleCamp();
+  }
+  function comeBack() {
+    if (!hiddenAt) return;
+    A.suspend(false);
+    cancelCamp();
+    const sec = (Date.now() - hiddenAt) / 1000;
+    hiddenAt = 0;
+    last = 0;
+    if (sec > AWAY_MIN) game.away(sec, 'away');
+  }
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      hiddenAt = Date.now();
-      save();
-      A.suspend(true);
-    } else {
-      A.suspend(false);
-      const sec = hiddenAt ? (Date.now() - hiddenAt) / 1000 : 0;
-      hiddenAt = 0;
-      last = 0;
-      if (sec > AWAY_MIN) game.away(sec, 'away');
-    }
+    if (document.hidden) goAway();
+    else comeBack();
   });
+  ED.host.on('pause', goAway);
+  ED.host.on('resume', comeBack);
+  ED.host.on('back', () => ED.ui.back());
   window.addEventListener('pagehide', save);
   window.addEventListener('resize', () => ED.battle.resize());
   document.addEventListener('pointerdown', () => A.unlock(), { capture: true });
 
   function registerSW() {
-    if (!('serviceWorker' in navigator) || window.top !== window) return;
+    // The Android app ships its files inside the APK, so it doesn't need one.
+    if (ED.host.native || !('serviceWorker' in navigator) || window.top !== window) return;
     if (location.protocol !== 'https:' && location.hostname !== 'localhost') return;
     navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is optional */ });
   }
@@ -449,6 +508,7 @@
   /* ---------- Boot ---------- */
 
   applySettings();
+  cancelCamp(); // you're here, so no need to be called back
   ED.battle.init(document.getElementById('scene'));
   ED.ui.init();
   const now = Date.now();

@@ -29,6 +29,7 @@
     'buy-amt', 'qm', 'qm-toggle', 'hero-list', 'relic-grid', 'relic-sum', 'rekindle', 'talents', 'feat-list', 'daily',
     'shop-list', 'stats', 'tabs', 'scrim', 'modal', 'sheet-settings', 'toasts', 'flare', 'panel',
     'btn-settings', 'settings-close', 'set-notation', 'btn-export', 'btn-import', 'save-code', 'btn-reset',
+    'row-notify', 'set-notify',
   ];
 
   // Prices round up, so you never see one you can't quite afford.
@@ -766,6 +767,7 @@
     m.hidden = false;
     el.scrim.hidden = false;
     m._sticky = !!o.sticky;
+    ED.host.setOverlay(true);
   }
 
   function closeModal() {
@@ -773,6 +775,7 @@
     el.modal.innerHTML = '';
     modalOpen = false;
     if (!sheetOpen) el.scrim.hidden = true;
+    ED.host.setOverlay(sheetOpen || modalQueue.length > 0);
     isDirty = true;
     if (modalQueue.length) setTimeout(() => modal(modalQueue.shift()), 120);
   }
@@ -803,6 +806,9 @@
     else if (!st.autoBuy && sum.why === 'away' && sum.gold > s.gold * 0.5) tip = `You came back to <b>${fmt(s.gold)} gold</b>. Spend it on your heroes! Reach floor ${E.T.emberFloor} and rekindle to unlock the Quartermaster, who levels them while you're away.`;
     else if (s.farming) tip = 'Your party is stuck below a boss. Level them up, then they\'ll try again.';
     if (sum.capped && !tip) tip = 'Talents in the Hearth\'s <b>Time</b> branch let your party delve for longer while you\'re away.';
+    // On Android, offer (once) to send a notification when the party makes camp.
+    const askNotify = sum.why === 'away' && game().canNotify() && !s.settings.notify && !s.seenHint.notifyAsked;
+    if (askNotify) s.seenHint.notifyAsked = true;
     modal({
       cls: 'away',
       html: `<div class="m-icon away-ico"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg></div>
@@ -818,7 +824,9 @@
         </div>
         ${relics}
         ${tip ? `<p class="tip">${tip}</p>` : ''}`,
-      buttons: [{ text: sum.why === 'away' ? 'Welcome back' : 'Onward', cls: 'gold-btn' }],
+      buttons: askNotify
+        ? [{ text: 'Remind me next time', ghost: true, fn: () => game().setNotify(true) }, { text: 'Welcome back', cls: 'gold-btn' }]
+        : [{ text: sum.why === 'away' ? 'Welcome back' : 'Onward', cls: 'gold-btn' }],
     });
     if (sum.relics.length) A.play('relic');
     else A.play('gold');
@@ -861,18 +869,37 @@
     el['save-code'].value = '';
     el['btn-reset'].textContent = 'Erase everything';
     resetArmed = 0;
+    el['row-notify'].hidden = !game().canNotify();
+    syncNotify();
     el['sheet-settings'].hidden = false;
     el.scrim.hidden = false;
     sheetOpen = true;
+    ED.host.setOverlay(true);
   }
   function closeSettings() {
     el['sheet-settings'].hidden = true;
     sheetOpen = false;
     if (!modalOpen) el.scrim.hidden = true;
+    ED.host.setOverlay(modalOpen);
+  }
+
+  function syncNotify() {
+    if (el['set-notify']) el['set-notify'].checked = !!S().settings.notify;
+  }
+
+  // Android's back button: close whatever's on top. True if something was.
+  function back() {
+    if (sheetOpen) { closeSettings(); return true; }
+    if (modalOpen && !el.modal._sticky) { closeModal(); return true; }
+    return false;
   }
 
   function bindSettings() {
     el['btn-settings'].addEventListener('click', () => { A.play('click'); openSettings(); });
+    el['set-notify'].addEventListener('change', () => {
+      A.play('click');
+      game().setNotify(el['set-notify'].checked);
+    });
     el['settings-close'].addEventListener('click', () => { A.play('click'); closeSettings(); });
     el.scrim.addEventListener('click', () => {
       if (sheetOpen) closeSettings();
@@ -1019,6 +1046,6 @@
   }
 
   ED.ui = {
-    init, frame, refresh, cost, dirty: () => { isDirty = true; }, toast, banner, modal, showAway, showRelics, welcome, flare, perkText, fxText,
+    init, frame, refresh, cost, back, syncNotify, dirty: () => { isDirty = true; }, toast, banner, modal, showAway, showRelics, welcome, flare, perkText, fxText,
   };
 })(window.ED = window.ED || {});

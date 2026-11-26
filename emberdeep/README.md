@@ -2,6 +2,8 @@
 
 An idle dungeon crawler for phones. The village Hearth is going out, and somewhere under the mountain old embers still glow, floor after floor of them. Hire a party of heroes and send them down. They fight on their own, they keep going while your phone is in your pocket, and when they can't get any deeper you lead them home, feed the embers to the Hearth, and start again, stronger.
 
+There's also an installable [Android app](../emberdeep-android/) that sends a notification when your party has delved as long as it can without you.
+
 It's plain HTML, CSS and JavaScript. There's no build step and nothing to install. Every hero, monster, cave, relic, sound effect and note of music is drawn or synthesised in code, so the only image files are the app icons. After the first visit it also works offline.
 
 ## Playing
@@ -100,6 +102,7 @@ Then open <http://localhost:8000>. To try it on your phone, connect it to the sa
 | `index.html` | Layout: the top bar, the battle and its HUD, skill buttons, the five tabs, the settings sheet |
 | `css/style.css` | All styling. Mobile-first, respects safe areas (notches) and reduced-motion settings; battle and menus side by side on wide screens |
 | `js/core.js` | Maths and colour helpers, number formatting (K, M, B… then aa, ab… or scientific), a small event bus, storage |
+| `js/host.js` | Where the game runs: a browser (localStorage, `navigator.vibrate`) or the Android app (its own storage, the vibration motor, the back button, and the camp reminder) |
 | `js/data.js` | The catalogue: heroes, biomes and their monsters and bosses, skills, relics, Hearth talents, feats, the daily gift, the shop |
 | `js/econ.js` | The numbers: monster health and gold per floor, hero prices and damage, embers, and `stats()`, which folds every bonus into one object |
 | `js/state.js` | The save and every action on it: kills, bosses, relic chests, buying, the Quartermaster, rekindling, feats, saving, save codes |
@@ -114,7 +117,7 @@ Then open <http://localhost:8000>. To try it on your phone, connect it to the sa
 
 The live battle and the offline simulation both change the save through the same functions in `state.js`, so time away plays by exactly the same rules as time watched.
 
-Progress is saved in the browser's `localStorage`, so each phone or browser has its own delve. **Settings → Copy save** gives you a code you can paste into **Load save** on another device.
+Progress is saved in the browser's `localStorage` (or the Android app's own storage), so each phone or browser has its own delve. **Settings → Copy save** gives you a code you can paste into **Load save** on another device.
 
 ### Tuning
 
@@ -129,4 +132,4 @@ Progress is saved in the browser's `localStorage`, so each phone or browser has 
   ```
 
   It prints how deep each run gets, how long it took, and how many embers it earned.
-- When you change any file, bump `CACHE` in `sw.js` so installed copies pick up the update.
+- When you change any file, bump `CACHE` in `sw.js` so installed copies pick up the update, and run `../emberdeep-android/build.sh` to rebuild the APK.
